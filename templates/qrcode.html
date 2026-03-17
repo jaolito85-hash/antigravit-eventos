@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node Data | Gerador de QR Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #050507;
+            --bg-card: #111217;
+            --accent: #2979ff;
+            --accent-glow: rgba(41, 121, 255, 0.15);
+            --accent-light: #5c9aff;
+            --green: #00e676;
+            --text-main: #ffffff;
+            --text-muted: #8b949e;
+            --text-dim: #555d6e;
+            --border: #1e2130;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 960px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            align-items: start;
+        }
+
+        /* ===== LEFT: FORM ===== */
+        .form-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+        }
+
+        .form-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-glow);
+            border: 1px solid rgba(41, 121, 255, 0.25);
+            padding: 5px 14px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--accent-light);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+        }
+
+        .form-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .form-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
+        .field label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .field input,
+        .field select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s;
+        }
+
+        .field input:focus,
+        .field select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .field input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .field select option {
+            background: var(--bg-card);
+            color: var(--text-main);
+        }
+
+        .field-hint {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            margin-top: 6px;
+        }
+
+        .color-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .color-option {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: white;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(41, 121, 255, 0.3);
+        }
+
+        /* ===== RIGHT: PREVIEW ===== */
+        .preview-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .qr-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .qr-card::before {
+            content: '';
+            position: absolute;
+            top: -80px;
+            right: -80px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .qr-event-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .qr-event-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        #qrcode-container {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            min-width: 240px;
+            min-height: 240px;
+        }
+
+        #qrcode-container img {
+            width: 200px;
+            height: 200px;
+        }
+
+        .qr-scan-text {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .qr-scan-text i {
+            color: var(--green);
+        }
+
+        .qr-powered {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .qr-powered img {
+            width: 22px;
+            height: 22px;
+        }
+
+        .qr-powered span {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        /* Download buttons */
+        .download-row {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .download-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .download-btn.primary {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 16px rgba(41, 121, 255, 0.25);
+        }
+
+        .download-btn.secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        /* ===== POSTER PREVIEW ===== */
+        .poster-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .poster-title {
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        /* Hidden canvas for poster */
+        #posterCanvas {
+            display: none;
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-qr {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-dim);
+        }
+
+        .empty-qr i {
+            font-size: 3rem;
+            margin-bottom: 12px;
+            opacity: 0.3;
+        }
+
+        .empty-qr p {
+            font-size: 0.85rem;
+        }
+
+        /* ===== BACK LINK ===== */
+        .back-link {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            body {
+                padding: 80px 16px 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <a href="/" class="back-link"><i class="ri-arrow-left-line"></i> Dashboard</a>
+
+    <div class="container">
+        <!-- LEFT: FORM -->
+        <div class="form-panel">
+            <div class="form-badge">
+                <i class="ri-qr-code-line"></i>
+                Gerador de QR Code
+            </div>
+            <h1 class="form-title">Crie seu QR Code</h1>
+            <p class="form-subtitle">Gere um QR Code personalizado que abre o WhatsApp do event e já preenche uma
+                mensagem pro participante. É só imprimir e espalhar pelo evento!</p>
+
+            <div class="field">
+                <label>Nome do Evento</label>
+                <input type="text" id="eventName" placeholder="Ex: Festival Rock SP" maxlength="50">
+            </div>
+
+            <div class="field">
+                <label>Número do WhatsApp</label>
+                <input type="text" id="whatsappNumber" placeholder="5511999999999" value="">
+                <div class="field-hint">Formato internacional, sem + ou espaços. Ex: 5511999999999</div>
+            </div>
+
+            <div class="field">
+                <label>Mensagem automática</label>
+                <input type="text" id="autoMessage" placeholder="Oi! Vim do [evento]! 🎉" maxlength="80">
+                <div class="field-hint">Essa mensagem aparece pronta quando o participante escanear o QR</div>
+            </div>
+
+            <div class="field">
+                <label>Idioma da mensagem</label>
+                <select id="language" onchange="updateAutoMessage()">
+                    <option value="pt">🇧🇷 Português</option>
+                    <option value="en">🇺🇸 English</option>
+                    <option value="es">🇪🇸 Español</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Cor do tema</label>
+                <div class="color-row">
+                    <div class="color-option active" style="background: #2979ff;" data-color="#2979ff"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-option" style="background: #00e676;" data-color="#00e676"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-option" style="background: #ff5252;" data-color="#ff5252"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-option" style="background: #b388ff;" data-color="#b388ff"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-option" style="background: #ffab40;" data-color="#ffab40"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-option" style="background: #ff80ab;" data-color="#ff80ab"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-option" style="background: #00bcd4;" data-color="#00bcd4"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-option" style="background: #ffffff;" data-color="#ffffff"
+                        onclick="selectColor(this)"></div>
+                </div>
+            </div>
+
+            <button class="generate-btn" onclick="generateQR()">
+                <i class="ri-qr-code-line"></i>
+                Gerar QR Code
+            </button>
+        </div>
+
+        <!-- RIGHT: PREVIEW -->
+        <div class="preview-panel">
+            <div class="qr-card" id="qrCard">
+                <div class="qr-event-name" id="previewEventName">Seu Evento</div>
+                <div class="qr-event-sub">Escaneie e mande seu feedback via WhatsApp</div>
+                <div id="qrcode-container">
+                    <div class="empty-qr">
+                        <i class="ri-qr-code-line"></i>
+                        <p>Preencha os campos e clique em "Gerar"</p>
+                    </div>
+                </div>
+                <div class="qr-scan-text">
+                    <i class="ri-smartphone-line"></i>
+                    Aponte a câmera do celular para o QR Code
+                </div>
+                <div class="qr-powered">
+                    <img src="/static/logo.png" alt="Node Data">
+                    <span>Node Data</span>
+                </div>
+            </div>
+
+            <div class="download-row">
+                <button class="download-btn primary" onclick="downloadQR()" id="downloadBtn" disabled>
+                    <i class="ri-download-line"></i>
+                    Baixar QR Code
+                </button>
+                <button class="download-btn secondary" onclick="downloadPoster()" id="posterBtn" disabled>
+                    <i class="ri-image-line"></i>
+                    Baixar Cartaz
+                </button>
+            </div>
+
+            <div class="poster-card">
+                <div class="poster-title">Preview do Cartaz</div>
+                <canvas id="posterCanvas"></canvas>
+                <div id="posterPreview" style="margin-top: 8px;">
+                    <p style="color: var(--text-dim); font-size: 0.8rem;">Gere o QR Code para visualizar o cartaz</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedColor = '#2979ff';
+        let qrDataUrl = null;
+
+        function selectColor(el) {
+            document.querySelectorAll('.color-option').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            selectedColor = el.dataset.color;
+        }
+
+        function updateAutoMessage() {
+            const lang = document.getElementById('language').value;
+            const eventName = document.getElementById('eventName').value || 'Evento';
+            const messages = {
+                pt: `Oi! Vim do ${eventName}! 🎉`,
+                en: `Hi! I'm at ${eventName}! 🎉`,
+                es: `¡Hola! Estoy en ${eventName}! 🎉`
+            };
+            document.getElementById('autoMessage').value = messages[lang];
+        }
+
+        // Auto-update message when event name changes
+        document.getElementById('eventName').addEventListener('input', function () {
+            updateAutoMessage();
+            document.getElementById('previewEventName').textContent = this.value || 'Seu Evento';
+        });
+
+        function generateQR() {
+            const eventName = document.getElementById('eventName').value.trim();
+            const phone = document.getElementById('whatsappNumber').value.trim().replace(/\D/g, '');
+            const message = document.getElementById('autoMessage').value.trim();
+
+            if (!eventName) { alert('Informe o nome do evento!'); return; }
+            if (!phone) { alert('Informe o número do WhatsApp!'); return; }
+
+            // WhatsApp API URL
+            const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+            // Generate QR
+            const qr = qrcode(0, 'M');
+            qr.addData(waUrl);
+            qr.make();
+
+            // Render
+            const container = document.getElementById('qrcode-container');
+            container.innerHTML = '';
+
+            const img = document.createElement('img');
+            img.src = qr.createDataURL(6, 0);
+            img.style.width = '200px';
+            img.style.height = '200px';
+            img.style.imageRendering = 'pixelated';
+            container.appendChild(img);
+
+            qrDataUrl = img.src;
+
+            // Update preview
+            document.getElementById('previewEventName').textContent = eventName;
+
+            // Enable downloads
+            document.getElementById('downloadBtn').disabled = false;
+            document.getElementById('posterBtn').disabled = false;
+
+            // Generate poster preview
+            generatePoster(eventName, message);
+        }
+
+        function downloadQR() {
+            if (!qrDataUrl) return;
+            const a = document.createElement('a');
+            a.download = `qrcode-${document.getElementById('eventName').value.replace(/\s+/g, '-').toLowerCase()}.png`;
+            a.href = qrDataUrl;
+            a.click();
+        }
+
+        function generatePoster(eventName, message) {
+            const canvas = document.getElementById('posterCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = 800;
+            canvas.height = 1200;
+
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 1200);
+            gradient.addColorStop(0, '#0a0b10');
+            gradient.addColorStop(0.5, '#0d0e15');
+            gradient.addColorStop(1, '#111218');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 800, 1200);
+
+            // Accent glow circle top-right
+            const glowGrad = ctx.createRadialGradient(700, 100, 0, 700, 100, 300);
+            glowGrad.addColorStop(0, selectedColor + '22');
+            glowGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = glowGrad;
+            ctx.fillRect(400, 0, 400, 400);
+
+            // Top badge
+            ctx.font = '600 13px Inter, sans-serif';
+            ctx.fillStyle = selectedColor;
+            ctx.textAlign = 'center';
+            ctx.fillText('📣  FEEDBACK AO VIVO', 400, 80);
+
+            // Event name
+            ctx.font = '800 42px Inter, sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+
+            // Word wrap for long names
+            const words = eventName.split(' ');
+            let lines = [];
+            let currentLine = '';
+            for (const word of words) {
+                const test = currentLine ? currentLine + ' ' + word : word;
+                if (ctx.measureText(test).width > 680) {
+                    lines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    currentLine = test;
+                }
+            }
+            lines.push(currentLine);
+
+            let nameY = 140;
+            lines.forEach(line => {
+                ctx.fillText(line, 400, nameY);
+                nameY += 52;
+            });
+
+            // Subtitle
+            ctx.font = '400 18px Inter, sans-serif';
+            ctx.fillStyle = '#8b949e';
+            ctx.fillText('Sua opinião faz o evento melhorar!', 400, nameY + 20);
+
+            // QR Code white background
+            const qrY = nameY + 60;
+            const qrSize = 340;
+            const qrPad = 30;
+
+            // Rounded rectangle for QR
+            roundRect(ctx, 400 - (qrSize + qrPad * 2) / 2, qrY, qrSize + qrPad * 2, qrSize + qrPad * 2, 24, '#ffffff');
+
+            // Draw QR
+            if (qrDataUrl) {
+                const qrImg = new Image();
+                qrImg.onload = () => {
+                    ctx.drawImage(qrImg, 400 - qrSize / 2, qrY + qrPad, qrSize, qrSize);
+                    finishPoster(ctx, qrY, qrSize, qrPad, message);
+                };
+                qrImg.src = qrDataUrl;
+            }
+        }
+
+        function finishPoster(ctx, qrY, qrSize, qrPad, message) {
+            const belowQR = qrY + qrSize + qrPad * 2 + 40;
+
+            // Scan instruction
+            ctx.font = '600 20px Inter, sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText('📱 Aponte a câmera e escaneie', 400, belowQR);
+
+            ctx.font = '400 16px Inter, sans-serif';
+            ctx.fillStyle = '#8b949e';
+            ctx.fillText('O WhatsApp vai abrir automaticamente', 400, belowQR + 30);
+
+            // Steps
+            const stepsY = belowQR + 80;
+            const steps = [
+                { icon: '1️⃣', text: 'Escaneie o QR Code acima' },
+                { icon: '2️⃣', text: 'Envie a mensagem no WhatsApp' },
+                { icon: '3️⃣', text: 'Conte o que está achando!' }
+            ];
+
+            steps.forEach((step, i) => {
+                ctx.font = '500 16px Inter, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${step.icon}  ${step.text}`, 400, stepsY + i * 36);
+            });
+
+            // Bottom branding with logo
+            const logoImg = new Image();
+            logoImg.crossOrigin = 'anonymous';
+            logoImg.onload = () => {
+                // Accent line
+                ctx.strokeStyle = selectedColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(250, 1105);
+                ctx.lineTo(550, 1105);
+                ctx.stroke();
+
+                // Logo + text centered
+                const logoSize = 32;
+                const textWidth = 130; // approximate
+                const totalWidth = logoSize + 10 + textWidth;
+                const startX = 400 - totalWidth / 2;
+
+                ctx.drawImage(logoImg, startX, 1120, logoSize, logoSize);
+
+                ctx.font = '800 22px Inter, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'left';
+                ctx.fillText('Node Data', startX + logoSize + 10, 1143);
+
+                ctx.font = '400 11px Inter, sans-serif';
+                ctx.fillStyle = '#555d6e';
+                ctx.textAlign = 'center';
+                ctx.fillText('Monitoramento inteligente de eventos', 400, 1170);
+
+                // Update preview
+                const posterPreview = document.getElementById('posterPreview');
+                const previewImg = document.createElement('img');
+                previewImg.src = document.getElementById('posterCanvas').toDataURL('image/png');
+                previewImg.style.width = '100%';
+                previewImg.style.borderRadius = '12px';
+                posterPreview.innerHTML = '';
+                posterPreview.appendChild(previewImg);
+            };
+            logoImg.onerror = () => {
+                // Fallback: text only if logo fails to load
+                ctx.font = '800 22px Inter, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.fillText('Node Data', 400, 1140);
+
+                ctx.font = '400 11px Inter, sans-serif';
+                ctx.fillStyle = '#555d6e';
+                ctx.fillText('Monitoramento inteligente de eventos', 400, 1165);
+
+                const posterPreview = document.getElementById('posterPreview');
+                const previewImg = document.createElement('img');
+                previewImg.src = document.getElementById('posterCanvas').toDataURL('image/png');
+                previewImg.style.width = '100%';
+                previewImg.style.borderRadius = '12px';
+                posterPreview.innerHTML = '';
+                posterPreview.appendChild(previewImg);
+            };
+            logoImg.src = '/static/logo.png';
+
+            // Preview is now updated inside the logo onload/onerror callbacks above
+        }
+
+        function roundRect(ctx, x, y, w, h, r, fillColor) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+        }
+
+        function downloadPoster() {
+            const canvas = document.getElementById('posterCanvas');
+            const a = document.createElement('a');
+            a.download = `cartaz-${document.getElementById('eventName').value.replace(/\s+/g, '-').toLowerCase()}.png`;
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+        }
+
+        // Init auto message
+        updateAutoMessage();
+    </script>
+</body>
+
+</html>

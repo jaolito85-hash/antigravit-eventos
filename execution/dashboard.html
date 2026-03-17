@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Monitor Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            color: #1a73e8;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            background-color: #ffffff;
+            border-left: 5px solid #d93025; /* Red for alerts */
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            animation: fadeIn 0.5s ease-in;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            color: #5f6368;
+            font-size: 0.9em;
+        }
+        .sender-name {
+            font-weight: bold;
+            color: #202124;
+        }
+        .message-body {
+            font-size: 1.1em;
+            color: #202124;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Monitoramento do Evento (Tempo Real)</h1>
+            <p>Aguardando novas notificações...</p>
+        </div>
+        <div id="reports-list">
+            <!-- Cards will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        async function fetchReports() {
+            try {
+                const response = await fetch('/api/events');
+                const reports = await response.json();
+                
+                const list = document.getElementById('reports-list');
+                list.innerHTML = ''; // Simple re-render suitable for MVP
+
+                reports.forEach(report => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <span class="sender-name">${report.name} (${report.sender})</span>
+                            <span class="timestamp">${report.timestamp}</span>
+                        </div>
+                        <div class="message-body">
+                            ${report.message}
+                        </div>
+                    `;
+                    list.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error fetching reports:', error);
+            }
+        }
+
+        // Poll every 2 seconds
+        setInterval(fetchReports, 2000);
+        fetchReports(); // Initial call
+    </script>
+</body>
+</html>

@@ -1,0 +1,1964 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node Data | Event Monitor</title>
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#2979ff">
+    <meta name="description" content="Dashboard de análise de feedbacks em tempo real para eventos">
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
+    <link rel="apple-touch-icon" href="/static/icons/icon-512.png">
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Node Data">
+
+    <!-- Fonts & Libraries -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-body: #050507;
+            --bg-sidebar: #0b0c10;
+            --bg-card: #111217;
+            --bg-hover: #1c1e26;
+            --accent-primary: #2979ff;
+            --text-main: #ffffff;
+            --text-muted: #8b949e;
+            --border: #23252e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            outline: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+        }
+
+        .logo i {
+            color: var(--accent-primary);
+            font-size: 1.2rem;
+        }
+
+        .nav-label {
+            font-size: 0.7rem;
+            color: #555963;
+            text-transform: uppercase;
+            margin: 20px 0 10px 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            color: var(--text-muted);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover {
+            background-color: var(--bg-hover);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background-color: var(--accent-primary);
+            color: white;
+        }
+
+        .nav-item i {
+            font-size: 1.1rem;
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .page-title h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .page-title p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .stat-sub {
+            font-size: 0.75rem;
+            color: #22c55e;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
+        .highlight-icon {
+            color: var(--accent-primary);
+        }
+
+        /* Dashboard Layout */
+        .dash-row {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 24px;
+            flex: 1;
+        }
+
+        .chart-box {
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-header {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .chart-container-bar {
+            flex: 1;
+            position: relative;
+            min-height: 250px;
+        }
+
+        .chart-container-donut {
+            position: relative;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Feedbacks List (Specific Fix) */
+        .feed-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .feedback-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: 0.2s;
+        }
+
+        .feedback-card:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .fb-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .fb-tag {
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #1f2937;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .fb-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .fb-msg {
+            font-size: 0.92rem;
+            line-height: 1.5;
+            color: #d1d5db;
+            margin-bottom: 12px;
+            min-height: 36px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            line-clamp: 3;
+            overflow: hidden;
+        }
+
+        .fb-footer {
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .priority-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        /* Update badge */
+        .update-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            background: rgba(5, 150, 105, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(52, 211, 153, 0.35);
+            border-radius: 20px;
+            padding: 3px 8px;
+            margin-top: 8px;
+        }
+
+        /* Linked cards badge */
+        .linked-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+            border: 1px solid rgba(129, 140, 248, 0.35);
+            border-radius: 20px;
+            padding: 3px 8px;
+            margin-top: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .linked-badge:hover {
+            background: rgba(99, 102, 241, 0.3);
+            transform: scale(1.05);
+        }
+
+        .feedback-card.clickable {
+            cursor: pointer;
+        }
+
+        .feedback-card.clickable:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 4px 24px rgba(5, 150, 105, 0.15);
+            transform: translateY(-1px);
+        }
+
+        /* Thread Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-thread-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 94%;
+            max-width: 640px;
+            max-height: 88vh;
+            overflow-y: auto;
+            padding: 28px;
+            animation: slideIn 0.25s ease-out;
+        }
+
+        .thread-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 12px;
+        }
+
+        .thread-sender {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .thread-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin: 16px 0;
+        }
+
+        .thread-item {
+            display: flex;
+            gap: 14px;
+            position: relative;
+        }
+
+        .thread-item:not(:last-child) .thread-line {
+            position: absolute;
+            left: 13px;
+            top: 30px;
+            bottom: -4px;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .thread-dot {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            margin-top: 2px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .thread-dot.original {
+            background: rgba(5, 150, 105, 0.2);
+            border: 2px solid #059669;
+            color: #34d399;
+        }
+
+        .thread-dot.update {
+            background: rgba(251, 191, 36, 0.15);
+            border: 2px solid #f59e0b;
+            color: #fbbf24;
+        }
+
+        .thread-content {
+            flex: 1;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+        }
+
+        .thread-content-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .thread-content-label.original {
+            color: #34d399;
+        }
+
+        .thread-content-label.update {
+            color: #fbbf24;
+        }
+
+        .thread-content-text {
+            font-size: 0.9rem;
+            color: #d1d5db;
+            line-height: 1.5;
+        }
+
+        .thread-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-top: 16px;
+            margin-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Item Management Grid */
+        .grid-manage {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .manage-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .manage-card h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .manage-card h2 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .manage-card p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .btn-delete {
+            color: #ef4444;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+        }
+
+        .btn-add {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+
+        /* Utility */
+        .hidden {
+            display: none;
+        }
+
+        .text-red {
+            color: #ef4444;
+        }
+
+        /* Filters Bar */
+        .filters-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-select {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            min-width: 150px;
+        }
+
+        .filter-select:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .filter-count {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-left: auto;
+        }
+
+        .btn-clear-filters {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-clear-filters:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        /* Alerta Crítico */
+        .alerta-critico {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(220, 38, 38, 0.4);
+            z-index: 9999;
+            max-width: 350px;
+            animation: slideIn 0.3s ease-out, pulse 2s infinite;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .alerta-critico strong {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .alerta-critico p {
+            margin: 0 0 8px 0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .alerta-critico small {
+            opacity: 0.8;
+            font-size: 0.75rem;
+        }
+
+        .alerta-critico .close-btn {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            opacity: 0.7;
+        }
+
+        .alerta-critico .close-btn:hover {
+            opacity: 1;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 8px 32px rgba(220, 38, 38, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 8px 48px rgba(220, 38, 38, 0.6);
+            }
+        }
+
+        /* Export Button */
+        .export-dropdown {
+            position: relative;
+        }
+
+        .export-btn {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.2s;
+        }
+
+        .export-btn:hover {
+            background: #7c3aed;
+        }
+
+        .whatsapp-contact-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #25D36620;
+            color: #25D366;
+            border: 1px solid #25D366;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        .whatsapp-contact-btn:hover {
+            background: #25D366;
+            color: #fff;
+            transform: scale(1.1);
+            box-shadow: 0 0 12px #25D36650;
+        }
+
+        .export-menu {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px;
+            margin-top: 6px;
+            z-index: 100;
+            min-width: 150px;
+        }
+
+        .export-menu a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            color: var(--text-main);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .export-menu a:hover {
+            background: var(--bg-hover);
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        /* ===== MOBILE BURGER MENU ===== */
+        .mobile-header {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--bg-sidebar);
+            border-bottom: 1px solid var(--border);
+            padding: 0 16px;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1000;
+        }
+
+        .mobile-header .logo {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .burger-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 998;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 768px) {
+
+            /* Show mobile header */
+            .mobile-header {
+                display: flex;
+            }
+
+            /* Hide sidebar by default, show when active */
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                bottom: 0;
+                z-index: 999;
+                transition: left 0.3s ease;
+                width: 260px;
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+
+            /* Adjust main content */
+            body {
+                flex-direction: column;
+            }
+
+            .main {
+                padding: 80px 16px 16px 16px;
+                margin-left: 0;
+                width: 100%;
+            }
+
+            /* Stats grid */
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+
+            .stat-card {
+                padding: 14px;
+                min-height: auto;
+            }
+
+            .stat-value {
+                font-size: 1.4rem;
+            }
+
+            .stat-label {
+                font-size: 0.7rem;
+            }
+
+            /* Dashboard rows - stack vertically */
+            .dash-row {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .chart-box {
+                padding: 16px;
+            }
+
+            .chart-container-bar {
+                min-height: 180px;
+            }
+
+            /* Donut layout vertical */
+            .chart-box>div[style*="display: flex"] {
+                flex-direction: column !important;
+                align-items: center !important;
+            }
+
+            #donut-legend {
+                width: 100%;
+                margin-top: 16px;
+            }
+
+            /* Page header */
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .page-title h1 {
+                font-size: 1.4rem;
+            }
+
+            /* Feedbacks list */
+            .feedbacks-list {
+                gap: 12px;
+            }
+
+            .feedback-card {
+                padding: 14px;
+            }
+
+            .feedback-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            /* Filters */
+            .filters-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filters-bar select {
+                width: 100%;
+            }
+
+            /* Cards grid */
+            .manage-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Hide some elements on very small screens */
+            .stat-sub {
+                font-size: 0.65rem;
+            }
+
+            /* AI Pulse card */
+            #ai-pulse-summary {
+                font-size: 0.8rem !important;
+            }
+
+            /* Top problems horizontal scroll */
+            #top-problems-list {
+                flex-direction: column !important;
+            }
+        }
+
+        /* Extra small screens */
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-card:first-child {
+                grid-column: 1;
+            }
+
+            .page-title h1 {
+                font-size: 1.2rem;
+            }
+
+            .main {
+                padding: 70px 12px 12px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+        <div class="logo"><img src="/static/logo.png" alt="Node Data" style="height: 28px; width: 28px;"> Node Data
+        </div>
+        <button class="burger-btn" onclick="toggleMobileMenu()">
+            <i class="ri-menu-line" id="burger-icon"></i>
+        </button>
+    </div>
+
+    <!-- Overlay for mobile -->
+    <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
+    <div class="sidebar">
+        <div class="logo"><img src="/static/logo.png" alt="Node Data" style="height: 28px; width: 28px;"> Node Data
+        </div>
+
+        <div class="nav-label">WORKSPACE</div>
+        <div class="nav-item active" onclick="nav('dashboard', this)"><i class="ri-layout-grid-fill"></i> Painel</div>
+        <div class="nav-item" onclick="nav('feedbacks', this)"><i class="ri-chat-3-line"></i> Feedbacks</div>
+        <div class="nav-item" onclick="nav('regions', this)"><i class="ri-map-pin-line"></i> Regiões</div>
+        <div class="nav-item" onclick="nav('categories', this)"><i class="ri-price-tag-3-line"></i> Categorias</div>
+    </div>
+
+    <div class="main" id="view-dashboard">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Painel de Controle</h1>
+                <p>Visão geral do evento em tempo real</p>
+            </div>
+            <div class="export-dropdown">
+                <button class="export-btn" onclick="toggleExportMenu('dashboard')">
+                    <i class="ri-download-2-line"></i> Exportar <i class="ri-arrow-down-s-line"></i>
+                </button>
+                <div id="export-menu-dashboard" class="export-menu hidden">
+                    <a href="/api/export/csv" download><i class="ri-file-excel-2-line" style="color:#10b981"></i>
+                        Exportar CSV</a>
+                    <a href="/api/export/json" download><i class="ri-code-s-slash-line" style="color:#3b82f6"></i>
+                        Exportar JSON</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card" id="ai-pulse-card" style="border-left: 3px solid var(--accent-primary);">
+                <div class="stat-label">AI Pulse <i class="ri-sparkling-2-fill" style="color:#a855f7"></i></div>
+                <div id="ai-pulse-summary"
+                    style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db; min-height: 40px;">
+                    Carregando análise...
+                </div>
+                <div class="stat-sub" id="ai-pulse-updated" style="margin-top: 8px;">Atualizado: --</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Feedbacks Hoje <i class="ri-pulse-line" style="color:#22c55e"></i></div>
+                <div class="stat-value" id="kpi-today">0</div>
+                <div class="stat-sub">Novos registros</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Região Mais Ativa <i class="ri-map-pin-2-line text-red"></i></div>
+                <div class="stat-value" id="kpi-region" style="font-size: 1.4rem">--</div>
+                <div class="stat-sub" id="kpi-region-count">0 feedbacks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Principal Categoria <i class="ri-price-tag-3-line" style="color:#f59e0b"></i>
+                </div>
+                <div class="stat-value" id="kpi-cat" style="font-size: 1.4rem">--</div>
+                <div class="stat-sub" id="kpi-cat-count">0 feedbacks</div>
+            </div>
+        </div>
+
+        <!-- ROW 1: Timeline + Sentimentos -->
+        <div class="dash-row">
+            <div class="chart-box">
+                <div class="chart-header"><i class="ri-line-chart-line" style="color:#2979ff"></i> Feedbacks por Hora
+                </div>
+                <div class="chart-container-bar">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-header"><i class="ri-emotion-line" style="color:#a855f7"></i> Sentimentos</div>
+                <div id="sentiment-bars" style="padding: 20px 0;">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 2: Donut com Legenda + Top Insights -->
+        <div class="dash-row" style="margin-top: 24px;">
+            <div class="chart-box">
+                <div class="chart-header"><i class="ri-pie-chart-2-fill" style="color:#f59e0b"></i> Categorias</div>
+                <div style="display: flex; align-items: center; gap: 30px; padding: 10px 0;">
+                    <div style="position: relative; width: 180px; height: 180px;">
+                        <canvas id="donutChart"></canvas>
+                        <div id="donut-center"
+                            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                            <div style="font-size: 2rem; font-weight: 700; color: white;" id="donut-total">0</div>
+                            <div style="font-size: 0.75rem; color: #9ca3af;">feedbacks</div>
+                        </div>
+                    </div>
+                    <div id="donut-legend" style="flex: 1; font-size: 0.85rem;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-header" style="color:#22c55e"><i class="ri-star-fill"></i> Top 3 Elogios</div>
+                <div id="top-compliments-list" style="font-size: 0.9rem; color: #d1d5db;">
+                    <p style="color:var(--text-muted)">Aguardando dados...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 3: Top Problemas -->
+        <div class="dash-row" style="margin-top: 24px;">
+            <div class="chart-box" style="grid-column: span 2;">
+                <div class="chart-header" style="color:#ef4444"><i class="ri-alert-fill"></i> Top 3 Problemas</div>
+                <div id="top-problems-list"
+                    style="font-size: 0.9rem; color: #d1d5db; display: flex; gap: 20px; flex-wrap: wrap;">
+                    <p style="color:var(--text-muted)">Aguardando dados...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FEEDBACKS VIEW -->
+    <div class="main hidden" id="view-feedbacks">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Feedbacks</h1>
+                <p>Gerencie e analise as opiniões recebidas</p>
+            </div>
+            <div class="export-dropdown">
+                <button class="export-btn" onclick="toggleExportMenu('feedbacks')">
+                    <i class="ri-download-2-line"></i> Exportar <i class="ri-arrow-down-s-line"></i>
+                </button>
+                <div id="export-menu-feedbacks" class="export-menu hidden">
+                    <a href="/api/export/csv" download><i class="ri-file-excel-2-line" style="color:#10b981"></i>
+                        Exportar CSV</a>
+                    <a href="/api/export/json" download><i class="ri-code-s-slash-line" style="color:#3b82f6"></i>
+                        Exportar JSON</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Bar -->
+        <div class="filters-bar">
+            <select id="filtro-categoria" class="filter-select" onchange="aplicarFiltros()">
+                <option value="">Todas Categorias</option>
+            </select>
+            <select id="filtro-prioridade" class="filter-select" onchange="aplicarFiltros()">
+                <option value="">Todas Prioridades</option>
+                <option value="Critico">Crítico</option>
+                <option value="Urgente">Urgente</option>
+                <option value="Positivo">Positivo</option>
+                <option value="Neutro">Neutro</option>
+            </select>
+            <select id="filtro-status" class="filter-select" onchange="aplicarFiltros()">
+                <option value="ativos" selected>Cards Ativos</option>
+                <option value="aberto">Aberto</option>
+                <option value="em_andamento">Em Andamento</option>
+                <option value="resolvido">Resolvido</option>
+            </select>
+            <button class="btn-clear-filters" onclick="limparFiltros()"><i class="ri-filter-off-line"></i>
+                Limpar</button>
+            <span class="filter-count" id="filter-count">Carregando...</span>
+        </div>
+
+        <div class="feed-list" id="feed-list-container">
+            <!-- Cards injected via JS -->
+        </div>
+    </div>
+
+    <!-- REGIONS VIEW -->
+    <div class="main hidden" id="view-regions">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Regiões</h1>
+                <p>Gerencie as áreas de atendimento</p>
+            </div>
+            <button class="btn-add" onclick="addItem('regions')"><i class="ri-add-line"></i> Adicionar</button>
+        </div>
+        <div class="grid-manage" id="regions-grid"></div>
+    </div>
+
+    <!-- CATEGORIES VIEW -->
+    <div class="main hidden" id="view-categories">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Categorias</h1>
+                <p>Classificação automática da IA</p>
+            </div>
+            <button class="btn-add" onclick="addItem('categories')"><i class="ri-add-line"></i> Adicionar</button>
+        </div>
+        <div class="grid-manage" id="categories-grid"></div>
+    </div>
+
+    <script>
+        // State
+        let currentChartDonut = null;
+        let currentChartBar = null;
+
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            const icon = document.getElementById('burger-icon');
+
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+
+            // Toggle icon
+            if (sidebar.classList.contains('active')) {
+                icon.className = 'ri-close-line';
+            } else {
+                icon.className = 'ri-menu-line';
+            }
+        }
+
+        // Navigation
+        function nav(view, el) {
+            document.querySelectorAll('.main').forEach(d => d.classList.add('hidden'));
+            document.getElementById('view-' + view).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+
+            // Close mobile menu after navigation
+            if (window.innerWidth <= 768) {
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.querySelector('.sidebar-overlay');
+                const icon = document.getElementById('burger-icon');
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+                if (icon) icon.className = 'ri-menu-line';
+            }
+
+            if (view === 'dashboard') loadData();
+            if (view === 'feedbacks') {
+                document.getElementById('filtro-status').value = 'ativos';
+                aplicarFiltros();
+            }
+            if (view === 'regions' || view === 'categories') loadConfigViews();
+        }
+
+        // Fetch Logic
+        async function loadData() {
+            const [evRes, cfgRes] = await Promise.all([fetch('/api/events'), fetch('/api/config')]);
+            const events = await evRes.json();
+            const config = await cfgRes.json();
+
+            // KPIs
+            document.getElementById('kpi-today').innerText = events.length;
+
+            // Top Region (ignoring N/A)
+            const regCount = {};
+            events.forEach(e => {
+                if (e.region && e.region !== 'N/A') {
+                    regCount[e.region] = (regCount[e.region] || 0) + 1;
+                }
+            });
+            const topReg = Object.keys(regCount).length ? Object.keys(regCount).reduce((a, b) => regCount[a] > regCount[b] ? a : b) : "Nenhuma";
+            document.getElementById('kpi-region').innerText = topReg;
+            document.getElementById('kpi-region-count').innerText = (regCount[topReg] || 0) + " feedbacks";
+
+            // Top Category
+            const catCount = {};
+            events.forEach(e => catCount[e.category] = (catCount[e.category] || 0) + 1);
+            const topCat = Object.keys(catCount).length ? Object.keys(catCount).reduce((a, b) => catCount[a] > catCount[b] ? a : b) : "N/A";
+            document.getElementById('kpi-cat').innerText = topCat;
+            document.getElementById('kpi-cat-count').innerText = (catCount[topCat] || 0) + " feedbacks";
+
+            renderCharts(events, config.categories);
+
+            // Load AI Pulse separately (may take longer)
+            loadAiPulse();
+        }
+
+        async function loadAiPulse() {
+            try {
+                const res = await fetch('/api/ai-pulse');
+                const data = await res.json();
+
+                const summaryEl = document.getElementById('ai-pulse-summary');
+                const updatedEl = document.getElementById('ai-pulse-updated');
+                const cardEl = document.getElementById('ai-pulse-card');
+
+                summaryEl.innerText = data.summary || 'Sem análise disponível';
+
+                // Atualizar timestamp
+                if (data.updated_at) {
+                    const updated = new Date(data.updated_at);
+                    updatedEl.innerText = `${data.feedbacks_count || 0} feedbacks • Atualizado: ${formatarTempo(data.updated_at)}`;
+                }
+
+                // Cor da borda baseada no status
+                const statusColors = {
+                    'good': '#22c55e',      // Verde
+                    'warning': '#f59e0b',   // Amarelo
+                    'critical': '#ef4444',  // Vermelho
+                    'waiting': '#6b7280',   // Cinza
+                    'error': '#6b7280'      // Cinza
+                };
+                cardEl.style.borderLeftColor = statusColors[data.status] || '#a855f7';
+
+            } catch (e) {
+                console.error('Erro ao carregar AI Pulse:', e);
+                document.getElementById('ai-pulse-summary').innerText = 'Erro ao carregar análise';
+            }
+        }
+
+
+        // Função para converter timestamp em tempo relativo
+        // Função para converter timestamp em tempo relativo
+        function formatarTempo(timestamp) {
+            if (!timestamp) return 'Desconhecido';
+
+            let data;
+            // Hack para suportar formato antigo "DD/MM/YY HH:MM"
+            if (timestamp.indexOf('/') > -1) {
+                const [datePart, timePart] = timestamp.split(' ');
+                const [dia, mes, ano] = datePart.split('/');
+                const [hora, minuto] = timePart.split(':');
+                data = new Date(`20${ano}-${mes}-${dia}T${hora}:${minuto}:00`);
+            } else {
+                // Formato ISO UTC (Supabase)
+                data = new Date(timestamp);
+            }
+
+            const agora = new Date();
+            const diffMs = agora - data;
+            const diffMin = Math.floor(diffMs / 60000);
+            const diffHoras = Math.floor(diffMin / 60);
+
+            if (diffMin < 1) return 'Agora mesmo';
+            if (diffMin < 60) return `Há ${diffMin} min`;
+            if (diffHoras < 24) return `Há ${diffHoras}h`;
+
+            // Converter para Brasília (UTC-3)
+            const opcoes = { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+            return data.toLocaleString('pt-BR', opcoes);
+        }
+
+        // Parse flat message string into thread array
+        function parseThread(rawMessage) {
+            if (!rawMessage) return [{ label: 'original', text: '', time: null }];
+            const parts = rawMessage.split(/\n\n\[Atualiza[\u00e7c][a\u00e3]o(?:\s+(\d{2}:\d{2}))?\]:\s*/i);
+            const result = [{ label: 'original', text: (parts[0] || '').trim(), time: null }];
+            for (let i = 1; i < parts.length; i += 2) {
+                result.push({ label: 'update', text: (parts[i + 1] || '').trim(), time: parts[i] || null });
+            }
+            return result;
+        }
+
+        let totalFeedbacks = 0;
+        let _allEventsCache = [];
+
+        async function loadFeedbacks(filterUrl = '/api/events') {
+            const res = await fetch(filterUrl);
+            let events = await res.json();
+            const currentStatusFilter = document.getElementById('filtro-status')?.value || 'ativos';
+            if (currentStatusFilter === 'ativos') {
+                events = events.filter(e => (e.status || 'aberto') !== 'resolvido');
+            }
+            _allEventsCache = events;
+            const container = document.getElementById('feed-list-container');
+            container.innerHTML = '';
+
+            const countEl = document.getElementById('filter-count');
+            if (filterUrl === '/api/events') {
+                totalFeedbacks = events.length;
+                countEl.innerText = `${events.length} feedbacks`;
+            } else {
+                countEl.innerText = `Mostrando ${events.length} de ${totalFeedbacks} feedbacks`;
+            }
+
+            if (events.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-muted)">Nenhum feedback encontrado com esses filtros.</p>';
+                return;
+            }
+
+            events.forEach(e => {
+                let urgencyColor = '#3b82f6';
+                const u = (e.urgency || '').toLowerCase();
+                if (u.includes('crit') || u.includes('crít')) urgencyColor = '#ef4444';
+                else if (u.includes('urge')) urgencyColor = '#f59e0b';
+                else if (u.includes('aten')) urgencyColor = '#fcd34d';
+                else if (u.includes('posi')) urgencyColor = '#10b981';
+
+                const status = e.status || 'aberto';
+                const statusConfig = {
+                    'aberto': { color: '#EF4444', label: 'Aberto', icon: 'ri-error-warning-line' },
+                    'em_andamento': { color: '#F59E0B', label: 'Em Andamento', icon: 'ri-loader-4-line' },
+                    'resolvido': { color: '#10B981', label: 'Resolvido', icon: 'ri-checkbox-circle-line' }
+                };
+                const sc = statusConfig[status] || statusConfig['aberto'];
+                const statusDropdownHtml = `
+                    <div class="status-dropdown" style="position:relative;">
+                        <button onclick="event.stopPropagation(); toggleStatusMenu(${e.id})" class="status-btn" style="background:${sc.color}20; color:${sc.color}; border:1px solid ${sc.color}; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.75rem; font-weight:600; display:flex; align-items:center; gap:4px;">
+                            <i class="${sc.icon}"></i> ${sc.label} <i class="ri-arrow-down-s-line"></i>
+                        </button>
+                        <div id="status-menu-${e.id}" class="status-menu hidden" style="position:absolute; right:0; top:100%; background:var(--bg-card); border:1px solid var(--border); border-radius:6px; padding:4px; z-index:100; min-width:140px; margin-top:4px;">
+                            <div onclick="event.stopPropagation(); updateStatus(${e.id}, 'aberto')" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#EF4444;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-error-warning-line"></i> Aberto</div>
+                            <div onclick="event.stopPropagation(); updateStatus(${e.id}, 'em_andamento')" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#F59E0B;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-loader-4-line"></i> Em Andamento</div>
+                            <div onclick="event.stopPropagation(); updateStatus(${e.id}, 'resolvido')" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#10B981;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-checkbox-circle-line"></i> Resolvido</div>
+                        </div>
+                    </div>`;
+
+                // Parse thread
+                const thread = parseThread(e.message);
+                const updateCount = thread.length - 1;
+                const firstMsg = thread[0].text;
+                const updateBadge = updateCount > 0
+                    ? `<div class="update-badge"><i class="ri-chat-3-line"></i> ${updateCount} atualiza${updateCount === 1 ? 'ção' : 'ções'}</div>`
+                    : '';
+
+                container.innerHTML += `
+                    <div class="feedback-card clickable" onclick="openThreadModal(${e.id})" data-id="${e.id}">
+                        <div class="fb-header">
+                            <span class="fb-tag" style="background:${urgencyColor}20; color:${urgencyColor}; border:1px solid ${urgencyColor}">${e.category}</span>
+                            <div class="fb-time" title="${e.timestamp}"><i class="ri-time-line"></i> ${formatarTempo(e.timestamp)}</div>
+                        </div>
+                        <div class="fb-msg">${firstMsg}</div>
+                        ${updateBadge}
+                        ${e.linked_from ? `<div class="linked-badge" onclick="event.stopPropagation(); showLinkedCards(${e.id}, '${(e.sender || e.remoteJid || '').replace(/'/g, "\\'")}')"><i class="ri-links-line"></i> Ver anteriores</div>` : ''}
+                        <div class="fb-footer" style="margin-top:10px;">
+                            <span><span class="priority-dot" style="background:${urgencyColor}"></span>${e.urgency || 'Neutro'}</span>
+                            ${statusDropdownHtml}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function showLinkedCards(currentId, senderJid) {
+            const sameUser = _allEventsCache.filter(ev => {
+                const evSender = ev.sender || ev.remoteJid || '';
+                return evSender === senderJid && ev.id !== currentId;
+            });
+            if (sameUser.length === 0) { alert('Nenhum card anterior encontrado.'); return; }
+            closeLinkedModal();
+            const cardsHtml = sameUser.map(c => {
+                const thread = parseThread(c.message);
+                const preview = thread[0].text.substring(0, 80) + (thread[0].text.length > 80 ? '...' : '');
+                const statusLabel = c.status === 'resolvido' ? '✅ Resolvido' : c.status === 'em_andamento' ? '⏳ Em Andamento' : '🔴 Aberto';
+                return `<div onclick="event.stopPropagation(); closeLinkedModal(); openThreadModal(${c.id})" style="padding:12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--bg-card);margin-bottom:8px;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="font-weight:600;color:var(--text-main);font-size:0.85rem;">${c.category || 'Geral'}</span>
+                        <span style="font-size:0.7rem;color:var(--text-muted);">${formatarTempo(c.timestamp)}</span>
+                    </div>
+                    <div style="color:#d1d5db;font-size:0.8rem;line-height:1.4;">${preview}</div>
+                    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:6px;">${statusLabel}</div>
+                </div>`;
+            }).join('');
+            const modal = document.createElement('div');
+            modal.id = 'linked-modal';
+            modal.innerHTML = `
+                <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;" onclick="closeLinkedModal()">
+                    <div style="background:var(--bg-card);border-radius:16px;padding:24px;max-width:400px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                            <h3 style="margin:0;font-size:1rem;color:var(--text-main);"><i class="ri-links-line" style="margin-right:6px;"></i> Cards anteriores</h3>
+                            <button onclick="closeLinkedModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;"><i class="ri-close-line"></i></button>
+                        </div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px;">${sameUser.length} card${sameUser.length > 1 ? 's' : ''} do mesmo remetente</div>
+                        ${cardsHtml}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        function closeLinkedModal() { const m = document.getElementById('linked-modal'); if (m) m.remove(); }
+
+        function openThreadModal(eventId) {
+            const e = _allEventsCache.find(ev => ev.id === eventId);
+            if (!e) return;
+            const u = (e.urgency || '').toLowerCase();
+            let urgencyColor = '#3b82f6';
+            if (u.includes('crit') || u.includes('crít')) urgencyColor = '#ef4444';
+            else if (u.includes('urge')) urgencyColor = '#f59e0b';
+            else if (u.includes('aten')) urgencyColor = '#fcd34d';
+            else if (u.includes('posi')) urgencyColor = '#10b981';
+
+            const rawSender = e.remoteJid || e.sender || '';
+            const senderNumber = rawSender.replace('@s.whatsapp.net', '').replace(/\D/g, '');
+            const displayPhone = senderNumber ? `📱 ${senderNumber.replace(/^55/, '').replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}` : 'Número desconhecido';
+            const displayName = e.name || 'Participante';
+            const whatsappLink = senderNumber ? `<a href="https://wa.me/${senderNumber}" target="_blank" class="whatsapp-contact-btn" style="text-decoration:none;"><i class="ri-phone-fill"></i></a>` : '';
+
+            const thread = parseThread(e.message);
+            const timelineHtml = thread.map((item, idx) => `
+                <div class="thread-item">
+                    <div class="thread-line"></div>
+                    <div class="thread-dot ${item.label}">${idx === 0 ? '<i class="ri-message-2-line"></i>' : '<i class="ri-refresh-line"></i>'}</div>
+                    <div class="thread-content">
+                        <div class="thread-content-label ${item.label}">${idx === 0 ? 'Mensagem Original' : `Atualização ${idx}`}</div>
+                        <div class="thread-content-text">${item.text}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            const status = e.status || 'aberto';
+            const sc = { 'aberto': { color: '#EF4444', label: 'Aberto', icon: 'ri-error-warning-line' }, 'em_andamento': { color: '#F59E0B', label: 'Em Andamento', icon: 'ri-loader-4-line' }, 'resolvido': { color: '#10B981', label: 'Resolvido', icon: 'ri-checkbox-circle-line' } }[status] || { color: '#EF4444', label: 'Aberto', icon: 'ri-error-warning-line' };
+            const showStatus = u.includes('urge') || u.includes('crit') || u.includes('crít');
+            const statusHtmlModal = showStatus ? `
+                <div class="status-dropdown" style="position:relative;">
+                    <button onclick="toggleStatusMenu('modal-${e.id}')" style="background:${sc.color}20; color:${sc.color}; border:1px solid ${sc.color}; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600; display:flex; align-items:center; gap:5px;">
+                        <i class="${sc.icon}"></i> ${sc.label} <i class="ri-arrow-down-s-line"></i>
+                    </button>
+                    <div id="status-menu-modal-${e.id}" class="status-menu hidden" style="position:absolute; right:0; bottom:100%; background:var(--bg-card); border:1px solid var(--border); border-radius:6px; padding:4px; z-index:200; min-width:140px; margin-bottom:4px;">
+                        <div onclick="updateStatus(${e.id}, 'aberto'); closeThreadModal()" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#EF4444;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-error-warning-line"></i> Aberto</div>
+                        <div onclick="updateStatus(${e.id}, 'em_andamento'); closeThreadModal()" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#F59E0B;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-loader-4-line"></i> Em Andamento</div>
+                        <div onclick="updateStatus(${e.id}, 'resolvido'); closeThreadModal()" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#10B981;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-checkbox-circle-line"></i> Resolvido</div>
+                    </div>
+                </div>` : `<span style="font-size:0.8rem; color:${urgencyColor};"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${urgencyColor};margin-right:5px;"></span>${e.urgency || 'Neutro'}</span>`;
+
+            document.getElementById('thread-modal-body').innerHTML = `
+                <div class="thread-header">
+                    <div>
+                        <div style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="ri-chat-3-fill" style="color:#059669;"></i> ${displayName}</div>
+                        <div class="thread-sender">${displayPhone} ${whatsappLink} <span style="color:var(--border)">|</span> <span style="background:${urgencyColor}20;color:${urgencyColor};border:1px solid ${urgencyColor};font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;">${e.category}</span></div>
+                    </div>
+                    <button onclick="closeThreadModal()" style="background:transparent;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1;">×</button>
+                </div>
+                <div class="thread-timeline">${timelineHtml}</div>
+                <div class="thread-footer">
+                    ${statusHtmlModal}
+                    <div style="font-size:0.78rem; color:var(--text-muted);"><i class="ri-time-line"></i> ${formatarTempo(e.timestamp)}</div>
+                </div>
+            `;
+            document.getElementById('thread-modal-overlay').classList.remove('hidden');
+        }
+
+        function closeThreadModal() {
+            document.getElementById('thread-modal-overlay').classList.add('hidden');
+        }
+
+        function aplicarFiltros() {
+            const categoria = document.getElementById('filtro-categoria').value;
+            const prioridade = document.getElementById('filtro-prioridade').value;
+            const status = document.getElementById('filtro-status').value;
+
+            let params = [];
+            if (categoria) params.push(`categoria=${encodeURIComponent(categoria)}`);
+            if (prioridade) params.push(`prioridade=${encodeURIComponent(prioridade)}`);
+            if (status && status !== 'ativos') params.push(`status=${encodeURIComponent(status)}`);
+
+            const url = '/api/events' + (params.length ? '?' + params.join('&') : '');
+            loadFeedbacks(url);
+        }
+
+        function limparFiltros() {
+            document.getElementById('filtro-categoria').value = '';
+            document.getElementById('filtro-prioridade').value = '';
+            document.getElementById('filtro-status').value = 'ativos';
+            aplicarFiltros();
+        }
+
+        async function popularFiltrosCategorias() {
+            const res = await fetch('/api/config');
+            const config = await res.json();
+            const select = document.getElementById('filtro-categoria');
+
+            // Manter a primeira opção
+            select.innerHTML = '<option value="">Todas Categorias</option>';
+
+            config.categories.forEach(cat => {
+                select.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+            });
+        }
+
+        function toggleExportMenu(section) {
+            const menu = document.getElementById('export-menu-' + section);
+            // Close all export menus first
+            document.querySelectorAll('.export-menu').forEach(m => {
+                if (m.id !== 'export-menu-' + section) m.classList.add('hidden');
+            });
+            menu.classList.toggle('hidden');
+        }
+
+        // Close export menus when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.export-dropdown')) {
+                document.querySelectorAll('.export-menu').forEach(m => m.classList.add('hidden'));
+            }
+        });
+
+        function toggleStatusMenu(id) {
+            const menu = document.getElementById('status-menu-' + id);
+            // Close all other menus first
+            document.querySelectorAll('.status-menu').forEach(m => {
+                if (m.id !== 'status-menu-' + id) m.classList.add('hidden');
+            });
+            menu.classList.toggle('hidden');
+        }
+
+        async function updateStatus(feedbackId, newStatus) {
+            try {
+                const res = await fetch('/api/feedback/' + feedbackId + '/status', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (res.ok) {
+                    aplicarFiltros(); // Reaplica filtros atuais (card some se não bate mais)
+                } else {
+                    alert('Erro ao atualizar status');
+                }
+            } catch (err) {
+                console.error('Error updating status:', err);
+            }
+        }
+
+        // Close status menus when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.status-dropdown')) {
+                document.querySelectorAll('.status-menu').forEach(m => m.classList.add('hidden'));
+            }
+        });
+
+        async function loadConfigViews() {
+            const res = await fetch('/api/config');
+            const config = await res.json();
+
+            // Regions
+            const rGrid = document.getElementById('regions-grid');
+            rGrid.innerHTML = '';
+            config.regions.forEach(r => {
+                rGrid.innerHTML += `
+                    <div class="manage-card">
+                        <h3>${r.name} <i class="ri-map-pin-line"></i></h3>
+                        <h2>${r.count}</h2>
+                        <p>Feedbacks recebidos</p>
+                        <div class="btn-delete" onclick="delItem('regions', '${r.name}')">Excluir</div>
+                    </div>
+                `;
+            });
+
+            // Categories
+            const cGrid = document.getElementById('categories-grid');
+            cGrid.innerHTML = '';
+            config.categories.forEach(c => {
+                cGrid.innerHTML += `
+                    <div class="manage-card" style="border-left: 4px solid ${c.color}">
+                        <h3>${c.name} <i class="ri-price-tag-3-fill" style="color:${c.color}"></i></h3>
+                        <h2>${c.count}</h2>
+                        <p>Feedbacks recebidos</p>
+                        <div class="btn-delete" onclick="delItem('categories', '${c.name}')">Excluir</div>
+                    </div>
+                `;
+            });
+        }
+
+        // Charts
+        let currentChartTimeline = null;
+
+        function renderCharts(events, catDef) {
+            // ===== 1. TIMELINE POR HORA =====
+            const hourCounts = {};
+            events.forEach(e => {
+                if (e.timestamp) {
+                    let hour;
+                    if (e.timestamp.includes('T')) {
+                        // ISO format
+                        const date = new Date(e.timestamp);
+                        hour = date.getHours().toString().padStart(2, '0') + ':00';
+                    } else if (e.timestamp.includes('/')) {
+                        // DD/MM/YY HH:MM format
+                        const timePart = e.timestamp.split(' ')[1];
+                        hour = timePart.split(':')[0].padStart(2, '0') + ':00';
+                    }
+                    if (hour) {
+                        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+                    }
+                }
+            });
+
+            // Sort hours and fill gaps
+            const allHours = Object.keys(hourCounts).sort();
+            const timelineLabels = allHours.length > 0 ? allHours : ['--'];
+            const timelineData = allHours.length > 0 ? allHours.map(h => hourCounts[h]) : [0];
+
+            if (currentChartTimeline) currentChartTimeline.destroy();
+            const ctxTimeline = document.getElementById('timelineChart').getContext('2d');
+            const gradient = ctxTimeline.createLinearGradient(0, 0, 0, 200);
+            gradient.addColorStop(0, 'rgba(41, 121, 255, 0.6)');
+            gradient.addColorStop(1, 'rgba(41, 121, 255, 0.05)');
+
+            currentChartTimeline = new Chart(ctxTimeline, {
+                type: 'line',
+                data: {
+                    labels: timelineLabels,
+                    datasets: [{
+                        label: 'Feedbacks',
+                        data: timelineData,
+                        borderColor: '#2979ff',
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#2979ff',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1f2937',
+                            titleColor: '#fff',
+                            bodyColor: '#d1d5db',
+                            borderColor: '#374151',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: '#23252e' },
+                            beginAtZero: true,
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+
+            // ===== 2. SENTIMENT BARS =====
+            const sentimentCounts = { 'Positivo': 0, 'Neutro': 0, 'Urgente': 0, 'Critico': 0 };
+            events.forEach(e => {
+                const s = e.urgency || 'Neutro';
+                if (s in sentimentCounts) sentimentCounts[s]++;
+                else if (s.includes('Crít')) sentimentCounts['Critico']++;
+            });
+
+            const total = Object.values(sentimentCounts).reduce((a, b) => a + b, 0) || 1;
+            const sentimentColors = {
+                'Positivo': { bg: 'linear-gradient(90deg, #22c55e, #16a34a)', color: '#22c55e' },
+                'Neutro': { bg: 'linear-gradient(90deg, #3b82f6, #2563eb)', color: '#3b82f6' },
+                'Urgente': { bg: 'linear-gradient(90deg, #f59e0b, #d97706)', color: '#f59e0b' },
+                'Critico': { bg: 'linear-gradient(90deg, #ef4444, #dc2626)', color: '#ef4444' }
+            };
+
+            const sentimentContainer = document.getElementById('sentiment-bars');
+            sentimentContainer.innerHTML = Object.entries(sentimentCounts).map(([name, count]) => {
+                const pct = ((count / total) * 100).toFixed(0);
+                const cfg = sentimentColors[name];
+                return `
+                    <div style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem;">
+                            <span style="color: ${cfg.color}; font-weight: 600;">${name}</span>
+                            <span style="color: #9ca3af;">${count} (${pct}%)</span>
+                        </div>
+                        <div style="background: #1f2937; border-radius: 8px; height: 12px; overflow: hidden;">
+                            <div style="background: ${cfg.bg}; width: ${pct}%; height: 100%; border-radius: 8px; transition: width 0.5s ease;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // ===== 3. DONUT COM LEGENDA =====
+            const catCount = {};
+            events.forEach(e => catCount[e.category] = (catCount[e.category] || 0) + 1);
+
+            const labels = catDef.map(c => c.name);
+            const dataVal = catDef.map(c => catCount[c.name] || 0);
+            const colors = catDef.map(c => c.color);
+            const totalFeedbacks = dataVal.reduce((a, b) => a + b, 0);
+
+            // Update center total
+            document.getElementById('donut-total').innerText = totalFeedbacks;
+
+            // Render legend
+            const legendContainer = document.getElementById('donut-legend');
+            legendContainer.innerHTML = catDef.map((cat, i) => {
+                const count = catCount[cat.name] || 0;
+                const pct = totalFeedbacks > 0 ? ((count / totalFeedbacks) * 100).toFixed(0) : 0;
+                return `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #23252e;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 12px; height: 12px; border-radius: 3px; background: ${cat.color};"></div>
+                            <span style="color: #e5e7eb;">${cat.name}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: #9ca3af; font-size: 0.8rem;">${pct}%</span>
+                            <span style="color: white; font-weight: 600;">${count}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (currentChartDonut) currentChartDonut.destroy();
+            currentChartDonut = new Chart(document.getElementById('donutChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataVal,
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                        cutout: '75%',
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1f2937',
+                            titleColor: '#fff',
+                            bodyColor: '#d1d5db',
+                            borderColor: '#374151',
+                            borderWidth: 1,
+                            padding: 12
+                        }
+                    }
+                }
+            });
+        }
+
+        // Actions
+        async function addItem(endpoint) {
+            const name = prompt("Nome:");
+            if (name) {
+                await fetch('/api/' + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, color: '#' + Math.floor(Math.random() * 16777215).toString(16) })
+                });
+                nav(endpoint, document.querySelector(`.nav-item[onclick*="${endpoint}"]`));
+            }
+        }
+        async function delItem(endpoint, name) {
+            if (confirm('Excluir?')) {
+                await fetch('/api/' + endpoint, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+                nav(endpoint, document.querySelector(`.nav-item[onclick*="${endpoint}"]`));
+            }
+        }
+
+        async function loadTopInsights() {
+            try {
+                console.log('[TOP 3 ELOGIOS] Iniciando busca...');
+                const res = await fetch('/api/analytics/top');
+                const data = await res.json();
+                console.log('[TOP 3 ELOGIOS] Resultado API:', data);
+
+                // Render Compliments
+                const compContainer = document.getElementById('top-compliments-list');
+                console.log('[TOP 3 ELOGIOS] Elogios encontrados:', data.compliments.length);
+
+                if (data.compliments.length > 0) {
+                    compContainer.innerHTML = data.compliments.map((item, index) => `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #23252e; padding-bottom:8px;">
+                            <span style="font-weight:500">
+                                <span style="background:#22c55e20; color:#22c55e; padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:8px">#${index + 1}</span>
+                                ${item.topic}
+                            </span>
+                            <span style="color:#22c55e; font-weight:bold">${item.count} <small style="opacity:0.6; font-weight:normal">menções</small></span>
+                        </div>
+                    `).join('');
+                } else {
+                    compContainer.innerHTML = '<p style="color:var(--text-muted)">Sem elogios registrados ainda.</p>';
+                }
+
+                // Render Problems
+                const probContainer = document.getElementById('top-problems-list');
+                console.log('[TOP 3 PROBLEMAS] Problemas encontrados:', data.problems.length);
+
+                if (data.problems.length > 0) {
+                    probContainer.innerHTML = data.problems.map((item, index) => `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #23252e; padding-bottom:8px;">
+                            <span style="font-weight:500">
+                                <span style="background:#ef444420; color:#ef4444; padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:8px">#${index + 1}</span>
+                                ${item.topic}
+                            </span>
+                            <span style="color:#ef4444; font-weight:bold">${item.count} <small style="opacity:0.6; font-weight:normal">reclamações</small></span>
+                        </div>
+                    `).join('');
+                } else {
+                    probContainer.innerHTML = '<p style="color:var(--text-muted)">Sem problemas críticos ainda.</p>';
+                }
+            } catch (e) { console.error("Error loading insights:", e); }
+        }
+
+        // Init
+        loadData();
+        loadTopInsights();
+        popularFiltrosCategorias(); // Popular dropdown de categorias
+        setInterval(() => { loadData(); loadTopInsights(); }, 5000);
+
+        // ========== SISTEMA DE ALERTAS CRÍTICOS ==========
+        let ultimoFeedbackId = 0;
+        let alertasAtivos = [];
+
+        async function verificarNovosFeedbacks() {
+            try {
+                const res = await fetch('/api/events');
+                const feedbacks = await res.json();
+
+                if (feedbacks.length > 0) {
+                    // Ordenar por ID (mais recente primeiro)
+                    feedbacks.sort((a, b) => b.id - a.id);
+                    const maisRecente = feedbacks[0];
+
+                    // Se é um feedback novo E é crítico ou urgente
+                    if (maisRecente.id > ultimoFeedbackId) {
+                        const u = (maisRecente.urgency || '').toLowerCase();
+                        if (u.includes('crit') || u.includes('crít')) {
+                            mostrarAlerta(maisRecente, 'critico');
+                        } else if (u.includes('urge')) {
+                            mostrarAlerta(maisRecente, 'urgente');
+                        }
+                    }
+
+                    // Na primeira carga, apenas registrar o ID mais alto
+                    if (ultimoFeedbackId === 0) {
+                        ultimoFeedbackId = maisRecente.id;
+                    } else {
+                        ultimoFeedbackId = Math.max(ultimoFeedbackId, maisRecente.id);
+                    }
+                }
+            } catch (e) {
+                console.error('Erro ao verificar novos feedbacks:', e);
+            }
+        }
+
+        function mostrarAlerta(feedback, tipo) {
+            // Notificação do navegador (se permitido)
+            if (Notification.permission === 'granted') {
+                new Notification(tipo === 'critico' ? '🚨 ALERTA CRÍTICO!' : '⚠️ Feedback Urgente', {
+                    body: feedback.message,
+                    tag: 'feedback-' + feedback.id
+                });
+            }
+
+            // Alerta visual no dashboard
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alerta-critico';
+            alertDiv.id = 'alerta-' + feedback.id;
+            alertDiv.innerHTML = `
+                <button class="close-btn" onclick="this.parentElement.remove()">×</button>
+                <strong>${tipo === 'critico' ? '🚨 ALERTA CRÍTICO' : '⚠️ URGENTE'}</strong>
+                <p>"${feedback.message}"</p>
+                <small>${feedback.category} - ${feedback.timestamp}</small>
+            `;
+
+            // Ajustar posição se já houver outros alertas
+            const alertasExistentes = document.querySelectorAll('.alerta-critico');
+            if (alertasExistentes.length > 0) {
+                const offset = alertasExistentes.length * 120;
+                alertDiv.style.top = (20 + offset) + 'px';
+            }
+
+            document.body.appendChild(alertDiv);
+
+            // Remover após 10s
+            setTimeout(() => alertDiv.remove(), 10000);
+        }
+
+        // Pedir permissão para notificações
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Verificar novos feedbacks na inicialização e a cada 10 segundos
+        verificarNovosFeedbacks();
+        setInterval(verificarNovosFeedbacks, 10000);
+
+        // AUTO-REFRESH: Atualiza dados automaticamente a cada 5 segundos
+        setInterval(() => {
+            const dashboardVisible = !document.getElementById('view-dashboard').classList.contains('hidden');
+            const feedbacksVisible = !document.getElementById('view-feedbacks').classList.contains('hidden');
+            const regionsVisible = !document.getElementById('view-regions').classList.contains('hidden');
+            const categoriesVisible = !document.getElementById('view-categories').classList.contains('hidden');
+
+            if (dashboardVisible) {
+                console.log('[AUTO-REFRESH] Atualizando dashboard...');
+                loadData();
+                loadTopInsights();
+            }
+            if (feedbacksVisible) {
+                console.log('[AUTO-REFRESH] Atualizando feedbacks...');
+                aplicarFiltros(); // Mantém os filtros aplicados
+            }
+            if (regionsVisible || categoriesVisible) {
+                console.log('[AUTO-REFRESH] Atualizando config...');
+                loadConfigViews();
+            }
+        }, 5000);
+
+        // Close thread modal on Esc
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeThreadModal(); });
+    </script>
+
+    <!-- Thread Timeline Modal -->
+    <div id="thread-modal-overlay" class="modal-overlay hidden" onclick="if(event.target===this) closeThreadModal()">
+        <div class="modal-thread-box" id="thread-modal-body">
+            <!-- Populated by openThreadModal() -->
+        </div>
+    </div>
+
+</body>
+
+</html>

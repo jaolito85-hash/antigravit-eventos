@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node Data | Relatório do Evento</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-body: #050507;
+            --bg-card: #111217;
+            --bg-card-alt: #0d0e13;
+            --accent: #2979ff;
+            --accent-glow: rgba(41, 121, 255, 0.15);
+            --accent-light: #5c9aff;
+            --green: #00e676;
+            --green-glow: rgba(0, 230, 118, 0.1);
+            --red: #ff5252;
+            --red-glow: rgba(255, 82, 82, 0.1);
+            --orange: #ffab40;
+            --orange-glow: rgba(255, 171, 64, 0.1);
+            --purple: #b388ff;
+            --text-main: #ffffff;
+            --text-muted: #8b949e;
+            --text-dim: #555d6e;
+            --border: #1e2130;
+            --gradient-hero: linear-gradient(135deg, #0a1628 0%, #0d1117 50%, #111217 100%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ===== TOP NAV ===== */
+        .top-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 40px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(5, 5, 7, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .nav-brand img {
+            width: 28px;
+            height: 28px;
+        }
+
+        .nav-brand span {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+        }
+
+        .nav-back {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .nav-back:hover {
+            color: var(--accent);
+            border-color: rgba(41, 121, 255, 0.3);
+            background: var(--accent-glow);
+        }
+
+        /* ===== HERO SECTION ===== */
+        .hero {
+            background: var(--gradient-hero);
+            padding: 60px 40px 80px;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -150px;
+            right: -150px;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -100px;
+            left: -100px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(179, 136, 255, 0.06) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(41, 121, 255, 0.1);
+            border: 1px solid rgba(41, 121, 255, 0.25);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent-light);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 24px;
+        }
+
+        .hero-title {
+            font-size: 2.8rem;
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        .hero-title span {
+            background: linear-gradient(90deg, var(--accent), var(--purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        .hero-meta {
+            display: flex;
+            gap: 32px;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .hero-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .hero-meta-item i {
+            color: var(--accent);
+            font-size: 1rem;
+        }
+
+        /* ===== SCORE BANNER ===== */
+        .score-banner {
+            max-width: 1200px;
+            margin: -40px auto 40px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            padding: 0 40px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .score-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px 24px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .score-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(41, 121, 255, 0.3);
+        }
+
+        .score-card .glow {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .score-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .score-value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .score-detail {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 40px 80px;
+        }
+
+        .section {
+            margin-bottom: 48px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .section-header i {
+            color: var(--accent);
+            font-size: 1.3rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        /* ===== AI INSIGHT CARD ===== */
+        .ai-insight {
+            background: linear-gradient(135deg, rgba(41, 121, 255, 0.08) 0%, rgba(179, 136, 255, 0.05) 100%);
+            border: 1px solid rgba(41, 121, 255, 0.2);
+            border-radius: 16px;
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-insight::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            right: -60px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(41, 121, 255, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .ai-insight-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent-light);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .ai-insight-text {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: var(--text-main);
+            font-weight: 400;
+        }
+
+        /* ===== CHARTS GRID ===== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .chart-card-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 260px;
+        }
+
+        /* ===== STATS BARS ===== */
+        .stat-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .stat-label {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            min-width: 160px;
+            font-weight: 500;
+        }
+
+        .stat-bar-bg {
+            flex: 1;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .stat-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 1s ease;
+        }
+
+        .stat-count {
+            font-size: 0.82rem;
+            font-weight: 700;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        /* ===== TOP FEEDBACKS ===== */
+        .feedback-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .feedback-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .feedback-item:hover {
+            border-color: rgba(41, 121, 255, 0.3);
+        }
+
+        .feedback-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .feedback-content {
+            flex: 1;
+        }
+
+        .feedback-text {
+            font-size: 0.92rem;
+            line-height: 1.5;
+            margin-bottom: 8px;
+            font-weight: 400;
+        }
+
+        .feedback-meta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .feedback-tag {
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== TIMELINE ===== */
+        .timeline-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        /* ===== FOOTER ===== */
+        .report-footer {
+            text-align: center;
+            padding: 40px;
+            border-top: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+
+        .report-footer .brand {
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* ===== PRINT STYLES ===== */
+        .print-btn {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 8px 32px rgba(41, 121, 255, 0.3);
+            z-index: 100;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .print-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(41, 121, 255, 0.4);
+        }
+
+        @media print {
+            .print-btn {
+                display: none;
+            }
+
+            body {
+                background: #0a0b0f;
+            }
+
+            .hero {
+                padding: 30px 20px 50px;
+            }
+
+            .score-banner {
+                margin-top: -20px;
+            }
+        }
+
+        /* ===== PARTICIPANTS ===== */
+        .participants-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .participant-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .participant-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent-glow);
+            border: 1px solid rgba(41, 121, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--accent-light);
+            flex-shrink: 0;
+        }
+
+        .participant-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .participant-msgs {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 40px 20px 60px;
+            }
+
+            .hero-title {
+                font-size: 1.8rem;
+            }
+
+            .score-banner {
+                grid-template-columns: repeat(2, 1fr);
+                padding: 0 20px;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .content {
+                padding: 0 20px 60px;
+            }
+
+            .participants-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .hero-meta {
+                gap: 16px;
+            }
+        }
+
+        /* ===== SATISFACTION GAUGE ===== */
+        .gauge-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .gauge-value {
+            font-size: 4rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .gauge-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .gauge-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 1.5s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- TOP NAV -->
+    <nav class="top-nav">
+        <a href="/" class="nav-brand">
+            <img src="/static/logo.png" alt="Node Data">
+            <span>Node Data</span>
+        </a>
+        <a href="/" class="nav-back">
+            <i class="ri-arrow-left-line"></i>
+            Voltar ao Dashboard
+        </a>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="ri-bar-chart-box-line"></i>
+                Relatório Pós-Evento
+            </div>
+            <h1 class="hero-title">Análise Completa<br>do <span>Seu Evento</span></h1>
+            <p class="hero-subtitle">Dados coletados em tempo real via WhatsApp. Classificados por inteligência
+                artificial. Apresentados pra você tomar decisões melhores.</p>
+            <div class="hero-meta">
+                <div class="hero-meta-item">
+                    <i class="ri-calendar-line"></i>
+                    <span id="metaDate">Carregando...</span>
+                </div>
+                <div class="hero-meta-item">
+                    <i class="ri-message-3-line"></i>
+                    <span id="metaTotal">-- feedbacks</span>
+                </div>
+                <div class="hero-meta-item">
+                    <i class="ri-group-line"></i>
+                    <span id="metaParticipants">-- participantes</span>
+                </div>
+                <div class="hero-meta-item">
+                    <i class="ri-time-line"></i>
+                    <span id="metaDuration">--</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SCORE CARDS -->
+    <div class="score-banner">
+        <div class="score-card">
+            <div class="glow" style="background: radial-gradient(circle, var(--accent-glow), transparent);"></div>
+            <div class="score-label">Total Feedbacks</div>
+            <div class="score-value" style="color: var(--accent);" id="totalFeedbacks">--</div>
+            <div class="score-detail" id="totalDetail">mensagens analisadas</div>
+        </div>
+        <div class="score-card">
+            <div class="glow" style="background: radial-gradient(circle, var(--green-glow), transparent);"></div>
+            <div class="score-label">Satisfação</div>
+            <div class="score-value" style="color: var(--green);" id="satisfactionScore">--</div>
+            <div class="score-detail" id="satisfactionDetail">dos feedbacks positivos</div>
+        </div>
+        <div class="score-card">
+            <div class="glow" style="background: radial-gradient(circle, var(--red-glow), transparent);"></div>
+            <div class="score-label">Alertas</div>
+            <div class="score-value" style="color: var(--red);" id="alertCount">--</div>
+            <div class="score-detail" id="alertDetail">itens críticos/urgentes</div>
+        </div>
+        <div class="score-card">
+            <div class="glow" style="background: radial-gradient(circle, var(--orange-glow), transparent);"></div>
+            <div class="score-label">Participantes</div>
+            <div class="score-value" style="color: var(--orange);" id="participantCount">--</div>
+            <div class="score-detail">pessoas engajadas</div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="content">
+
+        <!-- AI INSIGHT -->
+        <div class="section">
+            <div class="section-header">
+                <i class="ri-sparkling-line"></i>
+                <h2 class="section-title">Análise por Inteligência Artificial</h2>
+            </div>
+            <div class="ai-insight">
+                <div class="ai-insight-label">
+                    <i class="ri-robot-line"></i>
+                    Gerado por IA · GPT-4o-mini
+                </div>
+                <div class="ai-insight-text" id="aiInsight">Analisando dados do evento...</div>
+            </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="section">
+            <div class="section-header">
+                <i class="ri-pie-chart-line"></i>
+                <h2 class="section-title">Visão Geral</h2>
+            </div>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-card-title">Distribuição de Sentimentos</div>
+                    <div class="chart-container">
+                        <canvas id="sentimentChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-title">Feedbacks por Categoria</div>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SATISFACTION GAUGE + TIMELINE -->
+        <div class="section">
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-card-title">Índice de Satisfação</div>
+                    <div class="gauge-container">
+                        <div class="gauge-value" id="gaugeValue">--</div>
+                        <div class="gauge-label" id="gaugeLabel">calculando...</div>
+                        <div class="gauge-bar">
+                            <div class="gauge-fill" id="gaugeFill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-card-title">Volume por Hora</div>
+                    <div class="chart-container">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CATEGORIES BREAKDOWN -->
+        <div class="section">
+            <div class="section-header">
+                <i class="ri-layout-grid-line"></i>
+                <h2 class="section-title">Categorias Detalhadas</h2>
+            </div>
+            <div class="chart-card" id="categoriesBreakdown">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- REGIONS BREAKDOWN -->
+        <div class="section">
+            <div class="section-header">
+                <i class="ri-map-pin-line"></i>
+                <h2 class="section-title">Regiões do Evento</h2>
+            </div>
+            <div class="chart-card" id="regionsBreakdown">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- TOP POSITIVE FEEDBACKS -->
+        <div class="section">
+            <div class="section-header">
+                <i class="ri-heart-line"></i>
+                <h2 class="section-title">Destaques Positivos</h2>
+            </div>
+            <div class="feedback-list" id="positiveFeedbacks">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- TOP ISSUES -->
+        <div class="section">
+            <div class="section-header">
+                <i class="ri-alarm-warning-line"></i>
+                <h2 class="section-title">Principais Pontos de Atenção</h2>
+            </div>
+            <div class="feedback-list" id="negativeFeedbacks">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- TOP PARTICIPANTS -->
+        <div class="section">
+            <div class="section-header">
+                <i class="ri-vip-crown-line"></i>
+                <h2 class="section-title">Participantes Mais Engajados</h2>
+            </div>
+            <div class="participants-grid" id="topParticipants">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="report-footer">
+        <p>Relatório gerado automaticamente por <span class="brand">Node Data</span> · Powered by AI</p>
+        <p style="margin-top: 6px;">© 2026 Node Data · Monitoramento inteligente de eventos</p>
+    </footer>
+
+    <!-- PRINT BUTTON -->
+    <button class="print-btn" onclick="window.print()">
+        <i class="ri-printer-line"></i>
+        Exportar / Imprimir
+    </button>
+
+    <script>
+        // ===== FETCH DATA =====
+        async function loadReport() {
+            try {
+                const res = await fetch('/api/relatorio');
+                const data = await res.json();
+                renderReport(data);
+            } catch (e) {
+                console.error('Error loading report:', e);
+            }
+        }
+
+        function renderReport(data) {
+            const { stats, sentiment, categories, regions, timeline, topPositive, topNegative, topParticipants, aiSummary } = data;
+
+            // META
+            document.getElementById('metaDate').textContent = stats.dateRange;
+            document.getElementById('metaTotal').textContent = `${stats.total} feedbacks`;
+            document.getElementById('metaParticipants').textContent = `${stats.participants} participantes`;
+            document.getElementById('metaDuration').textContent = stats.duration;
+
+            // SCORE CARDS
+            document.getElementById('totalFeedbacks').textContent = stats.total;
+            document.getElementById('totalDetail').textContent = `${stats.perHour} por hora em média`;
+
+            const satPct = stats.total > 0 ? Math.round((sentiment.Positivo || 0) / stats.total * 100) : 0;
+            document.getElementById('satisfactionScore').textContent = satPct + '%';
+            document.getElementById('satisfactionDetail').textContent = `${sentiment.Positivo || 0} feedbacks positivos`;
+
+            const alertTotal = (sentiment.Critico || 0) + (sentiment.Urgente || 0);
+            document.getElementById('alertCount').textContent = alertTotal;
+            document.getElementById('alertDetail').textContent = `${sentiment.Critico || 0} críticos · ${sentiment.Urgente || 0} urgentes`;
+
+            document.getElementById('participantCount').textContent = stats.participants;
+
+            // GAUGE
+            const gaugeEl = document.getElementById('gaugeValue');
+            const gaugeLabelEl = document.getElementById('gaugeLabel');
+            const gaugeFill = document.getElementById('gaugeFill');
+            gaugeEl.textContent = satPct + '%';
+
+            let gaugeColor, gaugeText;
+            if (satPct >= 70) { gaugeColor = 'var(--green)'; gaugeText = '🟢 Excelente'; }
+            else if (satPct >= 50) { gaugeColor = 'var(--orange)'; gaugeText = '🟡 Bom, com pontos de atenção'; }
+            else if (satPct >= 30) { gaugeColor = 'var(--orange)'; gaugeText = '🟠 Regular — precisa melhorar'; }
+            else { gaugeColor = 'var(--red)'; gaugeText = '🔴 Crítico — ação necessária'; }
+
+            gaugeEl.style.color = gaugeColor;
+            gaugeLabelEl.textContent = gaugeText;
+            setTimeout(() => {
+                gaugeFill.style.width = satPct + '%';
+                gaugeFill.style.background = `linear-gradient(90deg, ${gaugeColor}, ${gaugeColor}88)`;
+            }, 300);
+
+            // AI INSIGHT
+            document.getElementById('aiInsight').textContent = aiSummary || 'Análise indisponível';
+
+            // SENTIMENT CHART
+            const sentLabels = ['Positivo', 'Neutro', 'Urgente', 'Crítico'];
+            const sentValues = [sentiment.Positivo || 0, sentiment.Neutro || 0, sentiment.Urgente || 0, sentiment.Critico || 0];
+            const sentColors = ['#00e676', '#5c9aff', '#ffab40', '#ff5252'];
+
+            new Chart(document.getElementById('sentimentChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: sentLabels,
+                    datasets: [{
+                        data: sentValues,
+                        backgroundColor: sentColors,
+                        borderWidth: 0,
+                        borderRadius: 4,
+                        spacing: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#8b949e', font: { family: 'Inter', size: 12 }, boxWidth: 12, padding: 16 }
+                        }
+                    }
+                }
+            });
+
+            // CATEGORY CHART
+            const catLabels = Object.keys(categories);
+            const catValues = Object.values(categories);
+            const catColors = ['#2979ff', '#b388ff', '#00e676', '#ffab40', '#ff5252', '#5c9aff', '#ff80ab'];
+
+            new Chart(document.getElementById('categoryChart'), {
+                type: 'bar',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        data: catValues,
+                        backgroundColor: catColors.slice(0, catLabels.length),
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        barThickness: 28
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#555d6e', font: { family: 'Inter', size: 11 } } },
+                        y: { grid: { display: false }, ticks: { color: '#8b949e', font: { family: 'Inter', size: 11 } } }
+                    }
+                }
+            });
+
+            // TIMELINE CHART
+            const timeLabels = Object.keys(timeline);
+            const timeValues = Object.values(timeline);
+
+            new Chart(document.getElementById('timelineChart'), {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        data: timeValues,
+                        borderColor: '#2979ff',
+                        backgroundColor: 'rgba(41, 121, 255, 0.1)',
+                        fill: true,
+                        borderWidth: 2.5,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#2979ff',
+                        pointBorderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#555d6e', font: { family: 'Inter', size: 10 } } },
+                        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#555d6e', font: { family: 'Inter', size: 10 } }, beginAtZero: true }
+                    }
+                }
+            });
+
+            // CATEGORIES BREAKDOWN
+            const catBreakdown = document.getElementById('categoriesBreakdown');
+            catBreakdown.innerHTML = '<div style="padding: 8px 0;">' + catLabels.map((cat, i) => {
+                const pct = stats.total > 0 ? Math.round(catValues[i] / stats.total * 100) : 0;
+                return `<div class="stat-row">
+                    <span class="stat-label">${cat}</span>
+                    <div class="stat-bar-bg"><div class="stat-bar" style="width:${pct}%; background:${catColors[i % catColors.length]};"></div></div>
+                    <span class="stat-count" style="color:${catColors[i % catColors.length]}">${catValues[i]}</span>
+                </div>`;
+            }).join('') + '</div>';
+
+            // REGIONS BREAKDOWN
+            const regLabels = Object.keys(regions);
+            const regValues = Object.values(regions);
+            const regBreakdown = document.getElementById('regionsBreakdown');
+            const regColors = ['#2979ff', '#00e676', '#ffab40', '#b388ff', '#ff5252', '#5c9aff', '#ff80ab', '#00bcd4', '#ffd740'];
+            regBreakdown.innerHTML = '<div style="padding: 8px 0;">' + regLabels.map((reg, i) => {
+                const pct = stats.total > 0 ? Math.round(regValues[i] / stats.total * 100) : 0;
+                return `<div class="stat-row">
+                    <span class="stat-label">${reg}</span>
+                    <div class="stat-bar-bg"><div class="stat-bar" style="width:${pct}%; background:${regColors[i % regColors.length]};"></div></div>
+                    <span class="stat-count" style="color:${regColors[i % regColors.length]}">${regValues[i]}</span>
+                </div>`;
+            }).join('') + '</div>';
+
+            // TOP POSITIVE
+            const posList = document.getElementById('positiveFeedbacks');
+            posList.innerHTML = topPositive.map(fb => `
+                <div class="feedback-item">
+                    <div class="feedback-icon" style="background: var(--green-glow); color: var(--green);"><i class="ri-heart-fill"></i></div>
+                    <div class="feedback-content">
+                        <div class="feedback-text">"${fb.message}"</div>
+                        <div class="feedback-meta">
+                            <span class="feedback-tag" style="background: var(--green-glow); color: var(--green);">${fb.category}</span>
+                            <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${fb.name || 'Anônimo'}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('') || '<p style="color: var(--text-dim); padding: 20px;">Nenhum feedback positivo registrado</p>';
+
+            // TOP NEGATIVE
+            const negList = document.getElementById('negativeFeedbacks');
+            negList.innerHTML = topNegative.map(fb => {
+                const isCritico = fb.urgency === 'Critico';
+                const color = isCritico ? 'var(--red)' : 'var(--orange)';
+                const glow = isCritico ? 'var(--red-glow)' : 'var(--orange-glow)';
+                const icon = isCritico ? 'ri-alarm-warning-fill' : 'ri-error-warning-fill';
+                return `
+                <div class="feedback-item">
+                    <div class="feedback-icon" style="background: ${glow}; color: ${color};"><i class="${icon}"></i></div>
+                    <div class="feedback-content">
+                        <div class="feedback-text">"${fb.message}"</div>
+                        <div class="feedback-meta">
+                            <span class="feedback-tag" style="background: ${glow}; color: ${color};">${fb.urgency}</span>
+                            <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${fb.category}</span>
+                            <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${fb.region || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('') || '<p style="color: var(--text-dim); padding: 20px;">Nenhum alerta registrado — excelente! 🎉</p>';
+
+            // TOP PARTICIPANTS
+            const partList = document.getElementById('topParticipants');
+            partList.innerHTML = topParticipants.map(p => {
+                const initials = (p.name || 'AN').substring(0, 2).toUpperCase();
+                return `
+                <div class="participant-card">
+                    <div class="participant-avatar">${initials}</div>
+                    <div>
+                        <div class="participant-name">${p.name || 'Anônimo'}</div>
+                        <div class="participant-msgs">${p.count} mensagens</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        loadReport();
+    </script>
+</body>
+
+</html>
