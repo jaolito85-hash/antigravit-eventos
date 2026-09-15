@@ -29,7 +29,9 @@ class EventStore:
         self._hash_secret = os.getenv("PII_HASH_SECRET", "")
         self._client: Any = None
         self._event_id: str | None = None
-        self._lock = threading.Lock()
+        # event_id() inicializa o cliente dentro da região crítica; o lock
+        # reentrante evita deadlock sem abrir uma corrida entre workers.
+        self._lock = threading.RLock()
 
     def _get_client(self) -> Any:
         """Cria o cliente somente quando necessário para facilitar health checks."""
