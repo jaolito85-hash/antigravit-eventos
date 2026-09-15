@@ -22,6 +22,10 @@ logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
+# O polling é frequente; registrar cada requisição HTTP duplicaria centenas de
+# milhares de linhas por dia sem acrescentar informação operacional útil.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("worker")
 
 SECTOR_PATTERN = re.compile(
