@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import threading
+import unittest
+from unittest.mock import patch
 
 from event_store import EventStore
 
@@ -30,16 +32,21 @@ class _Client:
         return _Query()
 
 
-def test_event_id_can_initialize_client_inside_lock(monkeypatch) -> None:
-    """A primeira resolução do evento não pode bloquear o processo indefinidamente."""
+class EventStoreTests(unittest.TestCase):
+    """Regressões da sincronização usada pelo cliente Supabase."""
 
-    store = EventStore()
-    monkeypatch.setattr(store, "_get_client", lambda: _Client())
-    result: list[str] = []
+    def test_event_id_can_initialize_client_inside_lock(self) -> None:
+        """A primeira resolução não pode bloquear o processo indefinidamente."""
 
-    thread = threading.Thread(target=lambda: result.append(store.event_id()), daemon=True)
-    thread.start()
-    thread.join(timeout=1)
+        store = EventStore()
+        result: list[str] = []
+        with patch.object(store, "_get_client", return_value=_Client()):
+            thread = threading.Thread(
+                target=lambda: result.append(store.event_id()),
+                daemon=True,
+            )
+            thread.start()
+            thread.join(timeout=1)
 
-    assert not thread.is_alive()
-    assert result == ["event-id"]
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(result, ["event-id"])
