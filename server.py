@@ -2,8 +2,11 @@ import os
 import requests
 import json
 import hashlib
+import hmac
 import csv
+import logging
 import re
+import secrets
 from io import StringIO
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
@@ -11,21 +14,39 @@ from dotenv import load_dotenv
 from datetime import datetime
 from collections import Counter, defaultdict
 from time import time as time_now
+from event_store import EventStore
+from meta_whatsapp import parse_webhook, verify_webhook_signature
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.secret_key = os.getenv("SECRET_KEY", "nodedata-secret-key-2026")
+app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Strict",
+    SESSION_COOKIE_SECURE=os.getenv("FLASK_ENV") == "production",
+)
+
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # Config
 EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL")
 EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
 EVOLUTION_INSTANCE_NAME = os.getenv("EVOLUTION_INSTANCE_NAME")
+META_APP_SECRET = os.getenv("META_APP_SECRET", "")
+META_VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN", "")
+META_PHONE_NUMBER_ID = os.getenv("META_PHONE_NUMBER_ID", "")
+ENABLE_EVOLUTION_WEBHOOK = os.getenv("ENABLE_EVOLUTION_WEBHOOK", "false").lower() == "true"
 
 # Supabase Config
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+EVENT_STORE = EventStore()
 
 # Initialize Supabase client (if configured)
 supabase = None
@@ -33,9 +54,9 @@ if SUPABASE_URL and SUPABASE_KEY:
     try:
         from supabase import create_client, Client
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        print("✅ Supabase connected!")
+        logger.info("Cliente Supabase inicializado")
     except Exception as e:
-        print(f"⚠️ Supabase connection failed: {e}")
+        logger.error("Falha ao inicializar Supabase: %s", type(e).__name__)
         supabase = None
 
 def get_supabase():
@@ -47,9 +68,9 @@ def get_supabase():
         try:
             from supabase import create_client, Client
             supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-            print("🔄 Supabase reconnected!")
+            logger.info("Cliente Supabase reinicializado")
         except Exception as e:
-            print(f"⚠️ Supabase reconnection failed: {e}")
+            logger.error("Falha ao reinicializar Supabase: %s", type(e).__name__)
             return None
     return supabase
 
@@ -75,13 +96,11 @@ def download_evolution_media(remote_jid, message_id):
     headers = {"apikey": EVOLUTION_API_KEY, "Content-Type": "application/json"}
     payload = {"message": {"key": {"id": message_id, "remoteJid": remote_jid, "fromMe": False}}, "convertToMp4": True}
     
-    print(f"🔍 [DOWNLOAD] Requesting: POST {url}")
-    print(f"🔍 [DOWNLOAD] Payload: {json.dumps(payload)}")
+    logger.info("Solicitando mídia à Evolution")
     
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=30)
-        print(f"🔍 [DOWNLOAD] Response status: {response.status_code}")
-        print(f"🔍 [DOWNLOAD] Response body (first 500 chars): {response.text[:500]}")
+        logger.info("Resposta de mídia Evolution | status=%d", response.status_code)
         
         if response.status_code in [200, 201]:
             import base64
@@ -145,85 +164,90 @@ def save_json(filepath, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def get_feedbacks():
-    """Get feedbacks from Supabase or local JSON"""
+    """Retorna somente feedbacks do evento configurado."""
     sb = get_supabase()
     if sb:
         try:
-            response = sb.table('feedbacks').select('*').order('updated_at', desc=True).execute()
+            response = (
+                sb.table('feedbacks')
+                .select('*')
+                .eq('event_id', EVENT_STORE.event_id())
+                .order('updated_at', desc=True)
+                .limit(1000)
+                .execute()
+            )
             return response.data
         except Exception as e:
-            print(f"Supabase error: {e}")
+            logger.error("Falha ao consultar feedbacks: %s", type(e).__name__)
             # Try reconnecting once
             sb = _reconnect_supabase()
             if sb:
                 try:
-                    response = sb.table('feedbacks').select('*').order('updated_at', desc=True).execute()
+                    response = (
+                        sb.table('feedbacks')
+                        .select('*')
+                        .eq('event_id', EVENT_STORE.event_id())
+                        .order('updated_at', desc=True)
+                        .limit(1000)
+                        .execute()
+                    )
                     return response.data
                 except Exception as e2:
-                    print(f"Supabase retry failed: {e2}")
-            return load_json(EVENTS_FILE, [])
-    return load_json(EVENTS_FILE, [])
+                    logger.error("Retry de feedbacks falhou: %s", type(e2).__name__)
+    return []
 
 def save_feedback(feedback_data):
-    """Save feedback to Supabase or local JSON"""
+    """Salva feedback no evento atual usando a sequence do PostgreSQL."""
     sb = get_supabase()
     if sb:
         try:
-            sb.table('feedbacks').insert(feedback_data).execute()
+            payload = dict(feedback_data)
+            payload.pop("id", None)
+            payload.setdefault("event_id", EVENT_STORE.event_id())
+            payload.setdefault("source", "evolution")
+            sb.table('feedbacks').insert(payload).execute()
             return True
         except Exception as e:
-            print(f"Supabase insert error: {e}")
+            logger.error("Falha ao inserir feedback: %s", type(e).__name__)
             # Try reconnecting once
             sb = _reconnect_supabase()
             if sb:
                 try:
-                    sb.table('feedbacks').insert(feedback_data).execute()
+                    sb.table('feedbacks').insert(payload).execute()
                     return True
                 except Exception as e2:
-                    print(f"Supabase insert retry failed: {e2}")
-            # Fallback to local
-            feedbacks = load_json(EVENTS_FILE, [])
-            feedbacks.insert(0, feedback_data)
-            save_json(EVENTS_FILE, feedbacks)
-            return True
-    else:
-        feedbacks = load_json(EVENTS_FILE, [])
-        feedbacks.insert(0, feedback_data)
-        save_json(EVENTS_FILE, feedbacks)
-        return True
+                    logger.error("Retry de inserção falhou: %s", type(e2).__name__)
+    return False
 
 def update_feedback(feedback_id, updates):
-    """Update feedback in Supabase or local JSON"""
+    """Atualiza feedback somente dentro do evento configurado."""
     sb = get_supabase()
     if sb:
         try:
-            sb.table('feedbacks').update(updates).eq('id', feedback_id).execute()
-            return True
+            response = (
+                sb.table('feedbacks')
+                .update(updates)
+                .eq('id', feedback_id)
+                .eq('event_id', EVENT_STORE.event_id())
+                .execute()
+            )
+            return bool(response.data)
         except Exception as e:
-            print(f"Supabase update error: {e}")
+            logger.error("Falha ao atualizar feedback: %s", type(e).__name__)
             sb = _reconnect_supabase()
             if sb:
                 try:
-                    sb.table('feedbacks').update(updates).eq('id', feedback_id).execute()
-                    return True
+                    response = (
+                        sb.table('feedbacks')
+                        .update(updates)
+                        .eq('id', feedback_id)
+                        .eq('event_id', EVENT_STORE.event_id())
+                        .execute()
+                    )
+                    return bool(response.data)
                 except Exception as e2:
-                    print(f"Supabase update retry failed: {e2}")
-            # Fallback to local JSON
-            feedbacks = load_json(EVENTS_FILE, [])
-            for fb in feedbacks:
-                if fb.get('id') == feedback_id:
-                    fb.update(updates)
-                    break
-            save_json(EVENTS_FILE, feedbacks)
-            return True
-    else:
-        feedbacks = load_json(EVENTS_FILE, [])
-        for fb in feedbacks:
-            if fb.get('id') == feedback_id:
-                fb.update(updates)
-                break
-        save_json(EVENTS_FILE, feedbacks)
-        return True
+                    logger.error("Retry de atualização falhou: %s", type(e2).__name__)
+    return False
 
 def get_active_feedback(remote_jid):
     """Verifica se existe um chamado Aberto ou Em Andamento para este número"""
@@ -232,6 +256,7 @@ def get_active_feedback(remote_jid):
         try:
             response = sb.table('feedbacks')\
                 .select("*")\
+                .eq('event_id', EVENT_STORE.event_id())\
                 .eq('sender', remote_jid)\
                 .in_('status', ['aberto', 'em_andamento'])\
                 .order('id', desc=True)\
@@ -247,6 +272,7 @@ def get_active_feedback(remote_jid):
                 try:
                     response = sb.table('feedbacks')\
                         .select("*")\
+                        .eq('event_id', EVENT_STORE.event_id())\
                         .eq('sender', remote_jid)\
                         .in_('status', ['aberto', 'em_andamento'])\
                         .order('id', desc=True)\
@@ -257,13 +283,7 @@ def get_active_feedback(remote_jid):
                 except Exception as e2:
                     print(f"Supabase retry get_active_feedback failed: {e2}")
             return None
-    else:
-        # Local JSON fallback
-        feedbacks = load_json(EVENTS_FILE, [])
-        for fb in sorted(feedbacks, key=lambda x: x.get('id', 0), reverse=True):
-            if fb.get('sender') == remote_jid and fb.get('status', 'aberto') in ['aberto', 'em_andamento']:
-                return fb
-        return None
+    return None
 
 def append_to_feedback(feedback_id, old_message, new_content, new_urgency=None):
     """Adiciona mensagem ao feedback existente e opcionalmente faz upgrade de urgência"""
@@ -281,8 +301,9 @@ def get_config():
     sb = get_supabase()
     if sb:
         try:
-            categories_resp = sb.table('config').select('*').eq('type', 'category').execute()
-            regions_resp = sb.table('config').select('*').eq('type', 'region').execute()
+            event_id = EVENT_STORE.event_id()
+            categories_resp = sb.table('config').select('*').eq('event_id', event_id).eq('type', 'category').execute()
+            regions_resp = sb.table('config').select('*').eq('event_id', event_id).eq('type', 'region').execute()
             return {
                 "categories": [{"name": c['name'], "color": c.get('color', '#8b5cf6')} for c in categories_resp.data],
                 "regions": [{"name": r['name']} for r in regions_resp.data]
@@ -292,16 +313,17 @@ def get_config():
             sb = _reconnect_supabase()
             if sb:
                 try:
-                    categories_resp = sb.table('config').select('*').eq('type', 'category').execute()
-                    regions_resp = sb.table('config').select('*').eq('type', 'region').execute()
+                    event_id = EVENT_STORE.event_id()
+                    categories_resp = sb.table('config').select('*').eq('event_id', event_id).eq('type', 'category').execute()
+                    regions_resp = sb.table('config').select('*').eq('event_id', event_id).eq('type', 'region').execute()
                     return {
                         "categories": [{"name": c['name'], "color": c.get('color', '#8b5cf6')} for c in categories_resp.data],
                         "regions": [{"name": r['name']} for r in regions_resp.data]
                     }
                 except Exception as e2:
                     print(f"Supabase config retry failed: {e2}")
-            return load_json(CONFIG_FILE, {"categories": [], "regions": []})
-    return load_json(CONFIG_FILE, {"categories": [], "regions": []})
+            return {"categories": [], "regions": []}
+    return {"categories": [], "regions": []}
 
 def get_next_id():
     """Get next ID for new feedback"""
@@ -548,7 +570,7 @@ Responda APENAS a palavra, sem pontuação.'''
         valid = ['Critico', 'Urgente', 'Positivo', 'Neutro']
         for v in valid:
             if v.lower() in result.lower():
-                print(f"🤖 [IA-SENTIMENT] '{texto[:50]}...' → {v}")
+                logger.info("Classificação de sentimento concluída | resultado=%s", v)
                 return v
         
         print(f"⚠️ [IA-SENTIMENT] Resposta inesperada: '{result}', usando fallback")
@@ -699,16 +721,11 @@ def send_whatsapp_message(remote_jid, message):
     }
     payload = {"number": remote_jid, "text": message}
     
-    print(f"📤 Sending WhatsApp reply to: {remote_jid}")
-    print(f"📤 URL: {url}")
-    print(f"📤 Message: {message}")
-    
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=10)
-        print(f"📤 Response Status: {response.status_code}")
-        print(f"📤 Response Body: {response.text[:200]}")
+        logger.info("Resposta enviada pela Evolution | status=%d", response.status_code)
     except Exception as e:
-        print(f"❌ Error sending message: {e}")
+        logger.error("Falha ao enviar pela Evolution: %s", type(e).__name__)
 
 # --- AI EVENT PULSE ---
 def generate_ai_pulse(feedbacks):
@@ -900,6 +917,33 @@ Seja profissional mas acessível. Use dados concretos. Não use emojis demais (m
 
 # --- ROUTES ---
 
+@app.after_request
+def add_security_headers(response):
+    """Aplica headers defensivos sem interferir no webhook da Meta."""
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+def public_feedback(feedback):
+    """Remove identificadores pessoais antes de responder APIs do dashboard."""
+
+    safe = {
+        key: value
+        for key, value in feedback.items()
+        if key not in {"sender", "sender_hash", "name", "metadata", "inbox_message_id"}
+    }
+    safe["name"] = "Anônimo"
+    participant_hash = feedback.get("sender_hash")
+    safe["participant"] = participant_hash[:12] if participant_hash else None
+    return safe
+
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -908,6 +952,75 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+@app.route("/health")
+def health():
+    """Health check usado pelo Coolify para web e dependência principal."""
+
+    database_ok = EVENT_STORE.healthcheck()
+    return jsonify({
+        "status": "ok" if database_ok else "degraded",
+        "database": "ok" if database_ok else "unavailable",
+    }), 200 if database_ok else 503
+
+
+@app.route("/webhook", methods=["GET"])
+def meta_webhook_verify():
+    """Responde ao challenge de configuração do webhook da Meta."""
+
+    mode = request.args.get("hub.mode")
+    token = request.args.get("hub.verify_token", "")
+    challenge = request.args.get("hub.challenge")
+    if (
+        mode == "subscribe"
+        and META_VERIFY_TOKEN
+        and hmac.compare_digest(token, META_VERIFY_TOKEN)
+        and challenge is not None
+    ):
+        return challenge, 200, {"Content-Type": "text/plain"}
+    logger.warning("Challenge de webhook rejeitado")
+    return jsonify({"error": "forbidden"}), 403
+
+
+@app.route("/webhook", methods=["POST"])
+def meta_webhook():
+    """Valida, normaliza e persiste; processamento pesado fica no worker."""
+
+    raw_body = request.get_data(cache=True)
+    if not verify_webhook_signature(
+        raw_body,
+        request.headers.get("X-Hub-Signature-256"),
+        META_APP_SECRET,
+    ):
+        logger.warning("Webhook Meta com assinatura inválida")
+        return jsonify({"error": "invalid_signature"}), 401
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "invalid_json"}), 400
+
+    try:
+        messages, statuses = parse_webhook(payload)
+        if META_PHONE_NUMBER_ID:
+            messages = [
+                message
+                for message in messages
+                if message.channel_account_id == META_PHONE_NUMBER_ID
+            ]
+        inserted = EVENT_STORE.ingest_messages(messages)
+        EVENT_STORE.apply_message_statuses(statuses)
+        logger.info(
+            "Webhook Meta persistido | recebidas=%d novas=%d status=%d",
+            len(messages),
+            inserted,
+            len(statuses),
+        )
+        return jsonify({"status": "accepted"}), 200
+    except Exception as exc:
+        # Um 503 faz a Meta repetir a entrega; retornar 200 perderia a mensagem.
+        logger.error("Falha ao persistir webhook Meta: %s", type(exc).__name__)
+        return jsonify({"error": "temporarily_unavailable"}), 503
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
@@ -915,11 +1028,17 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
         
-        # Get env vars with defaults
-        admin_user = os.getenv("ADMIN_USER", "admin")
-        admin_pass = os.getenv("ADMIN_PASS", "nodedata123")
+        admin_user = os.getenv("ADMIN_USER")
+        admin_pass = os.getenv("ADMIN_PASS")
         
-        if username == admin_user and password == admin_pass:
+        if (
+            admin_user
+            and admin_pass
+            and username
+            and password
+            and hmac.compare_digest(username, admin_user)
+            and hmac.compare_digest(password, admin_pass)
+        ):
             session["logged_in"] = True
             return redirect("/")
         else:
@@ -960,7 +1079,11 @@ def api_relatorio():
     
     # --- STATS ---
     total = len(feedbacks)
-    unique_senders = set(f.get('sender', '') for f in feedbacks)
+    unique_senders = {
+        f.get('sender_hash') or f.get('sender')
+        for f in feedbacks
+        if f.get('sender_hash') or f.get('sender')
+    }
     participants = len(unique_senders)
     
     # Date range
@@ -1016,7 +1139,7 @@ def api_relatorio():
     sender_counts = Counter()
     sender_names = {}
     for f in feedbacks:
-        sender = f.get('sender', '')
+        sender = f.get('sender_hash') or f.get('sender', '')
         sender_counts[sender] += 1
         if f.get('name'):
             sender_names[sender] = f['name']
@@ -1058,7 +1181,7 @@ def get_events():
     if status_filter:
         feedbacks = [f for f in feedbacks if f.get('status', 'aberto') == status_filter]
     
-    return jsonify(feedbacks)
+    return jsonify([public_feedback(feedback) for feedback in feedbacks])
 
 # Cache para AI Pulse (evita chamadas excessivas)
 ai_pulse_cache = {"data": None, "timestamp": None}
@@ -1094,7 +1217,7 @@ def export_csv():
     feedbacks = get_feedbacks()
     
     output = StringIO()
-    writer = csv.DictWriter(output, fieldnames=['id', 'message', 'category', 'urgency', 'timestamp', 'status', 'sender', 'name'])
+    writer = csv.DictWriter(output, fieldnames=['id', 'message', 'category', 'urgency', 'timestamp', 'status', 'region'])
     writer.writeheader()
     
     for fb in feedbacks:
@@ -1105,8 +1228,7 @@ def export_csv():
             'urgency': fb.get('urgency'),
             'timestamp': fb.get('timestamp'),
             'status': fb.get('status', 'aberto'),
-            'sender': fb.get('sender'),
-            'name': fb.get('name')
+            'region': fb.get('region')
         })
     
     output.seek(0)
@@ -1120,7 +1242,7 @@ def export_csv():
 def export_json():
     """Exporta feedbacks como JSON para download"""
     feedbacks = get_feedbacks()
-    return jsonify(feedbacks), 200, {
+    return jsonify([public_feedback(feedback) for feedback in feedbacks]), 200, {
         'Content-Disposition': 'attachment; filename=feedbacks.json'
     }
 
@@ -1201,8 +1323,19 @@ def get_top_analytics():
         "problems": res['top_problemas']
     })
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
+@app.route("/webhook/evolution", methods=["POST"])
+def evolution_webhook():
+    """Compatibilidade temporária, desativada por padrão e protegida por segredo."""
+
+    if not ENABLE_EVOLUTION_WEBHOOK:
+        return jsonify({"status": "disabled"}), 410
+    configured_secret = os.getenv("EVOLUTION_WEBHOOK_SECRET", "")
+    provided_secret = request.headers.get("X-Webhook-Secret", "")
+    if (
+        not configured_secret
+        or not hmac.compare_digest(configured_secret, provided_secret)
+    ):
+        return jsonify({"error": "unauthorized"}), 401
     try:
         data = request.json
     except Exception:
@@ -1268,7 +1401,7 @@ def webhook():
                         try:
                             audio_data = base64.b64decode(message_content["base64"])
                         except Exception as e:
-                            print(f"❌ Error decoding base64 from message_content: {e}")
+                            logger.error("Base64 inválido: %s", type(e).__name__)
 
                     # Case 2: Base64 in msg_data (Legacy/Alternative)
                     if not audio_data and "base64" in msg_data:
@@ -1307,17 +1440,17 @@ def webhook():
                 # 0. SPAM PROTECTION
                 # 0a. Minimum length check
                 if len(text.strip()) < MIN_MESSAGE_LENGTH:
-                    print(f"[SPAM] Message too short ({len(text)} chars): {text}")
+                    logger.info("Mensagem curta ignorada | tamanho=%d", len(text))
                     return jsonify({"status": "ignored_too_short"}), 200
                 
                 # 0b. Emoji-only filter
                 if is_emoji_only(text):
-                    print(f"[SPAM] Emoji-only message ignored: {text}")
+                    logger.info("Mensagem somente com emoji ignorada")
                     return jsonify({"status": "ignored_emoji_only"}), 200
                 
                 # 0c. Rate limiting
                 if is_rate_limited(remote_jid):
-                    print(f"[RATE-LIMIT] {remote_jid} exceeded {RATE_LIMIT_MAX} msgs in {RATE_LIMIT_WINDOW}s")
+                    logger.info("Remetente limitado por excesso de mensagens")
                     send_whatsapp_message(remote_jid, "⚠️ Você já enviou várias mensagens recentes. Aguarde alguns minutos antes de enviar outra.")
                     return jsonify({"status": "rate_limited"}), 200
                 
@@ -1329,11 +1462,11 @@ def webhook():
                 existing_hashes = {hashlib.md5(f"{fb.get('message', '')}{fb.get('sender', '')}".encode()).hexdigest() for fb in feedbacks}
                 
                 if msg_hash in existing_hashes:
-                    print(f"[CACHE] Ignored Duplicate: {text}")
+                    logger.info("Mensagem duplicada ignorada")
                     return jsonify({"status": "ignored_duplicate"}), 200
 
                 # --- CLASSIFY FIRST (needed for smart threading) ---
-                print(f"Processing Report: {text}")
+                logger.info("Processando mensagem legada")
                 sentimento = classificar_sentimento_ia(text)  # IA first
                 if not sentimento:
                     print(f"[FALLBACK] IA unavailable, using keywords for sentiment")
@@ -1451,9 +1584,8 @@ Acknowledge you\'re adding this info to their ticket. Keep it short.'''
 
     except Exception as e:
         print(f"❌❌ [WEBHOOK CRITICAL] Unhandled error: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"status": "error", "message": str(e)}), 500
+        logger.exception("Falha crítica no webhook legado")
+        return jsonify({"status": "error"}), 500
 
 @app.route("/api/feedback/<int:feedback_id>/status", methods=["PUT"])
 @login_required
@@ -1484,19 +1616,16 @@ def debug_env():
         "status": "online",
         "env_check": {
             "SUPABASE_URL": "OK" if os.getenv("SUPABASE_URL") else "MISSING",
-            "SUPABASE_KEY": "OK" if os.getenv("SUPABASE_KEY") else "MISSING",
+            "SUPABASE_SERVICE_ROLE_KEY": "OK" if os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "MISSING",
             "OPENAI_API_KEY": "OK" if os.getenv("OPENAI_API_KEY") else "MISSING",
-            "EVOLUTION_API_URL": os.getenv("EVOLUTION_API_URL", "MISSING"),
-            "EVOLUTION_INSTANCE": os.getenv("EVOLUTION_INSTANCE_NAME", "MISSING"),
-            "EVOLUTION_KEY_SET": "YES" if os.getenv("EVOLUTION_API_KEY") else "NO"
+            "META_APP_SECRET": "OK" if os.getenv("META_APP_SECRET") else "MISSING",
+            "META_ACCESS_TOKEN": "OK" if os.getenv("META_ACCESS_TOKEN") else "MISSING",
+            "META_PHONE_NUMBER_ID": "OK" if os.getenv("META_PHONE_NUMBER_ID") else "MISSING",
+            "EVENT_SLUG": os.getenv("EVENT_SLUG", "tropicadelia-2026")
         }
     })
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
     print(f"Data Node V2 running on port {port}")
-    if supabase:
-        print("📦 Using Supabase database")
-    else:
-        print("📁 Using local JSON files")
     app.run(host="0.0.0.0", port=port)
