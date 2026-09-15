@@ -13,6 +13,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar todo o código do projeto
 COPY . .
 
+# Executar sem privilégios de root reduz o impacto de uma eventual exploração.
+RUN useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # Expor a porta 5001 (que seu server.py usa)
 EXPOSE 5001
 
@@ -26,4 +31,4 @@ ENV PYTHONUNBUFFERED=1
 # --threads 4: 4 threads por worker para I/O concorrente
 # --timeout 120: permite chamadas OpenAI longas
 # --graceful-timeout 60: tempo para shutdown gracioso
-CMD ["gunicorn", "-w", "2", "--threads", "4", "--timeout", "120", "--graceful-timeout", "60", "-b", "0.0.0.0:5001", "-k", "gthread", "server:app"]
+CMD ["gunicorn", "-w", "2", "--threads", "4", "--timeout", "30", "--graceful-timeout", "30", "-b", "0.0.0.0:5001", "-k", "gthread", "server:app"]

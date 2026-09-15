@@ -1,0 +1,62 @@
+services:
+  web:
+    build: .
+    command:
+      - gunicorn
+      - --workers
+      - "2"
+      - --threads
+      - "4"
+      - --timeout
+      - "30"
+      - --graceful-timeout
+      - "30"
+      - --bind
+      - 0.0.0.0:5001
+      - --worker-class
+      - gthread
+      - server:app
+    restart: unless-stopped
+    environment: &common-environment
+      PORT: "5001"
+      FLASK_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      EVENT_SLUG: ${EVENT_SLUG:-tropicadelia-2026}
+      PII_HASH_SECRET: ${PII_HASH_SECRET}
+      META_APP_ID: ${META_APP_ID}
+      META_APP_SECRET: ${META_APP_SECRET}
+      META_VERIFY_TOKEN: ${META_VERIFY_TOKEN}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
+      META_WABA_ID: ${META_WABA_ID}
+      META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID}
+      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_USER: ${ADMIN_USER}
+      ADMIN_PASS: ${ADMIN_PASS}
+      WORKER_POLL_INTERVAL: ${WORKER_POLL_INTERVAL:-1}
+      WORKER_MAX_ATTEMPTS: ${WORKER_MAX_ATTEMPTS:-8}
+      ENABLE_EVOLUTION_WEBHOOK: "false"
+    expose:
+      - "5001"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/health', timeout=5)"
+      interval: 15s
+      timeout: 7s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    build: .
+    command: ["python", "worker.py"]
+    restart: unless-stopped
+    environment: *common-environment
+    depends_on:
+      web:
+        condition: service_healthy
