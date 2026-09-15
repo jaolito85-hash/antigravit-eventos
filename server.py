@@ -34,6 +34,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+REQUIRED_PRODUCTION_ENV = (
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "PII_HASH_SECRET",
+    "META_APP_SECRET",
+    "META_VERIFY_TOKEN",
+    "META_ACCESS_TOKEN",
+    "META_PHONE_NUMBER_ID",
+    "META_GRAPH_API_VERSION",
+    "SECRET_KEY",
+    "ADMIN_USER",
+    "ADMIN_PASS",
+)
+
 # Config
 EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL")
 EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
@@ -957,11 +971,13 @@ def login_required(f):
 def health():
     """Health check usado pelo Coolify para web e dependência principal."""
 
+    configuration_ok = all(os.getenv(name) for name in REQUIRED_PRODUCTION_ENV)
     database_ok = EVENT_STORE.healthcheck()
     return jsonify({
-        "status": "ok" if database_ok else "degraded",
+        "status": "ok" if database_ok and configuration_ok else "degraded",
+        "configuration": "ok" if configuration_ok else "incomplete",
         "database": "ok" if database_ok else "unavailable",
-    }), 200 if database_ok else 503
+    }), 200 if database_ok and configuration_ok else 503
 
 
 @app.route("/webhook", methods=["GET"])
