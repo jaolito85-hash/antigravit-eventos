@@ -125,7 +125,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         store.enqueue_text(message, _reply(urgency), feedback_id)
         store.finish_inbox(str(message["id"]))
         logger.info("Mensagem processada com sucesso | prioridade=%s", urgency)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - failed jobs must be persisted for retry
         logger.error("Falha ao processar mensagem | erro=%s", type(exc).__name__)
         store.fail_inbox(message, exc)
 
@@ -146,7 +146,7 @@ def process_outbox(
         )
         store.mark_outbox_sent(str(message["id"]), provider_message_id)
         logger.info("Resposta aceita pela Meta")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - provider failures must enter the outbox retry
         logger.error("Falha ao enviar resposta | erro=%s", type(exc).__name__)
         store.fail_outbox(message, exc)
 
@@ -174,7 +174,7 @@ def run() -> None:
             for outbound_message in store.pending_outbox():
                 worked = True
                 process_outbox(store, client, outbound_message)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - worker loop must survive external outages
             logger.error("Falha no ciclo do worker | erro=%s", type(exc).__name__)
             time.sleep(min(10, poll_interval * 4))
             continue

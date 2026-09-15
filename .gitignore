@@ -1,6 +1,10 @@
 
 # AGENTE Architecture
 .tmp/
+.venv/
+.pytest_cache/
+.ruff_cache/
+supabase/.temp/
 .env
 credentials.json
 token.json

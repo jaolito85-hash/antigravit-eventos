@@ -79,7 +79,7 @@ class EventStore:
 
         try:
             return bool(self.event_id())
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - health check must never crash the web process
             logger.error("Health check do banco falhou: %s", type(exc).__name__)
             return False
 

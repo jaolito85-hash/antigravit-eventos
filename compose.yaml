@@ -28,10 +28,8 @@ services:
       META_APP_ID: ${META_APP_ID}
       META_APP_SECRET: ${META_APP_SECRET}
       META_VERIFY_TOKEN: ${META_VERIFY_TOKEN}
-      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
       META_WABA_ID: ${META_WABA_ID}
       META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID}
-      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       SECRET_KEY: ${SECRET_KEY}
       ADMIN_USER: ${ADMIN_USER}
@@ -56,7 +54,10 @@ services:
     build: .
     command: ["python", "worker.py"]
     restart: unless-stopped
-    environment: *common-environment
+    environment:
+      <<: *common-environment
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
+      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION}
     depends_on:
       web:
         condition: service_healthy
