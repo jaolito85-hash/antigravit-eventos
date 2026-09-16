@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChatBob × Tropicadelia — Proposta conceitual</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Righteous&display=swap');
+    :root {
+      --ink: #080808;
+      --paper: #f5f5f2;
+      --neon: #f0f400;
+      --pink: #d72c72;
+      --blue: #1677ff;
+      --lime: #8dea00;
+      --muted: #5c5c5c;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #333; color: var(--ink); font-family: "Poppins", Arial, sans-serif; }
+    @page { size: A4; margin: 0; }
+    .page {
+      position: relative;
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto 8mm;
+      padding: 19mm 18mm 17mm;
+      overflow: hidden;
+      background: var(--paper);
+      page-break-after: always;
+    }
+    .page:last-child { page-break-after: auto; }
+    .dark { background: var(--ink); color: white; }
+    .neon { background: var(--neon); }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7mm;
+      font-size: 8pt;
+      font-weight: 800;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 24px; height: 5px; background: var(--pink); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font: 400 37pt/0.98 "Righteous", Impact, sans-serif; letter-spacing: -0.5px; }
+    h2 { max-width: 168mm; margin-bottom: 8mm; font: 400 27pt/1.02 "Righteous", Impact, sans-serif; }
+    h3 { margin-bottom: 3mm; font-size: 12pt; line-height: 1.15; }
+    p, li { font-size: 9.2pt; line-height: 1.55; }
+    strong { font-weight: 800; }
+    .pink { color: var(--pink); }
+    .neon-text { color: var(--neon); }
+    .lead { max-width: 160mm; font-size: 13pt; line-height: 1.45; font-weight: 500; }
+    .small { font-size: 7.6pt; color: var(--muted); }
+    .dark .small { color: #bcbcbc; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; }
+    .card {
+      min-height: 39mm;
+      padding: 6mm;
+      border: 1.5px solid var(--ink);
+      background: white;
+    }
+    .dark .card { border-color: #3b3b3b; background: #141414; }
+    .card.accent { border: 0; background: var(--pink); color: white; }
+    .card.neon-card { border: 0; background: var(--neon); color: var(--ink); }
+    .num { margin-bottom: 1mm; font: 400 29pt/1 "Righteous", Impact, sans-serif; color: var(--pink); }
+    .dark .num { color: var(--neon); }
+    .metric-label { font-size: 7.4pt; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
+    .pill {
+      display: inline-block;
+      margin: 0 2mm 2mm 0;
+      padding: 2mm 3.4mm;
+      border-radius: 99px;
+      background: var(--ink);
+      color: white;
+      font-size: 7.4pt;
+      font-weight: 700;
+    }
+    .dark .pill { background: var(--neon); color: var(--ink); }
+    .quote {
+      margin: 7mm 0;
+      padding: 6mm 7mm;
+      border-left: 5px solid var(--pink);
+      background: white;
+      font-size: 12pt;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+    .dark .quote { background: #151515; }
+    .checklist { list-style: none; padding: 0; margin: 0; }
+    .checklist li { position: relative; margin-bottom: 3mm; padding-left: 7mm; }
+    .checklist li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 1.6mm;
+      width: 3.5mm;
+      height: 3.5mm;
+      background: var(--pink);
+      border-radius: 50%;
+    }
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3mm; margin: 10mm 0; }
+    .flow > div { position: relative; min-height: 31mm; padding: 4mm; background: white; border-top: 5px solid var(--pink); }
+    .flow b { display: block; margin-bottom: 2mm; font-size: 8.5pt; }
+    .flow span { font-size: 7.2pt; line-height: 1.35; }
+    .mock-chat { padding: 6mm; border-radius: 8mm 8mm 8mm 2mm; background: #e7ffd7; color: #151515; box-shadow: 0 2mm 0 rgba(0,0,0,.08); }
+    .mock-chat p { margin-bottom: 2mm; font-size: 9pt; }
+    .mock-chat .who { font-size: 7pt; font-weight: 800; color: #3d7a22; text-transform: uppercase; }
+    .bands { position: absolute; inset: auto 0 0; display: grid; grid-template-columns: 3fr 1fr 2fr; height: 8mm; }
+    .bands i:nth-child(1) { background: var(--pink); }
+    .bands i:nth-child(2) { background: var(--neon); }
+    .bands i:nth-child(3) { background: var(--blue); }
+    .footer {
+      position: absolute;
+      left: 18mm;
+      right: 18mm;
+      bottom: 10mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 6.8pt;
+      font-weight: 700;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+    }
+    .cover { padding: 16mm 17mm; }
+    .cover::before {
+      content: "";
+      position: absolute;
+      width: 155mm;
+      height: 155mm;
+      right: -53mm;
+      top: 31mm;
+      border: 1px solid #434343;
+      border-radius: 50%;
+      box-shadow: 0 0 0 18mm #111, 0 0 0 18.3mm #333, 0 0 0 37mm #0e0e0e, 0 0 0 37.3mm #333;
+    }
+    .cover .kicker { position: relative; z-index: 2; margin-top: 7mm; color: var(--neon); font-size: 9pt; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+    .cover h1 { position: relative; z-index: 2; width: 150mm; margin: 40mm 0 7mm; font-size: 51pt; }
+    .cover h1 span { color: var(--neon); }
+    .cover .subtitle { position: relative; z-index: 2; width: 125mm; font-size: 15pt; line-height: 1.35; }
+    .cover .identity { position: absolute; right: 12mm; bottom: 20mm; z-index: 3; width: 57mm; padding: 3mm; background: white; transform: rotate(-3deg); }
+    .cover .identity img { display: block; width: 100%; }
+    .cover .event { position: absolute; left: 17mm; bottom: 25mm; z-index: 2; }
+    .cover .event b { display: block; color: var(--pink); font: 400 24pt/1 "Righteous", Impact, sans-serif; }
+    .cover .event span { font-size: 8.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1.3px; }
+    .ray {
+      position: absolute;
+      right: -25mm;
+      top: -18mm;
+      width: 90mm;
+      height: 90mm;
+      border: 18mm dotted rgba(215,44,114,.2);
+      border-radius: 50%;
+    }
+    .big-statement { max-width: 173mm; margin: 13mm 0; font: 400 31pt/1.08 "Righteous", Impact, sans-serif; }
+    .package { min-height: 94mm; }
+    .package .tag { display: inline-block; padding: 1.5mm 3mm; background: var(--pink); color: white; font-size: 7pt; font-weight: 800; text-transform: uppercase; }
+    .package ul { padding-left: 5mm; }
+    .source-list li { margin-bottom: 3mm; font-size: 8.2pt; overflow-wrap: anywhere; }
+    @media print {
+      html, body { background: white; }
+      .page { margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <section class="page cover dark">
+    <div class="kicker">Proposta conceitual • Node Data • Setembro 2026</div>
+    <h1>CHATBOB <span>×</span><br>TROPICADELIA</h1>
+    <p class="subtitle">O anfitrião digital que escuta o público, orienta a experiência e transforma cada interação em inteligência — e conteúdo que dá vontade de compartilhar.</p>
+    <div class="event"><b>O DESPERTAR</b><span>26 setembro • Londrina-PR</span></div>
+    <div class="identity"><img src="file:///opt/cursor/artifacts/assets/chatbob-logo-conceito.png" alt="Conceito visual do ChatBob"></div>
+    <div class="bands"><i></i><i></i><i></i></div>
+  </section>
+
+  <section class="page neon">
+    <div class="ray"></div>
+    <div class="eyebrow">A oportunidade</div>
+    <h2>UM FESTIVAL GIGANTE MERECE UMA ESCUTA DO MESMO TAMANHO.</h2>
+    <p class="lead">O Tropicadelia já é destino nacional. O ChatBob propõe uma camada digital leve, acessível pelo WhatsApp, que conecta público e operação sem exigir aplicativo novo.</p>
+    <div class="grid-3" style="margin-top:14mm">
+      <div><div class="num">30K</div><div class="metric-label">pessoas projetadas</div></div>
+      <div><div class="num">33</div><div class="metric-label">artistas</div></div>
+      <div><div class="num">27</div><div class="metric-label">shows</div></div>
+      <div><div class="num">12H</div><div class="metric-label">de música</div></div>
+      <div><div class="num">20+</div><div class="metric-label">experiências</div></div>
+      <div><div class="num">1</div><div class="metric-label">canal inteligente</div></div>
+    </div>
+    <div class="quote">“Cinco anos reunindo pessoas, histórias e momentos que não cabem em uma única memória.” O ChatBob ajuda a ouvir essas histórias enquanto elas acontecem.</div>
+    <p class="small">Números públicos apresentados pelo site oficial do Tropicadelia 2026. A configuração final deve ser confirmada pela organização.</p>
+    <div class="footer"><span>ChatBob × Tropicadelia</span><span>02</span></div>
+  </section>
+
+  <section class="page dark">
+    <div class="eyebrow">A ideia central</div>
+    <h2>MAIS QUE UM BOT.<br><span class="neon-text">O ANFITRIÃO DIGITAL DO FESTIVAL.</span></h2>
+    <div class="grid-2">
+      <div class="card neon-card"><h3>PARA O PÚBLICO</h3><p>Informação rápida, orientação, programação, serviços, feedback e um personagem divertido para conversar.</p></div>
+      <div class="card"><h3>PARA A OPERAÇÃO</h3><p>Alertas por setor, percepção de filas, limpeza, segurança, atendimento e leitura do clima em tempo real.</p></div>
+      <div class="card"><h3>PARA A MARCA</h3><p>Uma personalidade própria, memorável e compartilhável, que prolonga a experiência para além dos palcos.</p></div>
+      <div class="card accent"><h3>PARA PATROCINADORES</h3><p>Ativações mensuráveis, desafios, enquetes e presença útil — sem interromper a jornada do público.</p></div>
+    </div>
+    <p class="big-statement">ESCUTAR. ORIENTAR. RESOLVER. ENCANTAR. VIRALIZAR.</p>
+    <div class="footer"><span>Conceito de produto</span><span>03</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Jornada do público</div>
+    <h2>DO PRIMEIRO QR AO ÚLTIMO SHOW.</h2>
+    <div class="flow">
+      <div><b>01 • DESCOBERTA</b><span>QR na entrada apresenta o ChatBob e abre o WhatsApp sem download.</span></div>
+      <div><b>02 • CONTEXTO</b><span>O código identifica o setor; o público não precisa explicar onde está.</span></div>
+      <div><b>03 • UTILIDADE</b><span>Programação, mapa, banheiro, água, alimentação, transporte e acessibilidade.</span></div>
+      <div><b>04 • ESCUTA</b><span>Feedback, enquete, problema operacional ou pedido de ajuda.</span></div>
+      <div><b>05 • MEMÓRIA</b><span>Resposta marcante, card compartilhável e avaliação final.</span></div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <h3>O princípio</h3>
+        <p>Cada interação deve entregar valor em poucos segundos. O WhatsApp já está no bolso; o ChatBob elimina cadastro, instalação e curva de aprendizado.</p>
+        <ul class="checklist">
+          <li>Português natural, curto e inclusivo.</li>
+          <li>Resposta séria para segurança e saúde.</li>
+          <li>Humor somente quando o contexto permitir.</li>
+          <li>Escalonamento humano para ocorrências críticas.</li>
+        </ul>
+      </div>
+      <div class="mock-chat">
+        <div class="who">ChatBob • modo festival</div>
+        <p><strong>Banheiro virou atração com fila maior que o palco? 😅</strong></p>
+        <p>Já registrei o ponto e avisei a operação. Quer que eu te mostre outra opção próxima?</p>
+      </div>
+    </div>
+    <div class="footer"><span>Experiência sem aplicativo</span><span>04</span></div>
+  </section>
+
+  <section class="page dark">
+    <div class="eyebrow">Planta inteligente</div>
+    <h2>O QR CODE É UM <span class="neon-text">SENSOR DE CONTEXTO</span>, NÃO UM CARTAZ.</h2>
+    <p class="lead">Cada código representa um ponto físico. A planta vira uma rede de escuta por setores, sem rastrear continuamente o visitante.</p>
+    <div class="grid-3" style="margin-top:10mm">
+      <div class="card"><h3>ENTRADAS E SAÍDAS</h3><p>Boas-vindas, orientação, transporte e fluxo.</p></div>
+      <div class="card"><h3>PALCOS</h3><p>Clima, enquetes, programação e telão.</p></div>
+      <div class="card"><h3>BARES E FOOD</h3><p>Fila, estoque, atendimento e experiência.</p></div>
+      <div class="card"><h3>BANHEIROS</h3><p>Limpeza, lotação e alternativa próxima.</p></div>
+      <div class="card"><h3>SAÚDE E SEGURANÇA</h3><p>Orientação objetiva e escalonamento imediato.</p></div>
+      <div class="card"><h3>EXPERIÊNCIAS</h3><p>Ativações, desafios, patrocinadores e memória.</p></div>
+    </div>
+    <div class="quote">Código sugerido: <strong>PALCO-TROPICAL • BAR-02 • LADO-LESTE</strong>. O visitante pode compartilhar localização do WhatsApp voluntariamente quando necessário.</div>
+    <p><strong>LGPD por desenho:</strong> sem GPS contínuo, sem venda de contatos e sem exposição individual. Relatórios para operação e marcas usam dados agregados e pseudonimizados.</p>
+    <div class="footer"><span>Localização contextual e responsável</span><span>05</span></div>
+  </section>
+
+  <section class="page neon">
+    <div class="eyebrow">Distribuição dos QR codes</div>
+    <h2>VISÍVEL DE DIA. LEGÍVEL À NOITE. ÚTIL EM CADA CONTEXTO.</h2>
+    <div class="grid-2">
+      <div>
+        <ul class="checklist">
+          <li><strong>15–20 cm</strong>, alto contraste e área livre ao redor.</li>
+          <li>Uma placa na altura dos olhos e redundância próxima.</li>
+          <li>Iluminação e teste real sob chuva, reflexo e baixa luz.</li>
+          <li>CTA específico: “A fila travou?”, “Avalie este palco”.</li>
+          <li>Número e instrução curta como alternativa ao QR.</li>
+          <li>Identidade e lacre para reduzir adulteração.</li>
+          <li>Inspeção antes da abertura e durante o evento.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="card" style="transform:rotate(2deg); padding:9mm">
+          <div class="metric-label">Exemplo de placa</div>
+          <div style="margin:7mm 0;font:400 25pt/1.05 'Righteous'">TÁ CURTINDO<br>OU PASSANDO<br><span class="pink">PERRENGUE?</span></div>
+          <p><strong>CHAMA O CHATBOB.</strong><br>Escaneie e fale com a gente.</p>
+          <div style="height:42mm;border:5mm solid #080808;background:repeating-conic-gradient(#080808 0 25%,#fff 0 50%) 50%/12mm 12mm"></div>
+        </div>
+      </div>
+    </div>
+    <div class="quote">A planta oficial define quantidade, cobertura, pontos de decisão e responsáveis por instalação. Sem planta, QR vira decoração; com planta, vira inteligência operacional.</div>
+    <div class="footer"><span>Estratégia física</span><span>06</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Personalidade</div>
+    <h2>ENGRAÇADO QUANDO PODE.<br>HUMANO QUANDO PRECISA.</h2>
+    <div class="grid-2">
+      <div class="card"><h3>MODO FESTIVAL</h3><p>Carismático, entusiasta, rápido e surpreendente. Usa referências de música e energia do público sem forçar gírias.</p></div>
+      <div class="card"><h3>MODO INFORMAÇÃO</h3><p>Objetivo: responde primeiro, brinca depois. Sempre oferece o próximo passo útil.</p></div>
+      <div class="card"><h3>MODO RECLAMAÇÃO</h3><p>Reconhece o incômodo, não ironiza o visitante e informa que o caso foi registrado.</p></div>
+      <div class="card accent"><h3>MODO EMERGÊNCIA</h3><p>Sem piada. Instrução curta, localização, contato oficial e acionamento da operação.</p></div>
+    </div>
+    <div class="quote">Fórmula da resposta memorável: <strong>acolher + surpreender + resolver + convidar</strong>. O convite para compartilhar aparece em momentos positivos, nunca em situações sensíveis.</div>
+    <div>
+      <span class="pill">otimista</span><span class="pill">brasileiro</span><span class="pill">musical</span><span class="pill">esperto</span><span class="pill">inclusivo</span><span class="pill">não infantil</span>
+    </div>
+    <div class="footer"><span>Voz do ChatBob</span><span>07</span></div>
+  </section>
+
+  <section class="page dark">
+    <div class="eyebrow">Coeficiente viral</div>
+    <h2>CRIADO PARA VIRAR <span class="neon-text">PRINT, STORY E CONVERSA.</span></h2>
+    <div class="grid-3">
+      <div class="card neon-card"><h3>BOBÔMETRO</h3><p>Humor agregado do festival e dos setores em tempo real.</p></div>
+      <div class="card"><h3>CARDS</h3><p>“Meu momento Tropicadelia”, prontos para compartilhar sem dados pessoais.</p></div>
+      <div class="card"><h3>FIGURINHAS</h3><p>Pacote oficial com expressões do personagem e momentos do evento.</p></div>
+      <div class="card"><h3>MISSÕES</h3><p>Passaporte de QR codes, caça ao tesouro e recompensas.</p></div>
+      <div class="card"><h3>ENQUETES</h3><p>Clima do show, expectativa e escolha coletiva para o telão.</p></div>
+      <div class="card accent"><h3>PATROCÍNIO ÚTIL</h3><p>Marca entrega benefício, não publicidade invasiva.</p></div>
+    </div>
+    <p class="big-statement">A META NÃO É “MANDAR MAIS MENSAGENS”. É FAZER CADA RESPOSTA VALER O COMPARTILHAMENTO.</p>
+    <p>Indicadores: taxa de início por QR, conclusão da conversa, compartilhamentos, acessos indicados, retorno ao canal e participação nas ativações.</p>
+    <div class="footer"><span>Crescimento orgânico</span><span>08</span></div>
+  </section>
+
+  <section class="page neon">
+    <div class="eyebrow">ChatBob no telão</div>
+    <h2>O PÚBLICO CONVERSA.<br>O FESTIVAL RESPONDE.</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Conteúdos possíveis</h3>
+        <ul class="checklist">
+          <li>Termômetro do público e Bobômetro.</li>
+          <li>Resultados de enquetes ao vivo.</li>
+          <li>Setor mais animado.</li>
+          <li>Desafios entre lados da plateia.</li>
+          <li>Mensagens selecionadas e autorizadas.</li>
+          <li>Animações do mascote entre atrações.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="metric-label pink">Regra inegociável</div>
+        <div style="margin:5mm 0;font:400 23pt/1.1 'Righteous'">NADA ENTRA AO VIVO SEM MODERAÇÃO.</div>
+        <p>Fila editorial, anonimização, filtro, atraso de segurança, opt-in explícito e botão de interrupção preservam público, artistas e marca.</p>
+      </div>
+    </div>
+    <div class="quote">Exemplo: “Qual lado acordou primeiro?” O telão mostra o placar agregado; o ChatBob provoca a resposta e transforma a multidão em parte do espetáculo.</div>
+    <div class="footer"><span>Experiência coletiva</span><span>09</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Operação e inteligência</div>
+    <h2>O QUE O PÚBLICO SENTE VIRA AÇÃO.</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Dashboard em tempo real</h3>
+        <ul class="checklist">
+          <li>Volume e sentimento por setor.</li>
+          <li>Filas, limpeza, segurança e infraestrutura.</li>
+          <li>Prioridade e tempo de resposta.</li>
+          <li>Mapa de calor contextual.</li>
+          <li>Histórico de resolução e responsáveis.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Depois do evento</h3>
+        <ul class="checklist">
+          <li>Relatório executivo com temas recorrentes.</li>
+          <li>Comparação entre setores e horários.</li>
+          <li>Oportunidades para a próxima edição.</li>
+          <li>Resultado agregado de patrocinadores.</li>
+          <li>Retenção e anonimização conforme LGPD.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top:12mm">
+      <div><div class="num">&lt;60s</div><div class="metric-label">meta de resposta digital</div></div>
+      <div><div class="num">100%</div><div class="metric-label">ocorrências críticas triadas</div></div>
+      <div><div class="num">0</div><div class="metric-label">dados pessoais vendidos</div></div>
+    </div>
+    <div class="quote">ChatBob não substitui segurança, saúde ou atendimento humano. Ele reduz distância, organiza demanda e dá visibilidade para a equipe agir melhor.</div>
+    <div class="footer"><span>Dados que viram decisão</span><span>10</span></div>
+  </section>
+
+  <section class="page dark">
+    <div class="eyebrow">Modelo comercial</div>
+    <h2>UM PRODUTO PARA O EVENTO.<br><span class="neon-text">UMA PLATAFORMA PARA A PRODUTORA.</span></h2>
+    <div class="grid-3">
+      <div class="card package"><span class="tag">Piloto</span><h3 style="margin-top:5mm">ESSENCIAL</h3><ul><li>WhatsApp oficial</li><li>QR por setor</li><li>Dashboard</li><li>Relatório final</li><li>Suporte de implantação</li></ul></div>
+      <div class="card package neon-card"><span class="tag">Evolução</span><h3 style="margin-top:5mm">EXPERIÊNCIA</h3><ul><li>Tudo do Essencial</li><li>Cards virais</li><li>Enquetes</li><li>Figurinhas</li><li>Ativações patrocinadas</li></ul></div>
+      <div class="card package"><span class="tag">Escala</span><h3 style="margin-top:5mm">PLATAFORMA</h3><ul><li>Tudo do Experiência</li><li>Telão moderado</li><li>Operação assistida</li><li>Multi-evento</li><li>Licença anual</li></ul></div>
+    </div>
+    <div class="grid-2" style="margin-top:9mm">
+      <div><h3>Receitas possíveis</h3><p>Implantação, licença por evento ou participante, módulos premium, operação assistida, white-label e contrato anual.</p></div>
+      <div><h3>Patrocínio</h3><p>“ChatBob apresentado por…”, missões, hidratação, mobilidade, recarga, experiências e relatórios agregados de ativação.</p></div>
+    </div>
+    <p class="small">Faixas e formatos comerciais devem ser validados com a organização e patrocinadores. Nenhum modelo pressupõe comercialização de dados pessoais.</p>
+    <div class="footer"><span>Monetização sustentável</span><span>11</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Escopo do piloto</div>
+    <h2>COMEÇAR ENXUTO.<br>ENTREGAR COM CONFIANÇA.</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Entra no piloto</h3>
+        <ul class="checklist">
+          <li>Recebimento e resposta via WhatsApp oficial.</li>
+          <li>Identificação de setores por QR.</li>
+          <li>Feedback, sentimento e prioridade.</li>
+          <li>Dashboard em tempo real.</li>
+          <li>Alertas e procedimento operacional.</li>
+          <li>Tom inicial do ChatBob.</li>
+          <li>Relatório pós-evento.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Depois da validação</h3>
+        <ul class="checklist">
+          <li>Cards automáticos para redes sociais.</li>
+          <li>Gamificação e recompensas.</li>
+          <li>Telão e moderação editorial.</li>
+          <li>Localização voluntária avançada.</li>
+          <li>Transcrição de áudio.</li>
+          <li>Integrações com CRM e operação.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="quote">Próxima decisão: receber a planta, definir responsáveis e escolher os pontos de QR que resolvem problemas reais da experiência.</div>
+    <div class="card accent" style="margin-top:11mm;min-height:auto">
+      <h3>STATUS TÉCNICO</h3>
+      <p style="margin:0">Infraestrutura web, banco, dashboard, roteamento e recebimento estão em homologação avançada. A liberação final de mensagens de saída depende da conclusão do onboarding da conta pela Meta.</p>
+    </div>
+    <div class="footer"><span>Piloto Tropicadelia 2026</span><span>12</span></div>
+  </section>
+
+  <section class="page neon">
+    <div class="eyebrow">Próximo passo</div>
+    <h2>VAMOS DESENHAR A EXPERIÊNCIA NA PLANTA?</h2>
+    <p class="lead">Com o mapa oficial e os responsáveis de operação, a Node Data transforma setores físicos em uma jornada mensurável, segura e memorável.</p>
+    <p class="big-statement">O BRASIL VAI SE ENCONTRAR AQUI.<br><span class="pink">O CHATBOB VAI OUVIR.</span></p>
+    <div class="grid-2" style="margin-top:14mm">
+      <div><div class="metric-label">Projeto</div><p><strong>ChatBob — anfitrião digital do Tropicadelia</strong></p></div>
+      <div><div class="metric-label">Proponente</div><p><strong>Node Data Tecnologia</strong></p></div>
+      <div><div class="metric-label">Evento</div><p><strong>26/09/2026 • Londrina-PR</strong></p></div>
+      <div><div class="metric-label">Referência</div><p><strong>app.nodedata.com.br</strong></p></div>
+    </div>
+    <div style="position:absolute;left:18mm;right:18mm;bottom:28mm;border-top:2px solid #080808;padding-top:5mm">
+      <p class="small" style="color:#222">Proposta conceitual independente, preparada com base em informações públicas do evento. Uso de marca, fotografias, ativações e veiculação em telões depende de aprovação da organização.</p>
+    </div>
+    <div class="footer"><span>Node Data Tecnologia</span><span>13</span></div>
+  </section>
+</body>
+</html>

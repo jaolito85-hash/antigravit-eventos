@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChatBob × Tropicadelia — Solicitação de planta e insumos</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Righteous&display=swap');
+    :root { --ink:#090909; --pink:#d72c72; --neon:#f0f400; --paper:#f7f7f4; --gray:#e9e9e5; --muted:#656565; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; padding:0; background:#333; color:var(--ink); font-family:"Poppins",Arial,sans-serif; }
+    @page { size:A4; margin:0; }
+    .page {
+      position:relative;
+      width:210mm;
+      height:297mm;
+      margin:0 auto 8mm;
+      padding:18mm 18mm 17mm;
+      overflow:hidden;
+      background:var(--paper);
+      page-break-after:always;
+    }
+    .page:last-child { page-break-after:auto; }
+    .cover { background:var(--ink); color:white; padding-top:17mm; }
+    .cover::after {
+      content:"";
+      position:absolute;
+      right:-20mm;
+      top:28mm;
+      width:115mm;
+      height:115mm;
+      border:17mm dotted rgba(240,244,0,.9);
+      border-radius:50%;
+      transform:rotate(12deg);
+    }
+    .eyebrow { display:flex; align-items:center; gap:7px; font-size:7.5pt; font-weight:800; letter-spacing:1.7px; text-transform:uppercase; }
+    .eyebrow::before { content:""; width:25px; height:5px; background:var(--pink); }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { position:relative; z-index:2; max-width:150mm; margin:50mm 0 7mm; font:400 43pt/1 "Righteous",Impact,sans-serif; }
+    h2 { margin:7mm 0 8mm; font:400 25pt/1.02 "Righteous",Impact,sans-serif; }
+    h3 { margin-bottom:3mm; font-size:11pt; }
+    p,li,td,th { font-size:8.8pt; line-height:1.5; }
+    .lead { position:relative; z-index:2; width:130mm; font-size:13pt; line-height:1.5; }
+    .pink { color:var(--pink); }
+    .neon { color:var(--neon); }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:7mm; }
+    .box { padding:6mm; border:1.5px solid var(--ink); background:white; }
+    .box.pink { border:0; background:var(--pink); color:white; }
+    .box.neon-box { border:0; background:var(--neon); color:var(--ink); }
+    .check { list-style:none; margin:0; padding:0; }
+    .check li { position:relative; margin-bottom:3mm; padding-left:7mm; }
+    .check li::before { content:""; position:absolute; left:0; top:1.5mm; width:3.7mm; height:3.7mm; border:1.5px solid var(--pink); background:white; }
+    .section-tag { display:inline-block; margin-bottom:3mm; padding:1.5mm 3mm; background:var(--pink); color:white; font-size:7pt; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+    table { width:100%; border-collapse:collapse; margin-top:5mm; background:white; }
+    th { background:var(--ink); color:white; font-size:7pt; text-transform:uppercase; letter-spacing:.5px; text-align:left; }
+    th,td { padding:3mm; border:1px solid #bdbdb8; vertical-align:top; }
+    tr:nth-child(even) td { background:#f0f0ed; }
+    .note { margin:7mm 0; padding:5mm 6mm; border-left:5px solid var(--pink); background:white; }
+    .meta { display:grid; grid-template-columns:31mm 1fr; gap:2mm 5mm; margin-top:9mm; }
+    .meta dt { font-size:7pt; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+    .meta dd { margin:0; font-size:9pt; font-weight:600; }
+    .footer {
+      position:absolute;
+      left:18mm;
+      right:18mm;
+      bottom:9mm;
+      display:flex;
+      justify-content:space-between;
+      border-top:1px solid #aaa;
+      padding-top:3mm;
+      font-size:6.5pt;
+      font-weight:700;
+      letter-spacing:.8px;
+      text-transform:uppercase;
+    }
+    .cover .footer { border-color:#444; }
+    .signature { display:grid; grid-template-columns:1fr 1fr; gap:18mm; margin-top:14mm; }
+    .signature div { border-top:1px solid var(--ink); padding-top:3mm; font-size:7.5pt; }
+    .bands { position:absolute; left:0; right:0; bottom:0; display:grid; grid-template-columns:3fr 1fr 2fr; height:8mm; }
+    .bands i:nth-child(1){background:var(--pink)} .bands i:nth-child(2){background:var(--neon)} .bands i:nth-child(3){background:#1677ff}
+    @media print { html,body{background:white}.page{margin:0} }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div class="eyebrow">Solicitação técnica • Node Data</div>
+    <h1>PLANTA,<br>OPERAÇÃO<br><span class="neon">E IDENTIDADE.</span></h1>
+    <p class="lead">Insumos necessários para planejar os QR codes, a jornada do ChatBob e a homologação do piloto Tropicadelia 2026.</p>
+    <dl class="meta" style="position:absolute;left:18mm;bottom:34mm;z-index:2">
+      <dt>Evento</dt><dd>Tropicadelia 2026 — O Despertar</dd>
+      <dt>Data</dt><dd>26 de setembro de 2026</dd>
+      <dt>Local</dt><dd>Parque de Exposições Ney Braga • Londrina-PR</dd>
+      <dt>Solicitante</dt><dd>Node Data Tecnologia • Projeto ChatBob</dd>
+    </dl>
+    <div class="bands"><i></i><i></i><i></i></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Objetivo</div>
+    <h2>TRANSFORMAR A PLANTA EM UMA REDE DE ESCUTA.</h2>
+    <p class="lead">Para que cada QR code identifique corretamente o contexto do visitante e gere informação útil para a operação, precisamos mapear os pontos físicos, fluxos e responsáveis do festival.</p>
+    <div class="grid-2" style="margin-top:10mm">
+      <div class="box neon-box">
+        <h3>O QUE SERÁ PRODUZIDO</h3>
+        <ul class="check">
+          <li>Mapa de setores e códigos únicos.</li>
+          <li>Plano de quantidade e posicionamento.</li>
+          <li>CTAs adequados a cada contexto.</li>
+          <li>Matriz de instalação e inspeção.</li>
+          <li>Fluxo de alertas por área.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>POR QUE É NECESSÁRIO</h3>
+        <p>Sem a planta, o QR indica apenas que alguém falou. Com a planta, ele informa onde, em qual serviço, em que horário e para qual equipe a ocorrência deve seguir.</p>
+      </div>
+    </div>
+    <div class="note"><strong>Importante:</strong> não pretendemos rastrear continuamente o público. A localização principal será contextual, definida pelo QR escaneado. O compartilhamento de GPS pelo WhatsApp será opcional e reservado a situações em que traga benefício claro.</div>
+    <h3>Formato preferencial</h3>
+    <p>PDF vetorial em alta resolução. Se disponível, enviar também DWG, AI ou arquivo editável equivalente. Uma imagem PNG/JPG pode complementar, mas não deve ser a única referência quando houver escala ou medidas.</p>
+    <div class="footer"><span>ChatBob × Tropicadelia</span><span>02</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Pedido 01</div>
+    <h2>PLANTA OFICIAL E CAMADAS OPERACIONAIS.</h2>
+    <div class="grid-2">
+      <div>
+        <span class="section-tag">Estrutura</span>
+        <ul class="check">
+          <li>Perímetro e acessos.</li>
+          <li>Entradas, saídas e rotas de emergência.</li>
+          <li>Palcos, áreas técnicas e capacidade por setor.</li>
+          <li>Pista, Tropical Lounge e Backstage Hype.</li>
+          <li>Áreas de descanso e acessibilidade.</li>
+          <li>Ativações e experiências.</li>
+        </ul>
+      </div>
+      <div>
+        <span class="section-tag">Serviços</span>
+        <ul class="check">
+          <li>Bares e pontos de alimentação.</li>
+          <li>Banheiros e banheiros acessíveis.</li>
+          <li>Água e hidratação.</li>
+          <li>Postos médicos e ambulâncias.</li>
+          <li>Segurança e apoio ao público.</li>
+          <li>Guarda-volumes, recarga e achados e perdidos.</li>
+        </ul>
+      </div>
+      <div>
+        <span class="section-tag">Fluxo</span>
+        <ul class="check">
+          <li>Filas e corredores principais.</li>
+          <li>Pontos de maior concentração esperada.</li>
+          <li>Embarque, desembarque, estacionamento e transporte.</li>
+          <li>Áreas restritas ou onde não podemos instalar placas.</li>
+        </ul>
+      </div>
+      <div>
+        <span class="section-tag">Infraestrutura</span>
+        <ul class="check">
+          <li>Cobertura de internet e zonas críticas conhecidas.</li>
+          <li>Iluminação disponível à noite.</li>
+          <li>Superfícies autorizadas para fixação.</li>
+          <li>Especificações dos telões, se houver interesse na ativação.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note"><strong>Confirmar também:</strong> quantidade final de palcos, nomes oficiais de setores, nomenclatura que deve aparecer ao público e mudanças previstas até a montagem.</div>
+    <div class="footer"><span>Checklist da planta</span><span>03</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Pedido 02</div>
+    <h2>VALIDAÇÃO DOS PONTOS DE QR CODE.</h2>
+    <p>Após recebermos a planta, devolveremos uma versão marcada para validação da produção. Para cada ponto, precisaremos confirmar:</p>
+    <table>
+      <thead><tr><th>Campo</th><th>Exemplo</th><th>Responsável por confirmar</th></tr></thead>
+      <tbody>
+        <tr><td>Setor e ponto</td><td>Palco Tropical • Bar 02 • lado leste</td><td>Produção / operação</td></tr>
+        <tr><td>Código interno</td><td>PALCO-TROPICAL-BAR-02-L</td><td>Node Data</td></tr>
+        <tr><td>Objetivo</td><td>Fila, atendimento e falta de produtos</td><td>Operação do setor</td></tr>
+        <tr><td>CTA da placa</td><td>“A fila travou? Chama o ChatBob.”</td><td>Marketing / marca</td></tr>
+        <tr><td>Fixação</td><td>Totem, grade, balcão ou adesivo</td><td>Montagem</td></tr>
+        <tr><td>Iluminação</td><td>Própria / ambiente / adicional</td><td>Produção técnica</td></tr>
+        <tr><td>Patrocinador</td><td>Marca associada, quando aplicável</td><td>Comercial</td></tr>
+        <tr><td>Responsável</td><td>Equipe que recebe o alerta</td><td>Coordenação operacional</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-2" style="margin-top:9mm">
+      <div class="box"><h3>CRITÉRIOS FÍSICOS</h3><p>Visibilidade, altura, distância de leitura, contraste, iluminação, redundância e resistência a chuva/manuseio.</p></div>
+      <div class="box pink"><h3>CRITÉRIOS DE SEGURANÇA</h3><p>Identidade oficial, inspeção periódica e controle contra adesivos ou QR codes adulterados.</p></div>
+    </div>
+    <div class="footer"><span>Matriz de implantação</span><span>04</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Pedido 03</div>
+    <h2>OPERAÇÃO, ESCALONAMENTO E CONTEÚDO.</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Contatos operacionais</h3>
+        <ul class="check">
+          <li>Coordenador geral do evento.</li>
+          <li>Segurança.</li>
+          <li>Saúde / posto médico.</li>
+          <li>Limpeza e banheiros.</li>
+          <li>Bares e alimentação.</li>
+          <li>Acessibilidade.</li>
+          <li>Produção técnica e telão.</li>
+          <li>Marketing e patrocinadores.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Informações para o ChatBob</h3>
+        <ul class="check">
+          <li>Programação e horários oficiais.</li>
+          <li>Mapa e serviços ao público.</li>
+          <li>Itens permitidos e proibidos.</li>
+          <li>Políticas de entrada e reentrada.</li>
+          <li>Transporte e estacionamento.</li>
+          <li>Acessibilidade e atendimento prioritário.</li>
+          <li>Procedimento para emergências.</li>
+          <li>Canais oficiais e alerta contra golpes.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note"><strong>Para cada tipo de ocorrência</strong>, solicitamos equipe responsável, canal de contato, horário de cobertura, prioridade e tempo esperado para primeira ação.</div>
+    <h3>Se houver participação no telão</h3>
+    <p>Enviar resolução, proporção, orientação, formatos aceitos, duração máxima, conexão disponível, responsável por disparo e regras editoriais. Toda mensagem deverá passar por moderação e consentimento antes de exibição.</p>
+    <div class="footer"><span>Fluxos e responsáveis</span><span>05</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Pedido 04</div>
+    <h2>IDENTIDADE E AUTORIZAÇÕES.</h2>
+    <div class="grid-2">
+      <div class="box neon-box">
+        <h3>BRAND KIT</h3>
+        <ul class="check">
+          <li>Logos oficiais e área de proteção.</li>
+          <li>Paleta e tipografias.</li>
+          <li>Key visual “O Despertar”.</li>
+          <li>Modelos de peças e placas.</li>
+          <li>Tom de voz e expressões aprovadas.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>DIREITOS DE USO</h3>
+        <ul class="check">
+          <li>Autorização para marca em QR e interface.</li>
+          <li>Imagens que podem ser utilizadas.</li>
+          <li>Regras de patrocinadores.</li>
+          <li>Aprovação do personagem ChatBob.</li>
+          <li>Uso em telão e redes sociais.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note"><strong>O conceito visual atual é provisório.</strong> A versão pública do ChatBob e qualquer aplicação da marca Tropicadelia serão submetidas à aprovação da organização antes de impressão ou veiculação.</div>
+    <h3>Proteção de dados</h3>
+    <p>Precisamos validar texto de ciência/consentimento, prazo de retenção, responsáveis por acesso ao dashboard e procedimento de atendimento a solicitações LGPD. Relatórios comerciais usarão somente dados agregados e anonimizados.</p>
+    <h3 style="margin-top:9mm">Envio seguro</h3>
+    <p>Arquivos podem ser compartilhados por link privado da organização. Não enviar credenciais, dados de participantes ou documentos pessoais por e-mail aberto. O acesso deve ser limitado às equipes do projeto.</p>
+    <div class="footer"><span>Marca, conteúdo e LGPD</span><span>06</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Resumo para resposta</div>
+    <h2>O QUE PRECISAMOS RECEBER.</h2>
+    <div class="grid-2">
+      <div>
+        <ul class="check">
+          <li>Planta oficial atualizada.</li>
+          <li>Lista e nomes finais dos setores.</li>
+          <li>Fluxos e áreas críticas.</li>
+          <li>Pontos autorizados para placas.</li>
+          <li>Cobertura de internet e iluminação.</li>
+          <li>Contatos dos líderes operacionais.</li>
+        </ul>
+      </div>
+      <div>
+        <ul class="check">
+          <li>Programação e FAQ oficial.</li>
+          <li>Brand kit e autorizações.</li>
+          <li>Patrocinadores aplicáveis.</li>
+          <li>Especificações de telão.</li>
+          <li>Regras de moderação e emergência.</li>
+          <li>Responsável pela aprovação final.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="box pink" style="margin-top:12mm">
+      <h3>ENTREGA DA NODE DATA APÓS O RECEBIMENTO</h3>
+      <p style="margin:0">Planta marcada, inventário de QR codes, textos de cada placa, matriz de responsáveis, roteiro de testes e plano de homologação para aprovação da produção.</p>
+    </div>
+    <dl class="meta">
+      <dt>Projeto</dt><dd>ChatBob — anfitrião digital</dd>
+      <dt>Evento</dt><dd>Tropicadelia 2026</dd>
+      <dt>Solicitante</dt><dd>Node Data Tecnologia</dd>
+      <dt>Retorno</dt><dd>Confirmar recebimento e indicar responsável central</dd>
+    </dl>
+    <div class="signature">
+      <div>Node Data Tecnologia<br>Responsável pelo projeto</div>
+      <div>Tropicadelia<br>Responsável pela validação</div>
+    </div>
+    <div class="footer"><span>Solicitação técnica</span><span>07</span></div>
+  </section>
+</body>
+</html>
