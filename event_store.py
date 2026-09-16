@@ -19,6 +19,13 @@ class StoreConfigurationError(RuntimeError):
     """Configuração obrigatória do banco ausente ou inválida."""
 
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+
 class EventStore:
     """Acesso centralizado às tabelas operacionais do evento."""
 
