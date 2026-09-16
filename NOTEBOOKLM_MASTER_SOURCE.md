@@ -71,6 +71,20 @@ O ChatBob conecta o público à operação em **3 passos instantâneos (< 10 seg
   * **Zona Leste (Acessos):** Portaria Principal, Credenciamento, Desembarque de Excursões e Acesso Backstage.
   * **Zona Oeste (Serviços):** Palco 3, Posto Médico Central, Acolhimento SOS / Ouvidoria e Acesso Exclusivo PCD.
   * **Zona Central (Convivência):** Praça de Alimentação Food Park, Lockers, Feirinha & Tattoo e Lounge de Descanso.
+* **Gêmeo Digital & Maquete Aérea 3D (`docs/assets/planta-tropicadelia-3d.jpg`):**
+  * O projeto conta com renderização aérea fotorrealista em 3D de todo o complexo do Parque Ney Braga.
+  * **Setores Mapeados Visualmente no 3D:**
+    * **Estacionamentos (Norte e Leste):** Bolsões de veículos monitorados para controle de fluxo e segurança viária.
+    * **Palco 3 (Oeste):** Palco alternativo com corredor amarelo tático de circulação.
+    * **Palco Principal (Sul):** Estrutura monumental de palco, house mix e lounge de descanso.
+    * **Arena de Banheiros & Esportes (Nordeste):** Pista atlética com pavilhão coberto e grande bateria de sanitários.
+    * **Praça de Alimentação (Centro):** Clúster de tendas brancas com mesas externas para gastronomia e hidratação.
+    * **Credenciamento (Leste):** Pavilhão monumental de entrada, triagem e pulseirismo.
+    * **Acesso de Artistas (Sudeste):** Via segregada de vans, logística e camarins.
+  * **Aplicações Estratégicas da Maquete 3D:**
+    1. *Dashboard Operacional (Digital Twin):* Visão imersiva com pins e mapas de calor pulsantes sobre os prédios reais.
+    2. *Suporte Visual no WhatsApp:* Envio de recortes 3D de localização para o frequentador que pergunta "Onde fica o palco?".
+    3. *Pitch com Sócios e Patrocinadores:* Impacto visual fotorrealista incomparável nos slides e materiais em vídeo.
 
 ---
 
