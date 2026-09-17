@@ -14,7 +14,7 @@ from meta_whatsapp import MetaWhatsAppClient
 from server import (
     classificar_categoria,
     classificar_regiao,
-    classificar_sentimento,
+    classificar_urgencia,
     is_emoji_only,
 )
 
@@ -114,7 +114,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             return
 
         sector = store.sector_by_code(sector_code)
-        urgency = classificar_sentimento(content)
+        urgency = classificar_urgencia(content)
         category = classificar_categoria(content)
         region = str(sector["name"]) if sector else classificar_regiao(content)
         feedback_id = store.create_feedback(

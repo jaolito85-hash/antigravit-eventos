@@ -546,62 +546,64 @@ def classificar_regiao(texto):
     return 'N/A'
 
 # --- AI SENTIMENT CLASSIFICATION (PRIMARY) ---
-def classificar_sentimento_ia(texto):
-    """Classifica sentimento usando IA como método principal. Retorna: Positivo, Critico, Urgente ou Neutro."""
+OPENAI_CLASSIFY_TIMEOUT = 15
+
+
+def _openai_chat_client():
+    """Cliente OpenAI só para classificação. Timeout evita travar o worker da Meta."""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         return None
-    
+    from openai import OpenAI
+    return OpenAI(api_key=api_key, timeout=OPENAI_CLASSIFY_TIMEOUT)
+
+
+def classificar_sentimento_ia(texto):
+    """Classifica pelo sentido da mensagem, sem depender de palavras previstas."""
+    client = _openai_chat_client()
+    if not client:
+        return None
+
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-        
-        prompt = f'''Classifique o SENTIMENTO desta mensagem de um participante em um evento.
-A mensagem pode estar em QUALQUER idioma (português, inglês, espanhol, etc).
-Mensagem: "{texto}"
-
-Responda com UMA ÚNICA PALAVRA, exatamente uma destas opções:
-- Critico (emergências, acidentes, violência, risco de vida, crimes, incêndios, desmoronamentos, pessoas feridas)
-- Urgente (problemas operacionais, reclamações, coisas quebradas, sujeira, filas, falhas de estrutura, falta ou escassez de itens — cerveja, água, copo, comida, gelo)
-- Positivo (elogios, agradecimentos, aprovação, satisfação, diversão)
-- Neutro SOMENTE perguntas, horários, informações ou comentários sem problema. Relato de falta, quebra, fila ou reclamação NUNCA é Neutro.
-
-Exemplos:
-"acidente feio aqui" → Critico
-"there was a fight near the stage" → Critico
-"el baño está inundado" → Urgente
-"banheiro tá nojento" → Urgente
-"Falta cerveja no bar do camarote" → Urgente
-"acabou a água" → Urgente
-"ta sem copo no bar" → Urgente
-"amazing show, loved it!" → Positivo
-"show incrível, adorei" → Positivo
-"what time does it start?" → Neutro
-"que horas começa?" → Neutro
-
-Responda APENAS a palavra, sem pontuação.'''
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=5,
-            temperature=0
+        system = (
+            "Você tria mensagens de WhatsApp de um festival. "
+            "Interprete o SENTIDO, não procure palavras-chave. "
+            "Qualquer relato de problema operacional (falta de item, fila, sujeira, "
+            "quebra, atraso, preço abusivo, reclamação, risco) NUNCA é Neutro. "
+            "Responda com UMA palavra: Critico, Urgente, Positivo ou Neutro.\n"
+            "Critico = emergência, violência, acidente, risco à vida.\n"
+            "Urgente = problema ou reclamação que a operação precisa resolver.\n"
+            "Positivo = elogio, gratidão, satisfação.\n"
+            "Neutro = SOMENTE pergunta, saudação ou comentário sem problema."
         )
-        
-        result = response.choices[0].message.content.strip()
-        
-        # Validar que é um dos valores esperados
-        valid = ['Critico', 'Urgente', 'Positivo', 'Neutro']
+        response = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": texto},
+            ],
+            max_tokens=10,
+            temperature=0,
+        )
+        result = (response.choices[0].message.content or "").strip()
+        valid = ["Critico", "Urgente", "Positivo", "Neutro"]
         for v in valid:
             if v.lower() in result.lower():
                 logger.info("Classificação de sentimento concluída | resultado=%s", v)
                 return v
-        
-        print(f"⚠️ [IA-SENTIMENT] Resposta inesperada: '{result}', usando fallback")
+        logger.warning("Resposta inesperada da IA de sentimento, usando fallback")
         return None
-    except Exception as e:
-        print(f"❌ [IA-SENTIMENT] Erro: {e}, usando fallback keywords")
+    except Exception:
+        logger.exception("Falha na IA de sentimento, usando fallback")
         return None
+
+
+def classificar_urgencia(texto: str) -> str:
+    """IA no worker da Meta; palavras-chave só se a OpenAI estiver fora."""
+    ia = classificar_sentimento_ia(texto)
+    if ia:
+        return ia
+    return classificar_sentimento(texto)
 
 # --- AI FULL CLASSIFICATION (LEGACY FALLBACK) ---
 def classificar_com_ia(texto):

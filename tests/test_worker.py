@@ -1,6 +1,7 @@
-"""Testes do processamento desacoplado do webhook."""
+"""Testes do worker da API oficial da Meta."""
 
 import unittest
+from unittest.mock import patch
 
 from worker import _extract_sector, process_inbox
 
@@ -35,45 +36,49 @@ class FakeStore:
         self.failed = (message, error)
 
 
+def _text_message(content):
+    return {
+        "id": "inbox-id",
+        "sender": "5543999999999",
+        "sender_hash": "hash",
+        "channel_account_id": "phone-id",
+        "message_type": "text",
+        "content": content,
+        "attempts": 0,
+    }
+
+
 class WorkerTests(unittest.TestCase):
     def test_extract_sector_marker(self):
         code, content = _extract_sector("#SETOR:PALCO\nBanheiro sujo")
         self.assertEqual(code, "PALCO")
         self.assertEqual(content, "Banheiro sujo")
 
-    def test_shortage_report_is_urgent_not_neutral(self):
+    @patch("server.classificar_sentimento_ia", return_value="Urgente")
+    def test_shortage_report_uses_ai_not_word_list(self, mock_ia):
         store = FakeStore()
-        message = {
-            "id": "inbox-id",
-            "sender": "5543999999999",
-            "sender_hash": "hash",
-            "channel_account_id": "phone-id",
-            "message_type": "text",
-            "content": "Falta cerveja no bar do camarote",
-            "attempts": 0,
-        }
-
-        process_inbox(store, message)
+        process_inbox(store, _text_message("Falta cerveja no bar do camarote"))
 
         self.assertIsNone(store.failed)
         self.assertEqual(store.finished, "processed")
+        mock_ia.assert_called_once_with("Falta cerveja no bar do camarote")
         self.assertEqual(store.feedback["urgency"], "Urgente")
         self.assertEqual(store.feedback["category"], "Alimentação & Bebidas")
         self.assertIn("destacamos", store.response[1])
 
-    def test_processes_text_without_calling_ai(self):
+    @patch("server.classificar_sentimento_ia", return_value="Urgente")
+    def test_unusual_phrasing_still_goes_to_ai(self, mock_ia):
         store = FakeStore()
-        message = {
-            "id": "inbox-id",
-            "sender": "5543999999999",
-            "sender_hash": "hash",
-            "channel_account_id": "phone-id",
-            "message_type": "text",
-            "content": "#SETOR:PALCO\nBanheiro está sujo",
-            "attempts": 0,
-        }
+        content = "no camarote ninguem consegue mais beber o que pediu"
+        process_inbox(store, _text_message(content))
 
-        process_inbox(store, message)
+        mock_ia.assert_called_once_with(content)
+        self.assertEqual(store.feedback["urgency"], "Urgente")
+
+    @patch("server.classificar_sentimento_ia", return_value="Urgente")
+    def test_processes_text_with_sector(self, _mock_ia):
+        store = FakeStore()
+        process_inbox(store, _text_message("#SETOR:PALCO\nBanheiro está sujo"))
 
         self.assertIsNone(store.failed)
         self.assertEqual(store.finished, "processed")
@@ -92,7 +97,6 @@ class WorkerTests(unittest.TestCase):
             "content": None,
             "attempts": 0,
         }
-
         process_inbox(store, message)
 
         self.assertIsNone(store.feedback)
