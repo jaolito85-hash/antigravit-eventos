@@ -41,6 +41,26 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(code, "PALCO")
         self.assertEqual(content, "Banheiro sujo")
 
+    def test_shortage_report_is_urgent_not_neutral(self):
+        store = FakeStore()
+        message = {
+            "id": "inbox-id",
+            "sender": "5543999999999",
+            "sender_hash": "hash",
+            "channel_account_id": "phone-id",
+            "message_type": "text",
+            "content": "Falta cerveja no bar do camarote",
+            "attempts": 0,
+        }
+
+        process_inbox(store, message)
+
+        self.assertIsNone(store.failed)
+        self.assertEqual(store.finished, "processed")
+        self.assertEqual(store.feedback["urgency"], "Urgente")
+        self.assertEqual(store.feedback["category"], "Alimentação & Bebidas")
+        self.assertIn("destacamos", store.response[1])
+
     def test_processes_text_without_calling_ai(self):
         store = FakeStore()
         message = {

@@ -402,11 +402,20 @@ def classificar_sentimento(texto):
             return 'Critico'
     
     # URGENTE - problemas que precisam atenção rápida
+    # "falta cerveja" usa o presente; a lista antiga tinha só faltou/faltando
+    # e o worker de produção classifica só por keywords (sem IA).
+    if re.search(r"\bfalta(m)?\b", texto_lower):
+        return 'Urgente'
+    if re.search(r"\b(ta|tá|esta|está)\s+sem\b", texto_lower):
+        return 'Urgente'
+
     palavras_urgentes = [
         # Problemas estruturais
         'sujo', 'sujeira', 'alagado', 'alagamento', 'quebrado', 'quebrou',
         'nao funciona', 'não funciona', 'pifou', 'estragou', 'travou',
         'acabou', 'acabando', 'faltando', 'faltou', 'zerou', 'esgotou',
+        'nao tem mais', 'não tem mais', 'sem cerveja', 'sem chopp',
+        'sem agua', 'sem água', 'sem copo', 'sem gelo', 'sem comida',
         # Filas e lotação
         'fila', 'fila gigante', 'fila enorme', 'lotado', 'lotação', 'cheio',
         'superlotado', 'apertado', 'empurra empurra', 'esmagado', 'pisoteio',
@@ -553,15 +562,18 @@ Mensagem: "{texto}"
 
 Responda com UMA ÚNICA PALAVRA, exatamente uma destas opções:
 - Critico (emergências, acidentes, violência, risco de vida, crimes, incêndios, desmoronamentos, pessoas feridas)
-- Urgente (problemas sérios, reclamações fortes, coisas quebradas, sujeira grave, falhas de estrutura, aglomerações perigosas, falta de itens essenciais)
+- Urgente (problemas operacionais, reclamações, coisas quebradas, sujeira, filas, falhas de estrutura, falta ou escassez de itens — cerveja, água, copo, comida, gelo)
 - Positivo (elogios, agradecimentos, aprovação, satisfação, diversão)
-- Neutro (perguntas, informações, sugestões, dúvidas, comentários sem carga emocional)
+- Neutro SOMENTE perguntas, horários, informações ou comentários sem problema. Relato de falta, quebra, fila ou reclamação NUNCA é Neutro.
 
 Exemplos:
 "acidente feio aqui" → Critico
 "there was a fight near the stage" → Critico
 "el baño está inundado" → Urgente
 "banheiro tá nojento" → Urgente
+"Falta cerveja no bar do camarote" → Urgente
+"acabou a água" → Urgente
+"ta sem copo no bar" → Urgente
 "amazing show, loved it!" → Positivo
 "show incrível, adorei" → Positivo
 "what time does it start?" → Neutro
@@ -614,9 +626,9 @@ Responda APENAS em JSON com este formato exato:
 
 Regras:
 - Critico = emergências médicas, violência, crimes
-- Urgente = problemas estruturais, reclamações fortes
+- Urgente = problemas operacionais, reclamações, falta/escassez de itens
 - Positivo = elogios
-- Neutro = perguntas ou informações'''
+- Neutro = somente perguntas ou informações, nunca relato de problema'''
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
