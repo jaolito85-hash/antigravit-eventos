@@ -547,6 +547,17 @@ def classificar_regiao(texto):
 
 # --- AI SENTIMENT CLASSIFICATION (PRIMARY) ---
 OPENAI_CLASSIFY_TIMEOUT = 15
+DEFAULT_OPENAI_MODEL = "gpt-5.6-luna"
+
+
+def _openai_model() -> str:
+    return os.getenv("OPENAI_MODEL", DEFAULT_OPENAI_MODEL)
+
+
+def _uses_reasoning_model(model: str) -> bool:
+    """GPT-5.6 Luna/Terra/Sol não aceitam temperature; usam reasoning_effort."""
+    name = model.lower()
+    return name.startswith(("gpt-5", "gpt-6", "o1", "o3", "o4"))
 
 
 def _openai_chat_client():
@@ -556,6 +567,19 @@ def _openai_chat_client():
         return None
     from openai import OpenAI
     return OpenAI(api_key=api_key, timeout=OPENAI_CLASSIFY_TIMEOUT)
+
+
+def _chat_completion_kwargs(messages, max_output_tokens: int, temperature: float = 0):
+    """Monta o payload compatível com gpt-4o-mini e com gpt-5.6-luna."""
+    model = _openai_model()
+    kwargs = {"model": model, "messages": messages}
+    if _uses_reasoning_model(model):
+        kwargs["max_completion_tokens"] = max_output_tokens
+        kwargs["reasoning_effort"] = "none"
+    else:
+        kwargs["max_tokens"] = max_output_tokens
+        kwargs["temperature"] = temperature
+    return kwargs
 
 
 def classificar_sentimento_ia(texto):
@@ -577,13 +601,13 @@ def classificar_sentimento_ia(texto):
             "Neutro = SOMENTE pergunta, saudação ou comentário sem problema."
         )
         response = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": texto},
-            ],
-            max_tokens=10,
-            temperature=0,
+            **_chat_completion_kwargs(
+                [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": texto},
+                ],
+                max_output_tokens=32,
+            )
         )
         result = (response.choices[0].message.content or "").strip()
         valid = ["Critico", "Urgente", "Positivo", "Neutro"]
@@ -1646,6 +1670,7 @@ def debug_env():
             "SUPABASE_URL": "OK" if os.getenv("SUPABASE_URL") else "MISSING",
             "SUPABASE_SERVICE_ROLE_KEY": "OK" if os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "MISSING",
             "OPENAI_API_KEY": "OK" if os.getenv("OPENAI_API_KEY") else "MISSING",
+            "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-5.6-luna"),
             "META_APP_SECRET": "OK" if os.getenv("META_APP_SECRET") else "MISSING",
             "META_ACCESS_TOKEN": "OK" if os.getenv("META_ACCESS_TOKEN") else "MISSING",
             "META_PHONE_NUMBER_ID": "OK" if os.getenv("META_PHONE_NUMBER_ID") else "MISSING",

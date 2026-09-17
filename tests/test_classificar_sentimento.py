@@ -25,17 +25,20 @@ class ClassificarUrgenciaTests(unittest.TestCase):
 
 
 class ClassificarSentimentoIaTests(unittest.TestCase):
-    def test_prompt_pede_sentido_e_nao_lista_de_frases(self):
+    def _fake_client(self, content="Urgente"):
         fake_message = MagicMock()
-        fake_message.content = "Urgente"
+        fake_message.content = content
         fake_client = MagicMock()
         fake_client.chat.completions.create.return_value.choices = [
             MagicMock(message=fake_message)
         ]
+        return fake_client
 
+    def test_prompt_pede_sentido_e_nao_lista_de_frases(self):
+        fake_client = self._fake_client()
         with patch.dict(
             "os.environ",
-            {"OPENAI_API_KEY": "sk-test", "OPENAI_MODEL": "gpt-4o"},
+            {"OPENAI_API_KEY": "sk-test", "OPENAI_MODEL": "gpt-4o-mini"},
             clear=False,
         ):
             with patch("server._openai_chat_client", return_value=fake_client):
@@ -47,11 +50,38 @@ class ClassificarSentimentoIaTests(unittest.TestCase):
 
         self.assertEqual(result, "Urgente")
         kwargs = fake_client.chat.completions.create.call_args.kwargs
-        self.assertEqual(kwargs["model"], "gpt-4o")
+        self.assertEqual(kwargs["model"], "gpt-4o-mini")
+        self.assertEqual(kwargs["temperature"], 0)
+        self.assertIn("max_tokens", kwargs)
         system = kwargs["messages"][0]["content"]
         self.assertIn("SENTIDO", system)
         self.assertIn("NUNCA é Neutro", system)
-        self.assertEqual(kwargs["messages"][1]["content"], "Falta cerveja no bar do camarote")
+        self.assertEqual(
+            kwargs["messages"][1]["content"],
+            "Falta cerveja no bar do camarote",
+        )
+
+    def test_luna_usa_reasoning_effort_none(self):
+        fake_client = self._fake_client()
+        with patch.dict(
+            "os.environ",
+            {"OPENAI_API_KEY": "sk-test", "OPENAI_MODEL": "gpt-5.6-luna"},
+            clear=False,
+        ):
+            with patch("server._openai_chat_client", return_value=fake_client):
+                from server import classificar_sentimento_ia
+
+                result = classificar_sentimento_ia(
+                    "Falta cerveja no bar do camarote"
+                )
+
+        self.assertEqual(result, "Urgente")
+        kwargs = fake_client.chat.completions.create.call_args.kwargs
+        self.assertEqual(kwargs["model"], "gpt-5.6-luna")
+        self.assertEqual(kwargs["reasoning_effort"], "none")
+        self.assertIn("max_completion_tokens", kwargs)
+        self.assertNotIn("temperature", kwargs)
+        self.assertNotIn("max_tokens", kwargs)
 
 
 class FallbackKeywordsTests(unittest.TestCase):
