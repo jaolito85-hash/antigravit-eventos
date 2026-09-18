@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBob • Telão da Sala de Controle</title>
+    <meta name="theme-color" content="#ff6b2c">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Oxanium:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #04040a;
+            --panel: rgba(14, 16, 24, 0.82);
+            --border: rgba(255, 255, 255, 0.09);
+            --text: #ffffff;
+            --muted: #8b94a8;
+            --dim: #5a6274;
+            --orange: #ff6b2c;
+            --purple: #a855f7;
+            --green: #22c55e;
+            --amber: #f59e0b;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --tropical: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Brilho tropical difuso atras de tudo */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: -20%;
+            background:
+                radial-gradient(ellipse 50% 45% at 18% 12%, rgba(255, 107, 44, 0.16), transparent 70%),
+                radial-gradient(ellipse 45% 40% at 85% 85%, rgba(168, 85, 247, 0.14), transparent 70%),
+                radial-gradient(ellipse 40% 35% at 70% 10%, rgba(244, 63, 94, 0.10), transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: ambient 24s ease-in-out infinite alternate;
+        }
+
+        @keyframes ambient {
+            0% { transform: scale(1) translate(0, 0); opacity: 0.9; }
+            100% { transform: scale(1.12) translate(-2%, 1%); opacity: 1; }
+        }
+
+        /* Vinheta de cinema */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse 85% 75% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+            pointer-events: none;
+            z-index: 60;
+        }
+
+        .stage {
+            position: relative;
+            z-index: 1;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            gap: 14px;
+            padding: 16px 20px 18px;
+        }
+
+        /* ===================== TOPBAR ===================== */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .brand { display: flex; align-items: center; gap: 14px; }
+
+        .brand-mark {
+            width: 46px;
+            height: 46px;
+            border-radius: 13px;
+            background: var(--tropical);
+            display: grid;
+            place-items: center;
+            font-size: 1.5rem;
+            box-shadow: 0 0 28px rgba(255, 107, 44, 0.45);
+            flex-shrink: 0;
+        }
+
+        .brand-text h1 {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 1.32rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+        }
+
+        .brand-text h1 span {
+            background: var(--tropical);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-text p {
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 2.2px;
+            font-weight: 600;
+            margin-top: 3px;
+        }
+
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 14px;
+            border-radius: 30px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: var(--muted);
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+        }
+
+        .chip.live {
+            color: #4ade80;
+            border-color: rgba(34, 197, 94, 0.35);
+            background: rgba(34, 197, 94, 0.10);
+        }
+
+        .chip.button { cursor: pointer; transition: 0.2s; }
+        .chip.button:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.3); }
+        .chip.on {
+            color: var(--orange);
+            border-color: rgba(255, 107, 44, 0.45);
+            background: rgba(255, 107, 44, 0.12);
+        }
+
+        .dot-live {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: beacon 2s infinite;
+        }
+
+        @keyframes beacon {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.75); }
+            70% { box-shadow: 0 0 0 11px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .clock {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ===================== KPIs ===================== */
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+        }
+
+        .kpi {
+            position: relative;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 13px 17px;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .kpi::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: var(--accent);
+        }
+
+        .kpi-label {
+            font-size: 0.66rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .kpi-value {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 2.15rem;
+            font-weight: 800;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kpi-sub {
+            font-size: 0.7rem;
+            color: var(--dim);
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
+        .kpi.alert {
+            border-color: rgba(239, 68, 68, 0.45);
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .kpi.alert .kpi-value { color: #fca5a5; }
+
+        /* ===================== LAYOUT ===================== */
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 390px;
+            gap: 14px;
+            min-height: 0;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 13px 17px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.6px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .panel-title i { font-size: 1.05rem; }
+
+        .panel-note {
+            font-size: 0.68rem;
+            color: var(--dim);
+            font-weight: 600;
+        }
+
+        /* ===================== MAPA ===================== */
+        .map-wrap {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            gap: 14px;
+            padding: 10px;
+            min-height: 0;
+        }
+
+        .map-frame {
+            position: relative;
+            aspect-ratio: 1024 / 915;
+            height: 100%;
+            flex-shrink: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Faixa lateral: ocupa a sobra do quadro e resume as 5 macrozonas */
+        .zone-strip {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 9px;
+        }
+
+        .zone-card {
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--tone);
+            border-radius: 12px;
+            padding: 11px 13px;
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .zone-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 7px;
+        }
+
+        .zone-name {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .zone-open {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--tone);
+            flex-shrink: 0;
+        }
+
+        .zone-bar {
+            height: 5px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.07);
+            overflow: hidden;
+        }
+
+        .zone-bar span {
+            display: block;
+            height: 100%;
+            border-radius: 6px;
+            background: var(--tone);
+            transition: width 0.6s ease;
+        }
+
+        .zone-foot {
+            font-size: 0.66rem;
+            color: var(--dim);
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        /* Em telas estreitas a faixa sai de cena para o mapa nao encolher */
+        @media (max-width: 1400px) {
+            .zone-strip { display: none; }
+        }
+
+        .map-frame img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            filter: saturate(0.62) brightness(0.52) contrast(1.08);
+        }
+
+        .map-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 107, 44, 0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 107, 44, 0.055) 1px, transparent 1px);
+            background-size: 7.14% 8%;
+            pointer-events: none;
+        }
+
+        .map-scan {
+            position: absolute;
+            left: 0; right: 0;
+            height: 180px;
+            background: linear-gradient(180deg, transparent, rgba(255, 107, 44, 0.09), transparent);
+            animation: scan 7s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            0% { top: -180px; }
+            100% { top: 100%; }
+        }
+
+        .pin {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+
+        .pin-core {
+            position: relative;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            background: var(--pin);
+            box-shadow: 0 0 12px var(--pin), 0 2px 6px rgba(0, 0, 0, 0.7);
+            display: grid;
+            place-items: center;
+            font-size: 0.55rem;
+            font-weight: 800;
+            color: #fff;
+            font-family: 'Oxanium', sans-serif;
+        }
+
+        .pin-ring {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid var(--pin);
+            transform: translate(-50%, -50%);
+            animation: ripple 2s ease-out infinite;
+            pointer-events: none;
+        }
+
+        .pin-ring.slow { animation-duration: 3.4s; }
+
+        @keyframes ripple {
+            0% { width: 15px; height: 15px; opacity: 0.85; }
+            100% { width: 64px; height: 64px; opacity: 0; }
+        }
+
+        .pin.is-critical .pin-core { animation: throb 0.85s ease-in-out infinite; }
+
+        @keyframes throb {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.45); }
+        }
+
+        .pin-label {
+            position: absolute;
+            left: 50%;
+            top: 20px;
+            transform: translateX(-50%);
+            background: rgba(4, 4, 10, 0.88);
+            border: 1px solid var(--pin);
+            color: #fff;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+
+        .pin.is-hot .pin-label { opacity: 1; }
+        .map-frame:hover .pin-label { opacity: 1; }
+
+        .map-legend {
+            position: absolute;
+            left: 14px;
+            bottom: 12px;
+            display: flex;
+            gap: 14px;
+            padding: 9px 14px;
+            background: rgba(4, 4, 10, 0.78);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            backdrop-filter: blur(8px);
+            z-index: 5;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        .legend-swatch { width: 9px; height: 9px; border-radius: 50%; }
+
+        /* ===================== COLUNA DIREITA ===================== */
+        .rail {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 14px;
+            min-height: 0;
+        }
+
+        .pulse-body { padding: 15px 17px; }
+
+        .pulse-text {
+            font-size: 0.92rem;
+            line-height: 1.55;
+            color: #e5e7eb;
+            font-weight: 500;
+        }
+
+        .pulse-meta {
+            font-size: 0.68rem;
+            color: var(--dim);
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .feed {
+            overflow: hidden;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            /* O painel raramente cabe todos os itens: o fade faz o corte
+               parecer proposital em vez de conteudo truncado na marra. */
+            mask-image: linear-gradient(180deg, #000 76%, transparent 100%);
+            -webkit-mask-image: linear-gradient(180deg, #000 76%, transparent 100%);
+        }
+
+        .feed-item {
+            flex-shrink: 0;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--tone);
+            border-radius: 11px;
+            padding: 9px 12px;
+            background: rgba(255, 255, 255, 0.022);
+            animation: slideUp 0.45s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .feed-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .feed-tag {
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--tone);
+            background: color-mix(in srgb, var(--tone) 14%, transparent);
+            border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent);
+            padding: 2px 7px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .feed-time {
+            font-size: 0.64rem;
+            color: var(--dim);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .feed-msg {
+            font-size: 0.83rem;
+            line-height: 1.45;
+            color: #d7dbe3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .feed-where {
+            font-size: 0.66rem;
+            color: var(--muted);
+            margin-top: 6px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .rank-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+
+        .rank-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 11px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid var(--border);
+        }
+
+        .rank-pos {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--tone);
+            width: 17px;
+            flex-shrink: 0;
+        }
+
+        .rank-name {
+            flex: 1;
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: #e5e7eb;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .rank-count {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 0.86rem;
+            font-weight: 800;
+            color: var(--tone);
+            flex-shrink: 0;
+        }
+
+        .empty {
+            padding: 26px 16px;
+            text-align: center;
+            color: var(--dim);
+            font-size: 0.8rem;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+
+        .empty i { font-size: 1.7rem; display: block; margin-bottom: 9px; opacity: 0.55; }
+
+        /* ===================== ALERTA CRITICO ===================== */
+        .takeover {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: none;
+            place-items: center;
+            background: rgba(60, 4, 9, 0.80);
+            backdrop-filter: blur(9px);
+            animation: flashIn 0.3s ease-out;
+        }
+
+        .takeover.show { display: grid; }
+
+        @keyframes flashIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .takeover-box {
+            width: min(760px, 88vw);
+            background: linear-gradient(160deg, #1a0508, #2a0a10);
+            border: 2px solid var(--red);
+            border-radius: 22px;
+            padding: 38px 44px;
+            text-align: center;
+            box-shadow: 0 0 90px rgba(239, 68, 68, 0.55);
+            animation: alarm 1.15s ease-in-out infinite;
+        }
+
+        @keyframes alarm {
+            0%, 100% { box-shadow: 0 0 70px rgba(239, 68, 68, 0.40); }
+            50% { box-shadow: 0 0 130px rgba(239, 68, 68, 0.78); }
+        }
+
+        .takeover-icon { font-size: 3.4rem; color: var(--red); }
+
+        .takeover-kicker {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 1.85rem;
+            font-weight: 800;
+            letter-spacing: 3.5px;
+            color: #fff;
+            margin: 10px 0 18px;
+        }
+
+        .takeover-msg {
+            font-size: 1.28rem;
+            line-height: 1.5;
+            color: #fee2e2;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .takeover-meta {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .takeover-meta span {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+
+        .takeover-hint { font-size: 0.72rem; color: #fca5a5; margin-top: 20px; font-weight: 600; }
+
+        /* Tela menor: empilha a coluna lateral */
+        @media (max-width: 1280px) {
+            .content { grid-template-columns: 1fr 320px; }
+            .kpi-value { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stage">
+        <!-- ================= TOPBAR ================= -->
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">🌴</div>
+                <div class="brand-text">
+                    <h1>Chat<span>Bob</span> · Sala de Controle</h1>
+                    <p>Tropicadelia 2026 · Parque Ney Braga</p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="chip live"><span class="dot-live"></span> AO VIVO</div>
+                <div class="chip" id="chip-sync"><i class="ri-refresh-line"></i> <span id="sync-label">--</span></div>
+                <div class="chip button" id="chip-sound" onclick="toggleSound()"><i class="ri-volume-mute-line"
+                        id="sound-icon"></i> <span id="sound-label">Som off</span></div>
+                <div class="chip button" onclick="goFullscreen()"><i class="ri-fullscreen-line"></i> Telão</div>
+                <div class="clock" id="clock">--:--:--</div>
+            </div>
+        </header>
+
+        <!-- ================= KPIs ================= -->
+        <section class="kpis">
+            <div class="kpi" style="--accent: var(--orange)">
+                <div class="kpi-label"><i class="ri-chat-poll-line"></i> Mensagens</div>
+                <div class="kpi-value" id="kpi-total">0</div>
+                <div class="kpi-sub" id="kpi-total-sub">aguardando</div>
+            </div>
+            <div class="kpi" style="--accent: var(--purple)">
+                <div class="kpi-label"><i class="ri-group-line"></i> Participantes</div>
+                <div class="kpi-value" id="kpi-people">0</div>
+                <div class="kpi-sub">vozes únicas no festival</div>
+            </div>
+            <div class="kpi" style="--accent: var(--green)">
+                <div class="kpi-label"><i class="ri-emotion-happy-line"></i> Satisfação</div>
+                <div class="kpi-value" id="kpi-sat">--</div>
+                <div class="kpi-sub" id="kpi-sat-sub">elogios sobre o total</div>
+            </div>
+            <div class="kpi" id="kpi-open-card" style="--accent: var(--red)">
+                <div class="kpi-label"><i class="ri-alarm-warning-line"></i> Em aberto</div>
+                <div class="kpi-value" id="kpi-open">0</div>
+                <div class="kpi-sub" id="kpi-open-sub">críticos e urgentes</div>
+            </div>
+            <div class="kpi" style="--accent: var(--blue)">
+                <div class="kpi-label"><i class="ri-router-line"></i> Setores</div>
+                <div class="kpi-value" id="kpi-sectors">0</div>
+                <div class="kpi-sub" id="kpi-sectors-sub">pontos de escuta ativos</div>
+            </div>
+        </section>
+
+        <!-- ================= CONTEÚDO ================= -->
+        <section class="content">
+            <!-- MAPA -->
+            <div class="panel">
+                <div class="panel-head">
+                    <div class="panel-title"><i class="ri-map-2-line" style="color: var(--orange)"></i> Gêmeo Digital ·
+                        Planta Ao Vivo</div>
+                    <div class="panel-note" id="map-note">Carregando setores...</div>
+                </div>
+                <div class="map-wrap">
+                    <div class="map-frame" id="map-frame">
+                        <img src="/static/planta-tropicadelia-3d.jpg" alt="Planta aérea da Tropicadelia 2026">
+                        <div class="map-grid"></div>
+                        <div class="map-scan"></div>
+                        <div class="map-legend">
+                            <div class="legend-item"><span class="legend-swatch"
+                                    style="background: var(--red)"></span> Crítico</div>
+                            <div class="legend-item"><span class="legend-swatch"
+                                    style="background: var(--amber)"></span> Urgente</div>
+                            <div class="legend-item"><span class="legend-swatch"
+                                    style="background: var(--blue)"></span> Neutro</div>
+                            <div class="legend-item"><span class="legend-swatch"
+                                    style="background: var(--green)"></span> Elogio</div>
+                            <div class="legend-item"><span class="legend-swatch"
+                                    style="background: #64748b"></span> Tranquilo</div>
+                        </div>
+                    </div>
+                    <div class="zone-strip" id="zone-strip"></div>
+                </div>
+            </div>
+
+            <!-- COLUNA DIREITA -->
+            <div class="rail">
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="panel-title"><i class="ri-sparkling-2-fill" style="color: var(--purple)"></i> Pulso
+                            da IA</div>
+                    </div>
+                    <div class="pulse-body">
+                        <div class="pulse-text" id="pulse-text">Analisando o festival...</div>
+                        <div class="pulse-meta" id="pulse-meta">--</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="panel-title"><i class="ri-radar-line" style="color: var(--green)"></i> Fluxo Ao Vivo
+                        </div>
+                        <div class="panel-note" id="feed-note">--</div>
+                    </div>
+                    <div class="feed" id="feed"></div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-head">
+                        <div class="panel-title"><i class="ri-fire-line" style="color: var(--red)"></i> Setores em
+                            Alerta</div>
+                    </div>
+                    <div class="rank-body" id="rank"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ================= ALERTA CRÍTICO ================= -->
+    <div class="takeover" id="takeover" onclick="hideTakeover()">
+        <div class="takeover-box">
+            <i class="ri-alarm-warning-fill takeover-icon"></i>
+            <div class="takeover-kicker">ALERTA CRÍTICO</div>
+            <div class="takeover-msg" id="takeover-msg"></div>
+            <div class="takeover-meta" id="takeover-meta"></div>
+            <div class="takeover-hint">Clique ou pressione ESC para dispensar</div>
+        </div>
+    </div>
+
+    <script>
+        // ===== Paleta por urgência =====
+        const TONES = {
+            'Critico': '#ef4444',
+            'Crítico': '#ef4444',
+            'Urgente': '#f59e0b',
+            'Neutro': '#3b82f6',
+            'Positivo': '#22c55e',
+            'ok': '#64748b'
+        };
+        const RANK = { 'Critico': 3, 'Crítico': 3, 'Urgente': 2, 'Neutro': 1, 'Positivo': 0, 'ok': -1 };
+
+        let soundOn = false;
+        let audioCtx = null;
+        let lastSeenId = null;
+        let takeoverTimer = null;
+
+        // Mensagens vêm do público: escapar sempre antes de injetar no DOM.
+        function esc(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function tone(urgency) {
+            return TONES[urgency] || TONES['Neutro'];
+        }
+
+        // Nomes de setor sao longos ("Bar Celeiro | Principal"); no mapa so cabe
+        // a primeira parte, senao os rotulos vizinhos se sobrepoem.
+        function shortName(name) {
+            return String(name || '').split('•')[0].trim();
+        }
+
+        function relTime(ts) {
+            if (!ts) return '--';
+            const date = new Date(ts.includes('T') && !ts.endsWith('Z') && !ts.includes('+') ? ts + 'Z' : ts);
+            if (isNaN(date)) return '--';
+            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+            if (diff < 45) return 'agora';
+            if (diff < 3600) return 'há ' + Math.floor(diff / 60) + ' min';
+            if (diff < 86400) return 'há ' + Math.floor(diff / 3600) + 'h';
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        }
+
+        // ===== Relógio =====
+        function tickClock() {
+            document.getElementById('clock').textContent =
+                new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        }
+
+        // ===== Som do alerta (WebAudio, sem arquivo externo) =====
+        function toggleSound() {
+            soundOn = !soundOn;
+            document.getElementById('chip-sound').classList.toggle('on', soundOn);
+            document.getElementById('sound-icon').className = soundOn ? 'ri-volume-up-line' : 'ri-volume-mute-line';
+            document.getElementById('sound-label').textContent = soundOn ? 'Som on' : 'Som off';
+            if (soundOn) {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                beep(660, 0.12);
+            }
+        }
+
+        function beep(freq, duration) {
+            if (!soundOn || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.16, audioCtx.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain).connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function siren() {
+            if (!soundOn) return;
+            [0, 260, 520].forEach((delay, i) => setTimeout(() => beep(i % 2 ? 720 : 980, 0.18), delay));
+        }
+
+        function goFullscreen() {
+            if (document.fullscreenElement) document.exitFullscreen();
+            else document.documentElement.requestFullscreen().catch(() => { });
+        }
+
+        // ===== Alerta crítico em tela cheia =====
+        function showTakeover(feedback) {
+            document.getElementById('takeover-msg').textContent = '"' + (feedback.message || '').slice(0, 220) + '"';
+            const where = feedback.region && feedback.region !== 'N/A' ? feedback.region : 'Local não informado';
+            document.getElementById('takeover-meta').innerHTML =
+                '<span><i class="ri-map-pin-2-fill"></i> ' + esc(where) + '</span>' +
+                '<span><i class="ri-price-tag-3-fill"></i> ' + esc(feedback.category || 'Geral') + '</span>' +
+                '<span><i class="ri-time-fill"></i> ' + esc(relTime(feedback.timestamp)) + '</span>';
+            document.getElementById('takeover').classList.add('show');
+            siren();
+            clearTimeout(takeoverTimer);
+            takeoverTimer = setTimeout(hideTakeover, 12000);
+        }
+
+        function hideTakeover() {
+            document.getElementById('takeover').classList.remove('show');
+            clearTimeout(takeoverTimer);
+        }
+
+        // ===== Carga principal =====
+        async function loadAll() {
+            try {
+                const [sectorsRes, eventsRes] = await Promise.all([
+                    fetch('/api/sectors'),
+                    fetch('/api/events')
+                ]);
+                const sectorsData = await sectorsRes.json();
+                const feedbacks = await eventsRes.json();
+
+                renderKpis(feedbacks, sectorsData.sectors || []);
+                renderMap(sectorsData.sectors || []);
+                renderZones(sectorsData.sectors || []);
+                renderFeed(feedbacks);
+                renderRank(sectorsData.sectors || []);
+                checkCritical(feedbacks);
+
+                document.getElementById('sync-label').textContent =
+                    new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            } catch (err) {
+                console.error('Falha ao atualizar o telão:', err);
+                document.getElementById('sync-label').textContent = 'sem sinal';
+            }
+        }
+
+        function renderKpis(feedbacks, sectors) {
+            const total = feedbacks.length;
+            const people = new Set(feedbacks.map(f => f.participant).filter(Boolean)).size;
+            const positive = feedbacks.filter(f => f.urgency === 'Positivo').length;
+            const open = feedbacks.filter(f =>
+                ['Critico', 'Crítico', 'Urgente'].includes(f.urgency) && (f.status || 'aberto') !== 'resolvido'
+            ).length;
+            const critical = feedbacks.filter(f =>
+                ['Critico', 'Crítico'].includes(f.urgency) && (f.status || 'aberto') !== 'resolvido'
+            ).length;
+            const activeSectors = sectors.filter(s => s.total > 0).length;
+
+            document.getElementById('kpi-total').textContent = total;
+            document.getElementById('kpi-total-sub').textContent = total ? 'coletadas via WhatsApp' : 'aguardando';
+            document.getElementById('kpi-people').textContent = people;
+            document.getElementById('kpi-sat').textContent = total ? Math.round(positive / total * 100) + '%' : '--';
+            document.getElementById('kpi-sat-sub').textContent = total
+                ? positive + ' elogios de ' + total
+                : 'elogios sobre o total';
+            document.getElementById('kpi-open').textContent = open;
+            document.getElementById('kpi-open-sub').textContent = critical
+                ? critical + ' crítico(s) agora'
+                : 'críticos e urgentes';
+            document.getElementById('kpi-open-card').classList.toggle('alert', open > 0);
+            document.getElementById('kpi-sectors').textContent =
+                sectors.length ? activeSectors + '/' + sectors.length : '0';
+            document.getElementById('kpi-sectors-sub').textContent = sectors.length
+                ? 'setores com movimento'
+                : 'pontos de escuta ativos';
+        }
+
+        function renderMap(sectors) {
+            const frame = document.getElementById('map-frame');
+            frame.querySelectorAll('.pin').forEach(p => p.remove());
+
+            const placed = sectors.filter(s => s.coord && s.coord.x != null && s.coord.y != null);
+            document.getElementById('map-note').textContent = placed.length
+                ? placed.length + ' setores mapeados'
+                : 'Nenhum setor com coordenada cadastrada';
+
+            placed.forEach(sector => {
+                const color = tone(sector.worst === 'ok' ? 'ok' : sector.worst);
+                const hot = ['Critico', 'Crítico', 'Urgente'].includes(sector.worst);
+                const isCritical = ['Critico', 'Crítico'].includes(sector.worst);
+
+                const pin = document.createElement('div');
+                pin.className = 'pin' + (hot ? ' is-hot' : '') + (isCritical ? ' is-critical' : '');
+                pin.style.left = sector.coord.x + '%';
+                pin.style.top = sector.coord.y + '%';
+                pin.style.setProperty('--pin', color);
+
+                const ring = sector.open > 0
+                    ? '<div class="pin-ring' + (isCritical ? '' : ' slow') + '"></div>'
+                    : '';
+                const count = sector.open > 0
+                    ? '<div class="pin-count" style="color:' + color + '">' + sector.open + '</div>'
+                    : '';
+
+                pin.innerHTML = ring +
+                    '<div class="pin-core"></div>' +
+                    '<div class="pin-label">' + esc(shortName(sector.name)) + '</div>' +
+                    count;
+                frame.appendChild(pin);
+            });
+        }
+
+        function renderZones(sectors) {
+            const strip = document.getElementById('zone-strip');
+            const zones = {};
+
+            sectors.forEach(s => {
+                const zone = s.zone || 'Sem zona';
+                if (!zones[zone]) zones[zone] = { total: 0, open: 0, sectors: 0, worst: 'ok' };
+                zones[zone].total += s.total;
+                zones[zone].open += s.open;
+                zones[zone].sectors += 1;
+                if ((RANK[s.worst] ?? -1) > (RANK[zones[zone].worst] ?? -1)) {
+                    zones[zone].worst = s.worst;
+                }
+            });
+
+            const names = Object.keys(zones).sort();
+            if (!names.length) {
+                strip.innerHTML = '';
+                return;
+            }
+
+            // A barra compara a zona com a mais movimentada da noite.
+            const busiest = Math.max(1, ...names.map(n => zones[n].total));
+
+            strip.innerHTML = names.map(name => {
+                const z = zones[name];
+                const color = tone(z.worst === 'ok' ? 'ok' : z.worst);
+                const width = Math.round(z.total / busiest * 100);
+                return '<div class="zone-card" style="--tone:' + color + '">' +
+                    '<div class="zone-top">' +
+                    '<span class="zone-name">' + esc(name) + '</span>' +
+                    '<span class="zone-open">' + z.open + '</span>' +
+                    '</div>' +
+                    '<div class="zone-bar"><span style="width:' + width + '%"></span></div>' +
+                    '<div class="zone-foot">' + z.total + ' msg · ' + z.sectors + ' setores</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function renderFeed(feedbacks) {
+            const box = document.getElementById('feed');
+            const recent = [...feedbacks]
+                .sort((a, b) => (b.id || 0) - (a.id || 0))
+                .slice(0, 4);
+
+            document.getElementById('feed-note').textContent = feedbacks.length + ' no total';
+
+            if (!recent.length) {
+                box.innerHTML = '<div class="empty"><i class="ri-whatsapp-line"></i>' +
+                    'Nenhuma mensagem ainda.<br>Escaneie um QR Code do festival para ver o fluxo começar.</div>';
+                return;
+            }
+
+            box.innerHTML = recent.map(f => {
+                const color = tone(f.urgency);
+                const where = f.region && f.region !== 'N/A' ? f.region : (f.category || 'Geral');
+                return '<div class="feed-item" style="--tone:' + color + '">' +
+                    '<div class="feed-top">' +
+                    '<span class="feed-tag">' + esc(f.urgency || 'Neutro') + '</span>' +
+                    '<span class="feed-time">' + esc(relTime(f.timestamp)) + '</span>' +
+                    '</div>' +
+                    '<div class="feed-msg">' + esc(f.message) + '</div>' +
+                    '<div class="feed-where"><i class="ri-map-pin-line"></i>' + esc(where) + '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function renderRank(sectors) {
+            const box = document.getElementById('rank');
+            const hot = sectors
+                .filter(s => s.open > 0)
+                .sort((a, b) => (RANK[b.worst] || 0) - (RANK[a.worst] || 0) || b.open - a.open)
+                .slice(0, 4);
+
+            if (!hot.length) {
+                box.innerHTML = '<div class="empty"><i class="ri-shield-check-line" style="color:#22c55e"></i>' +
+                    'Nenhum setor em alerta.<br>Operação tranquila no festival.</div>';
+                return;
+            }
+
+            box.innerHTML = hot.map((s, i) => {
+                const color = tone(s.worst);
+                return '<div class="rank-item" style="--tone:' + color + '">' +
+                    '<span class="rank-pos">#' + (i + 1) + '</span>' +
+                    '<span class="rank-name">' + esc(s.name) + '</span>' +
+                    '<span class="rank-count">' + s.open + '</span>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function checkCritical(feedbacks) {
+            const criticals = feedbacks
+                .filter(f => ['Critico', 'Crítico'].includes(f.urgency))
+                .sort((a, b) => (b.id || 0) - (a.id || 0));
+            if (!criticals.length) return;
+
+            const newest = criticals[0];
+            // Primeira carga apenas memoriza: o telão não abre alarme de histórico.
+            if (lastSeenId === null) {
+                lastSeenId = newest.id;
+                return;
+            }
+            if (newest.id > lastSeenId) {
+                lastSeenId = newest.id;
+                showTakeover(newest);
+            }
+        }
+
+        async function loadPulse() {
+            try {
+                const res = await fetch('/api/ai-pulse');
+                const data = await res.json();
+                document.getElementById('pulse-text').textContent = data.summary || 'Sem análise disponível.';
+                document.getElementById('pulse-meta').textContent =
+                    (data.feedbacks_count || 0) + ' mensagens analisadas · ' + relTime(data.updated_at);
+            } catch (err) {
+                document.getElementById('pulse-text').textContent = 'Análise temporariamente indisponível.';
+            }
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') hideTakeover();
+            if (e.key.toLowerCase() === 'f') goFullscreen();
+            if (e.key.toLowerCase() === 's') toggleSound();
+        });
+
+        tickClock();
+        setInterval(tickClock, 1000);
+        loadAll();
+        setInterval(loadAll, 5000);
+        loadPulse();
+        setInterval(loadPulse, 60000);
+    </script>
+</body>
+
+</html>

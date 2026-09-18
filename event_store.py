@@ -231,7 +231,7 @@ class EventStore:
         response = (
             self._get_client()
             .table("event_sectors")
-            .select("id,name")
+            .select("id,code,name,metadata")
             .eq("event_id", self.event_id())
             .eq("code", code)
             .eq("active", True)
@@ -239,6 +239,20 @@ class EventStore:
             .execute()
         )
         return response.data[0] if response.data else None
+
+    def list_sectors(self) -> list[dict[str, Any]]:
+        """Lista os setores ativos com a metadata de posicionamento na planta."""
+
+        response = (
+            self._get_client()
+            .table("event_sectors")
+            .select("id,code,name,metadata")
+            .eq("event_id", self.event_id())
+            .eq("active", True)
+            .order("code")
+            .execute()
+        )
+        return list(response.data or [])
 
     def create_feedback(
         self,

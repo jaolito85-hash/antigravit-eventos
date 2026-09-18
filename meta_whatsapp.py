@@ -144,6 +144,39 @@ def parse_webhook(payload: dict[str, Any]) -> tuple[list[IncomingMessage], list[
     return messages, statuses
 
 
+def download_media(media_id: str, access_token: str, graph_api_version: str) -> bytes | None:
+    """Baixa uma mídia recebida (ex.: áudio) em duas etapas da Graph API.
+
+    A Meta não entrega o binário no webhook: primeiro resolvemos a URL
+    temporária do media_id e só então baixamos o conteúdo autenticado.
+    """
+
+    if not media_id or not access_token or not graph_api_version:
+        return None
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        lookup = requests.get(
+            f"https://graph.facebook.com/{graph_api_version}/{media_id}",
+            headers=headers,
+            timeout=15,
+        )
+        lookup.raise_for_status()
+        media_url = (lookup.json() or {}).get("url")
+        if not media_url:
+            return None
+        response = requests.get(media_url, headers=headers, timeout=30)
+        response.raise_for_status()
+        content = response.content
+        # Whisper aceita até 25MB; acima disso o download é descartado.
+        if not content or len(content) > 25 * 1024 * 1024:
+            return None
+        return content
+    except requests.RequestException:
+        return None
+    except (TypeError, ValueError):
+        return None
+
+
 class MetaWhatsAppClient:
     """Cliente HTTP enxuto para enviar mensagens de serviço."""
 

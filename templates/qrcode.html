@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Node Data | Gerador de QR Code</title>
+    <title>ChatBob | Gerador de QR Code · Tropicadelia 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -13,9 +13,9 @@
         :root {
             --bg-body: #050507;
             --bg-card: #111217;
-            --accent: #2979ff;
-            --accent-glow: rgba(41, 121, 255, 0.15);
-            --accent-light: #5c9aff;
+            --accent: #ff6b2c;
+            --accent-glow: rgba(255, 107, 44, 0.15);
+            --accent-light: #ff9566;
             --green: #00e676;
             --text-main: #ffffff;
             --text-muted: #8b949e;
@@ -62,7 +62,7 @@
             align-items: center;
             gap: 8px;
             background: var(--accent-glow);
-            border: 1px solid rgba(41, 121, 255, 0.25);
+            border: 1px solid rgba(255, 107, 44, 0.25);
             padding: 5px 14px;
             border-radius: 30px;
             font-size: 0.7rem;
@@ -181,7 +181,7 @@
 
         .generate-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(41, 121, 255, 0.3);
+            box-shadow: 0 8px 24px rgba(255, 107, 44, 0.3);
         }
 
         /* ===== RIGHT: PREVIEW ===== */
@@ -310,7 +310,7 @@
         .download-btn.primary {
             background: var(--accent);
             color: white;
-            box-shadow: 0 4px 16px rgba(41, 121, 255, 0.25);
+            box-shadow: 0 4px 16px rgba(255, 107, 44, 0.25);
         }
 
         .download-btn.secondary {
@@ -392,6 +392,24 @@
                 padding: 80px 16px 40px;
             }
         }
+
+        .brand-emoji {
+            display: inline-grid;
+            place-items: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .brand-grad {
+            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
     </style>
 </head>
 
@@ -422,9 +440,20 @@
             </div>
 
             <div class="field">
+                <label>Setor da planta</label>
+                <select id="sector" onchange="updateAutoMessage()">
+                    <option value="">Carregando setores...</option>
+                </select>
+                <div class="field-hint">O código do setor viaja na mensagem e é o que acende o pin certo no mapa
+                </div>
+            </div>
+
+            <div class="field">
                 <label>Mensagem automática</label>
-                <input type="text" id="autoMessage" placeholder="Oi! Vim do [evento]! 🎉" maxlength="80">
-                <div class="field-hint">Essa mensagem aparece pronta quando o participante escanear o QR</div>
+                <input type="text" id="autoMessage" placeholder="#SETOR:CODIGO" maxlength="120">
+                <div class="field-hint">Aparece pronta no WhatsApp do participante. Mantenha a tag
+                    <code>#SETOR:</code> na primeira linha para o roteamento funcionar.
+                </div>
             </div>
 
             <div class="field">
@@ -439,7 +468,7 @@
             <div class="field">
                 <label>Cor do tema</label>
                 <div class="color-row">
-                    <div class="color-option active" style="background: #2979ff;" data-color="#2979ff"
+                    <div class="color-option active" style="background: #ff6b2c;" data-color="#ff6b2c"
                         onclick="selectColor(this)"></div>
                     <div class="color-option" style="background: #00e676;" data-color="#00e676"
                         onclick="selectColor(this)"></div>
@@ -480,8 +509,8 @@
                     Aponte a câmera do celular para o QR Code
                 </div>
                 <div class="qr-powered">
-                    <img src="/static/logo.png" alt="Node Data">
-                    <span>Node Data</span>
+                    <span class="brand-emoji">🌴</span>
+                    <span>Chat<span class="brand-grad">Bob</span></span>
                 </div>
             </div>
 
@@ -507,7 +536,7 @@
     </div>
 
     <script>
-        let selectedColor = '#2979ff';
+        let selectedColor = '#ff6b2c';
         let qrDataUrl = null;
 
         function selectColor(el) {
@@ -516,21 +545,54 @@
             selectedColor = el.dataset.color;
         }
 
+        let SECTORS = [];
+
+        // A tag e o contrato com o worker: sem ela o feedback nao tem setor
+        // e o pin correspondente nunca acende no mapa da planta.
         function updateAutoMessage() {
-            const lang = document.getElementById('language').value;
-            const eventName = document.getElementById('eventName').value || 'Evento';
-            const messages = {
-                pt: `Oi! Vim do ${eventName}! 🎉`,
-                en: `Hi! I'm at ${eventName}! 🎉`,
-                es: `¡Hola! Estoy en ${eventName}! 🎉`
-            };
-            document.getElementById('autoMessage').value = messages[lang];
+            const code = document.getElementById('sector').value;
+            document.getElementById('autoMessage').value = code ? `#SETOR:${code}` : '';
+            const sector = SECTORS.find(s => s.code === code);
+            const label = document.getElementById('previewSector');
+            if (label) label.textContent = sector ? sector.name : '';
         }
+
+        async function loadSectors() {
+            const select = document.getElementById('sector');
+            try {
+                const res = await fetch('/api/sectors');
+                const data = await res.json();
+                SECTORS = (data.sectors || []).slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+            } catch (err) {
+                console.error('Erro ao carregar setores:', err);
+            }
+
+            if (!SECTORS.length) {
+                select.innerHTML = '<option value="">Nenhum setor cadastrado</option>';
+                return;
+            }
+
+            // Agrupa por macrozona para achar o setor rapido na hora da impressao.
+            const zones = {};
+            SECTORS.forEach(s => {
+                const zone = s.zone || 'Sem zona';
+                (zones[zone] = zones[zone] || []).push(s);
+            });
+
+            select.innerHTML = '<option value="">Selecione o setor...</option>' +
+                Object.keys(zones).sort().map(zone =>
+                    `<option disabled>── Zona ${zone} ──</option>` +
+                    zones[zone].map(s =>
+                        `<option value="${s.code}">${s.name}</option>`
+                    ).join('')
+                ).join('');
+        }
+
+        loadSectors();
 
         // Auto-update message when event name changes
         document.getElementById('eventName').addEventListener('input', function () {
-            updateAutoMessage();
-            document.getElementById('previewEventName').textContent = this.value || 'Seu Evento';
+            document.getElementById('previewEventName').textContent = this.value || 'Tropicadelia 2026';
         });
 
         function generateQR() {
@@ -540,6 +602,10 @@
 
             if (!eventName) { alert('Informe o nome do evento!'); return; }
             if (!phone) { alert('Informe o número do WhatsApp!'); return; }
+            if (!message) { alert('Selecione o setor da planta!'); return; }
+            if (!message.startsWith('#SETOR:')) {
+                if (!confirm('A mensagem não começa com #SETOR:. O feedback vai chegar sem setor e o pin não acende no mapa. Gerar assim mesmo?')) return;
+            }
 
             // WhatsApp API URL
             const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
@@ -710,7 +776,7 @@
                 ctx.font = '800 22px Inter, sans-serif';
                 ctx.fillStyle = '#ffffff';
                 ctx.textAlign = 'left';
-                ctx.fillText('Node Data', startX + logoSize + 10, 1143);
+                ctx.fillText('ChatBob', startX + logoSize + 10, 1143);
 
                 ctx.font = '400 11px Inter, sans-serif';
                 ctx.fillStyle = '#555d6e';
@@ -731,7 +797,7 @@
                 ctx.font = '800 22px Inter, sans-serif';
                 ctx.fillStyle = '#ffffff';
                 ctx.textAlign = 'center';
-                ctx.fillText('Node Data', 400, 1140);
+                ctx.fillText('ChatBob', 400, 1140);
 
                 ctx.font = '400 11px Inter, sans-serif';
                 ctx.fillStyle = '#555d6e';

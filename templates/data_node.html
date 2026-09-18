@@ -4,12 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Node Data | Event Monitor</title>
+    <title>ChatBob • Tropicadelia 2026</title>
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#2979ff">
-    <meta name="description" content="Dashboard de análise de feedbacks em tempo real para eventos">
+    <meta name="theme-color" content="#ff6b2c">
+    <meta name="description" content="ChatBob: escuta ativa e inteligência operacional em tempo real para a Tropicadelia 2026">
 
     <!-- Icons -->
     <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
@@ -18,7 +18,7 @@
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Node Data">
+    <meta name="apple-mobile-web-app-title" content="ChatBob">
 
     <!-- Fonts & Libraries -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -30,7 +30,10 @@
             --bg-sidebar: #0b0c10;
             --bg-card: #111217;
             --bg-hover: #1c1e26;
-            --accent-primary: #2979ff;
+            --accent-primary: #ff6b2c;
+            --accent-purple: #a855f7;
+            --accent-green: #22c55e;
+            --tropical-gradient: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
             --text-main: #ffffff;
             --text-muted: #8b949e;
             --border: #23252e;
@@ -65,17 +68,70 @@
 
         .logo {
             font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 40px;
+            font-weight: 800;
+            margin-bottom: 34px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 11px;
             color: white;
+            letter-spacing: -0.2px;
         }
 
         .logo i {
             color: var(--accent-primary);
             font-size: 1.2rem;
+        }
+
+        .logo small {
+            display: block;
+            font-size: 0.62rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            margin-top: 2px;
+        }
+
+        .brand-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: var(--tropical-gradient);
+            display: grid;
+            place-items: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            box-shadow: 0 0 18px rgba(255, 107, 44, 0.35);
+        }
+
+        .brand-accent {
+            background: var(--tropical-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .mobile-header .logo {
+            margin-bottom: 0;
+        }
+
+        /* Links usam a mesma pele dos itens de navegação */
+        a.nav-item {
+            text-decoration: none;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 800;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 20px;
+            display: grid;
+            place-items: center;
+            padding: 0 6px;
         }
 
         .nav-label {
@@ -685,7 +741,7 @@
         }
 
         .export-btn:hover {
-            background: #7c3aed;
+            background: #f43f5e;
         }
 
         .whatsapp-contact-btn {
@@ -745,6 +801,197 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 12px;
+        }
+
+        /* ===== MAPA AO VIVO (GÊMEO DIGITAL) ===== */
+        .map-shell {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .map-frame {
+            position: relative;
+            aspect-ratio: 1024 / 915;
+            width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: #04040a;
+        }
+
+        .map-frame img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            filter: saturate(0.62) brightness(0.55) contrast(1.05);
+        }
+
+        .map-grid-overlay {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 107, 44, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 107, 44, 0.05) 1px, transparent 1px);
+            background-size: 7.14% 8%;
+            pointer-events: none;
+        }
+
+        .pin {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+            cursor: pointer;
+        }
+
+        .pin-core {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            background: var(--pin);
+            box-shadow: 0 0 10px var(--pin), 0 2px 5px rgba(0, 0, 0, 0.7);
+        }
+
+        .pin-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--pin);
+            transform: translate(-50%, -50%);
+            animation: pinRipple 2.4s ease-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes pinRipple {
+            0% { width: 14px; height: 14px; opacity: 0.8; }
+            100% { width: 58px; height: 58px; opacity: 0; }
+        }
+
+        .pin.is-critical .pin-core {
+            animation: pinThrob 0.9s ease-in-out infinite;
+        }
+
+        @keyframes pinThrob {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.4); }
+        }
+
+        .pin-tip {
+            position: absolute;
+            left: 50%;
+            top: 19px;
+            transform: translateX(-50%);
+            background: rgba(4, 4, 10, 0.92);
+            border: 1px solid var(--pin);
+            color: #fff;
+            font-size: 0.62rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 5px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: 0.2s;
+            pointer-events: none;
+        }
+
+        .pin:hover .pin-tip,
+        .pin.is-hot .pin-tip {
+            opacity: 1;
+        }
+
+        .pin-num {
+            position: absolute;
+            left: 50%;
+            bottom: 17px;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 1px 4px #000;
+        }
+
+        .map-side {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .zone-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .zone-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.82rem;
+        }
+
+        .zone-row:last-child {
+            border-bottom: none;
+        }
+
+        .zone-name {
+            color: #e5e7eb;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .zone-pill {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 2px 9px;
+            border-radius: 20px;
+            flex-shrink: 0;
+        }
+
+        .map-legend-bar {
+            position: absolute;
+            left: 12px;
+            bottom: 12px;
+            display: flex;
+            gap: 12px;
+            padding: 8px 13px;
+            background: rgba(4, 4, 10, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            z-index: 5;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.66rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .legend-swatch {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 1100px) {
+            .map-shell {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* ===== MOBILE BURGER MENU ===== */
@@ -949,8 +1196,7 @@
 <body>
     <!-- Mobile Header -->
     <div class="mobile-header">
-        <div class="logo"><img src="/static/logo.png" alt="Node Data" style="height: 28px; width: 28px;"> Node Data
-        </div>
+        <div class="logo"><span class="brand-mark">🌴</span> Chat<span class="brand-accent">Bob</span></div>
         <button class="burger-btn" onclick="toggleMobileMenu()">
             <i class="ri-menu-line" id="burger-icon"></i>
         </button>
@@ -959,21 +1205,40 @@
     <!-- Overlay for mobile -->
     <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
     <div class="sidebar">
-        <div class="logo"><img src="/static/logo.png" alt="Node Data" style="height: 28px; width: 28px;"> Node Data
+        <div class="logo">
+            <span class="brand-mark">🌴</span>
+            <div>
+                Chat<span class="brand-accent">Bob</span>
+                <small>Tropicadelia 2026</small>
+            </div>
         </div>
 
-        <div class="nav-label">WORKSPACE</div>
+        <div class="nav-label">OPERAÇÃO</div>
         <div class="nav-item active" onclick="nav('dashboard', this)"><i class="ri-layout-grid-fill"></i> Painel</div>
-        <div class="nav-item" onclick="nav('feedbacks', this)"><i class="ri-chat-3-line"></i> Feedbacks</div>
+        <div class="nav-item" onclick="nav('mapa', this)"><i class="ri-map-2-line"></i> Mapa ao Vivo</div>
+        <div class="nav-item" onclick="nav('feedbacks', this)"><i class="ri-chat-3-line"></i> Feedbacks
+            <span class="nav-badge hidden" id="nav-badge-open">0</span>
+        </div>
+
+        <div class="nav-label">ANÁLISE</div>
         <div class="nav-item" onclick="nav('regions', this)"><i class="ri-map-pin-line"></i> Regiões</div>
         <div class="nav-item" onclick="nav('categories', this)"><i class="ri-price-tag-3-line"></i> Categorias</div>
+        <a class="nav-item" href="/relatorio"><i class="ri-file-chart-line"></i> Relatório</a>
+
+        <div class="nav-label">FERRAMENTAS</div>
+        <a class="nav-item" href="/telao" target="_blank"><i class="ri-tv-2-line"></i> Modo Telão
+            <i class="ri-external-link-line" style="margin-left:auto; font-size:0.85rem; opacity:0.5"></i>
+        </a>
+        <a class="nav-item" href="/qrcode"><i class="ri-qr-code-line"></i> QR Codes</a>
+
+        <a class="nav-item" href="/logout" style="margin-top:auto"><i class="ri-logout-box-r-line"></i> Sair</a>
     </div>
 
     <div class="main" id="view-dashboard">
         <div class="page-header">
             <div class="page-title">
-                <h1>Painel de Controle</h1>
-                <p>Visão geral do evento em tempo real</p>
+                <h1>Sala de Controle</h1>
+                <p>Escuta ativa da Tropicadelia 2026 em tempo real</p>
             </div>
             <div class="export-dropdown">
                 <button class="export-btn" onclick="toggleExportMenu('dashboard')">
@@ -1018,7 +1283,7 @@
         <!-- ROW 1: Timeline + Sentimentos -->
         <div class="dash-row">
             <div class="chart-box">
-                <div class="chart-header"><i class="ri-line-chart-line" style="color:#2979ff"></i> Feedbacks por Hora
+                <div class="chart-header"><i class="ri-line-chart-line" style="color:#ff6b2c"></i> Feedbacks por Hora
                 </div>
                 <div class="chart-container-bar">
                     <canvas id="timelineChart"></canvas>
@@ -1065,6 +1330,62 @@
                 <div id="top-problems-list"
                     style="font-size: 0.9rem; color: #d1d5db; display: flex; gap: 20px; flex-wrap: wrap;">
                     <p style="color:var(--text-muted)">Aguardando dados...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAPA AO VIVO VIEW -->
+    <div class="main hidden" id="view-mapa">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Mapa ao Vivo</h1>
+                <p>Gêmeo digital do Parque Ney Braga com os 26 pontos de escuta</p>
+            </div>
+            <a href="/telao" target="_blank" class="export-btn" style="text-decoration:none">
+                <i class="ri-tv-2-line"></i> Abrir no Telão
+            </a>
+        </div>
+
+        <div class="map-shell">
+            <div class="map-frame" id="dash-map-frame">
+                <img src="/static/planta-tropicadelia-3d.jpg" alt="Planta aérea da Tropicadelia 2026">
+                <div class="map-grid-overlay"></div>
+                <div class="map-legend-bar">
+                    <div class="legend-item"><span class="legend-swatch" style="background:#ef4444"></span> Crítico</div>
+                    <div class="legend-item"><span class="legend-swatch" style="background:#f59e0b"></span> Urgente</div>
+                    <div class="legend-item"><span class="legend-swatch" style="background:#3b82f6"></span> Neutro</div>
+                    <div class="legend-item"><span class="legend-swatch" style="background:#22c55e"></span> Elogio</div>
+                    <div class="legend-item"><span class="legend-swatch" style="background:#64748b"></span> Tranquilo
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-side">
+                <div class="zone-card">
+                    <div class="chart-header" style="margin-bottom:12px"><i class="ri-fire-line"
+                            style="color:#ef4444"></i> Setores em Alerta</div>
+                    <div id="map-alerts">
+                        <p style="color:var(--text-muted); font-size:0.82rem">Carregando...</p>
+                    </div>
+                </div>
+
+                <div class="zone-card">
+                    <div class="chart-header" style="margin-bottom:12px"><i class="ri-compass-3-line"
+                            style="color:#ff6b2c"></i> Macrozonas</div>
+                    <div id="map-zones">
+                        <p style="color:var(--text-muted); font-size:0.82rem">Carregando...</p>
+                    </div>
+                </div>
+
+                <div class="zone-card">
+                    <div class="chart-header" style="margin-bottom:12px"><i class="ri-router-line"
+                            style="color:#a855f7"></i> Cobertura</div>
+                    <div style="display:flex; align-items:baseline; gap:8px">
+                        <span style="font-size:2rem; font-weight:800" id="map-coverage">0</span>
+                        <span style="color:var(--text-muted); font-size:0.85rem" id="map-coverage-sub">setores com
+                            movimento</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1147,6 +1468,16 @@
         let currentChartDonut = null;
         let currentChartBar = null;
 
+        // O texto vem do público pelo WhatsApp: escapar antes de qualquer innerHTML.
+        function escHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // Mobile Menu Toggle
         function toggleMobileMenu() {
             const sidebar = document.querySelector('.sidebar');
@@ -1183,6 +1514,7 @@
             }
 
             if (view === 'dashboard') loadData();
+            if (view === 'mapa') loadMapa();
             if (view === 'feedbacks') {
                 document.getElementById('filtro-status').value = 'ativos';
                 aplicarFiltros();
@@ -1364,14 +1696,14 @@
                 container.innerHTML += `
                     <div class="feedback-card clickable" onclick="openThreadModal(${e.id})" data-id="${e.id}">
                         <div class="fb-header">
-                            <span class="fb-tag" style="background:${urgencyColor}20; color:${urgencyColor}; border:1px solid ${urgencyColor}">${e.category}</span>
+                            <span class="fb-tag" style="background:${urgencyColor}20; color:${urgencyColor}; border:1px solid ${urgencyColor}">${escHtml(e.category)}</span>
                             <div class="fb-time" title="${e.timestamp}"><i class="ri-time-line"></i> ${formatarTempo(e.timestamp)}</div>
                         </div>
-                        <div class="fb-msg">${firstMsg}</div>
+                        <div class="fb-msg">${escHtml(firstMsg)}</div>
                         ${updateBadge}
                         ${e.linked_from ? `<div class="linked-badge" onclick="event.stopPropagation(); showLinkedCards(${e.id}, '${(e.sender || e.remoteJid || '').replace(/'/g, "\\'")}')"><i class="ri-links-line"></i> Ver anteriores</div>` : ''}
                         <div class="fb-footer" style="margin-top:10px;">
-                            <span><span class="priority-dot" style="background:${urgencyColor}"></span>${e.urgency || 'Neutro'}</span>
+                            <span><span class="priority-dot" style="background:${urgencyColor}"></span>${escHtml(e.urgency)}</span>
                             ${statusDropdownHtml}
                         </div>
                     </div>
@@ -1392,10 +1724,10 @@
                 const statusLabel = c.status === 'resolvido' ? '✅ Resolvido' : c.status === 'em_andamento' ? '⏳ Em Andamento' : '🔴 Aberto';
                 return `<div onclick="event.stopPropagation(); closeLinkedModal(); openThreadModal(${c.id})" style="padding:12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--bg-card);margin-bottom:8px;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <span style="font-weight:600;color:var(--text-main);font-size:0.85rem;">${c.category || 'Geral'}</span>
+                        <span style="font-weight:600;color:var(--text-main);font-size:0.85rem;">${escHtml(c.category || 'Geral')}</span>
                         <span style="font-size:0.7rem;color:var(--text-muted);">${formatarTempo(c.timestamp)}</span>
                     </div>
-                    <div style="color:#d1d5db;font-size:0.8rem;line-height:1.4;">${preview}</div>
+                    <div style="color:#d1d5db;font-size:0.8rem;line-height:1.4;">${escHtml(preview)}</div>
                     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:6px;">${statusLabel}</div>
                 </div>`;
             }).join('');
@@ -1440,7 +1772,7 @@
                     <div class="thread-dot ${item.label}">${idx === 0 ? '<i class="ri-message-2-line"></i>' : '<i class="ri-refresh-line"></i>'}</div>
                     <div class="thread-content">
                         <div class="thread-content-label ${item.label}">${idx === 0 ? 'Mensagem Original' : `Atualização ${idx}`}</div>
-                        <div class="thread-content-text">${item.text}</div>
+                        <div class="thread-content-text">${escHtml(item.text)}</div>
                     </div>
                 </div>
             `).join('');
@@ -1458,13 +1790,13 @@
                         <div onclick="updateStatus(${e.id}, 'em_andamento'); closeThreadModal()" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#F59E0B;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-loader-4-line"></i> Em Andamento</div>
                         <div onclick="updateStatus(${e.id}, 'resolvido'); closeThreadModal()" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#10B981;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-checkbox-circle-line"></i> Resolvido</div>
                     </div>
-                </div>` : `<span style="font-size:0.8rem; color:${urgencyColor};"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${urgencyColor};margin-right:5px;"></span>${e.urgency || 'Neutro'}</span>`;
+                </div>` : `<span style="font-size:0.8rem; color:${urgencyColor};"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${urgencyColor};margin-right:5px;"></span>${escHtml(e.urgency)}</span>`;
 
             document.getElementById('thread-modal-body').innerHTML = `
                 <div class="thread-header">
                     <div>
-                        <div style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="ri-chat-3-fill" style="color:#059669;"></i> ${displayName}</div>
-                        <div class="thread-sender">${displayPhone} ${whatsappLink} <span style="color:var(--border)">|</span> <span style="background:${urgencyColor}20;color:${urgencyColor};border:1px solid ${urgencyColor};font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;">${e.category}</span></div>
+                        <div style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:8px;"><i class="ri-chat-3-fill" style="color:#059669;"></i> ${escHtml(displayName)}</div>
+                        <div class="thread-sender">${displayPhone} ${whatsappLink} <span style="color:var(--border)">|</span> <span style="background:${urgencyColor}20;color:${urgencyColor};border:1px solid ${urgencyColor};font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;">${escHtml(e.category)}</span></div>
                     </div>
                     <button onclick="closeThreadModal()" style="background:transparent;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1;">×</button>
                 </div>
@@ -1574,7 +1906,7 @@
             config.regions.forEach(r => {
                 rGrid.innerHTML += `
                     <div class="manage-card">
-                        <h3>${r.name} <i class="ri-map-pin-line"></i></h3>
+                        <h3>${escHtml(r.name)} <i class="ri-map-pin-line"></i></h3>
                         <h2>${r.count}</h2>
                         <p>Feedbacks recebidos</p>
                         <div class="btn-delete" onclick="delItem('regions', '${r.name}')">Excluir</div>
@@ -1588,13 +1920,122 @@
             config.categories.forEach(c => {
                 cGrid.innerHTML += `
                     <div class="manage-card" style="border-left: 4px solid ${c.color}">
-                        <h3>${c.name} <i class="ri-price-tag-3-fill" style="color:${c.color}"></i></h3>
+                        <h3>${escHtml(c.name)} <i class="ri-price-tag-3-fill" style="color:${c.color}"></i></h3>
                         <h2>${c.count}</h2>
                         <p>Feedbacks recebidos</p>
                         <div class="btn-delete" onclick="delItem('categories', '${c.name}')">Excluir</div>
                     </div>
                 `;
             });
+        }
+
+        // ===== MAPA AO VIVO =====
+        const PIN_TONES = {
+            'Critico': '#ef4444',
+            'Crítico': '#ef4444',
+            'Urgente': '#f59e0b',
+            'Neutro': '#3b82f6',
+            'Positivo': '#22c55e',
+            'ok': '#64748b'
+        };
+        const PIN_RANK = { 'Critico': 3, 'Crítico': 3, 'Urgente': 2, 'Neutro': 1, 'Positivo': 0, 'ok': -1 };
+
+        function pinTone(worst) {
+            return PIN_TONES[worst] || PIN_TONES['ok'];
+        }
+
+        // No mapa cabe so a primeira parte do nome do setor.
+        function shortSectorName(name) {
+            return String(name || '').split('•')[0].trim();
+        }
+
+        async function loadMapa() {
+            let sectors = [];
+            try {
+                const res = await fetch('/api/sectors');
+                const data = await res.json();
+                sectors = data.sectors || [];
+            } catch (err) {
+                console.error('Erro ao carregar setores:', err);
+                return;
+            }
+
+            // --- Pins sobre a planta ---
+            const frame = document.getElementById('dash-map-frame');
+            frame.querySelectorAll('.pin').forEach(p => p.remove());
+
+            sectors
+                .filter(s => s.coord && s.coord.x != null && s.coord.y != null)
+                .forEach(s => {
+                    const color = pinTone(s.worst);
+                    const hot = ['Critico', 'Crítico', 'Urgente'].includes(s.worst);
+                    const isCritical = ['Critico', 'Crítico'].includes(s.worst);
+
+                    const pin = document.createElement('div');
+                    pin.className = 'pin' + (hot ? ' is-hot' : '') + (isCritical ? ' is-critical' : '');
+                    pin.style.left = s.coord.x + '%';
+                    pin.style.top = s.coord.y + '%';
+                    pin.style.setProperty('--pin', color);
+                    pin.title = s.name + ': ' + s.open + ' em aberto';
+                    pin.innerHTML =
+                        (s.open > 0 ? '<div class="pin-ring"></div>' : '') +
+                        '<div class="pin-core"></div>' +
+                        '<div class="pin-tip">' + escHtml(shortSectorName(s.name)) + '</div>' +
+                        (s.open > 0 ? '<div class="pin-num" style="color:' + color + '">' + s.open + '</div>' : '');
+                    frame.appendChild(pin);
+                });
+
+            // --- Setores em alerta ---
+            const alertBox = document.getElementById('map-alerts');
+            const hotSectors = sectors
+                .filter(s => s.open > 0)
+                .sort((a, b) => (PIN_RANK[b.worst] || 0) - (PIN_RANK[a.worst] || 0) || b.open - a.open)
+                .slice(0, 6);
+
+            alertBox.innerHTML = hotSectors.length
+                ? hotSectors.map(s => {
+                    const color = pinTone(s.worst);
+                    return '<div class="zone-row">' +
+                        '<span class="zone-name"><span class="priority-dot" style="background:' + color + '"></span>' +
+                        escHtml(s.name) + '</span>' +
+                        '<span class="zone-pill" style="background:' + color + '20; color:' + color +
+                        '; border:1px solid ' + color + '">' + s.open + '</span>' +
+                        '</div>';
+                }).join('')
+                : '<p style="color:#22c55e; font-size:0.82rem"><i class="ri-shield-check-line"></i> Nenhum setor em alerta.</p>';
+
+            // --- Macrozonas ---
+            const zones = {};
+            sectors.forEach(s => {
+                const zone = s.zone || 'Sem zona';
+                if (!zones[zone]) zones[zone] = { total: 0, open: 0, worst: 'ok' };
+                zones[zone].total += s.total;
+                zones[zone].open += s.open;
+                if ((PIN_RANK[s.worst] || -1) > (PIN_RANK[zones[zone].worst] || -1)) {
+                    zones[zone].worst = s.worst;
+                }
+            });
+
+            const zoneBox = document.getElementById('map-zones');
+            const zoneNames = Object.keys(zones).sort();
+            zoneBox.innerHTML = zoneNames.length
+                ? zoneNames.map(name => {
+                    const z = zones[name];
+                    const color = pinTone(z.worst);
+                    return '<div class="zone-row">' +
+                        '<span class="zone-name">' + escHtml(name) + '</span>' +
+                        '<span style="color:var(--text-muted); font-size:0.75rem">' + z.total + ' msg</span>' +
+                        '<span class="zone-pill" style="background:' + color + '20; color:' + color +
+                        '; border:1px solid ' + color + '">' + z.open + '</span>' +
+                        '</div>';
+                }).join('')
+                : '<p style="color:var(--text-muted); font-size:0.82rem">Sem setores cadastrados.</p>';
+
+            // --- Cobertura ---
+            const active = sectors.filter(s => s.total > 0).length;
+            document.getElementById('map-coverage').innerText = active + '/' + sectors.length;
+            document.getElementById('map-coverage-sub').innerText =
+                sectors.length ? 'de ' + sectors.length + ' setores com movimento' : 'setores cadastrados';
         }
 
         // Charts
@@ -1629,8 +2070,8 @@
             if (currentChartTimeline) currentChartTimeline.destroy();
             const ctxTimeline = document.getElementById('timelineChart').getContext('2d');
             const gradient = ctxTimeline.createLinearGradient(0, 0, 0, 200);
-            gradient.addColorStop(0, 'rgba(41, 121, 255, 0.6)');
-            gradient.addColorStop(1, 'rgba(41, 121, 255, 0.05)');
+            gradient.addColorStop(0, 'rgba(255, 107, 44, 0.55)');
+            gradient.addColorStop(1, 'rgba(255, 107, 44, 0.04)');
 
             currentChartTimeline = new Chart(ctxTimeline, {
                 type: 'line',
@@ -1639,11 +2080,11 @@
                     datasets: [{
                         label: 'Feedbacks',
                         data: timelineData,
-                        borderColor: '#2979ff',
+                        borderColor: '#ff6b2c',
                         backgroundColor: gradient,
                         fill: true,
                         tension: 0.4,
-                        pointBackgroundColor: '#2979ff',
+                        pointBackgroundColor: '#ff6b2c',
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
                         pointRadius: 5,
@@ -1813,7 +2254,7 @@
                         <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #23252e; padding-bottom:8px;">
                             <span style="font-weight:500">
                                 <span style="background:#22c55e20; color:#22c55e; padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:8px">#${index + 1}</span>
-                                ${item.topic}
+                                ${escHtml(item.topic)}
                             </span>
                             <span style="color:#22c55e; font-weight:bold">${item.count} <small style="opacity:0.6; font-weight:normal">menções</small></span>
                         </div>
@@ -1831,7 +2272,7 @@
                         <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #23252e; padding-bottom:8px;">
                             <span style="font-weight:500">
                                 <span style="background:#ef444420; color:#ef4444; padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:8px">#${index + 1}</span>
-                                ${item.topic}
+                                ${escHtml(item.topic)}
                             </span>
                             <span style="color:#ef4444; font-weight:bold">${item.count} <small style="opacity:0.6; font-weight:normal">reclamações</small></span>
                         </div>
@@ -1856,6 +2297,18 @@
             try {
                 const res = await fetch('/api/events');
                 const feedbacks = await res.json();
+
+                // Badge da sidebar: chamados que ainda exigem ação da equipe.
+                const pendentes = feedbacks.filter(f => {
+                    const u = (f.urgency || '').toLowerCase();
+                    const aberto = (f.status || 'aberto') !== 'resolvido';
+                    return aberto && (u.includes('crit') || u.includes('crít') || u.includes('urge'));
+                }).length;
+                const badge = document.getElementById('nav-badge-open');
+                if (badge) {
+                    badge.innerText = pendentes;
+                    badge.classList.toggle('hidden', pendentes === 0);
+                }
 
                 if (feedbacks.length > 0) {
                     // Ordenar por ID (mais recente primeiro)
@@ -1900,8 +2353,8 @@
             alertDiv.innerHTML = `
                 <button class="close-btn" onclick="this.parentElement.remove()">×</button>
                 <strong>${tipo === 'critico' ? '🚨 ALERTA CRÍTICO' : '⚠️ URGENTE'}</strong>
-                <p>"${feedback.message}"</p>
-                <small>${feedback.category} - ${feedback.timestamp}</small>
+                <p>"${escHtml(feedback.message)}"</p>
+                <small>${escHtml(feedback.category)} · ${escHtml(formatarTempo(feedback.timestamp))}</small>
             `;
 
             // Ajustar posição se já houver outros alertas
@@ -1932,7 +2385,9 @@
             const feedbacksVisible = !document.getElementById('view-feedbacks').classList.contains('hidden');
             const regionsVisible = !document.getElementById('view-regions').classList.contains('hidden');
             const categoriesVisible = !document.getElementById('view-categories').classList.contains('hidden');
+            const mapaVisible = !document.getElementById('view-mapa').classList.contains('hidden');
 
+            if (mapaVisible) loadMapa();
             if (dashboardVisible) {
                 console.log('[AUTO-REFRESH] Atualizando dashboard...');
                 loadData();

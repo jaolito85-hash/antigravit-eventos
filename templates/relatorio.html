@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Node Data | Relatório do Evento</title>
+    <title>ChatBob | Relatório do Evento · Tropicadelia 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -14,9 +14,9 @@
             --bg-body: #050507;
             --bg-card: #111217;
             --bg-card-alt: #0d0e13;
-            --accent: #2979ff;
-            --accent-glow: rgba(41, 121, 255, 0.15);
-            --accent-light: #5c9aff;
+            --accent: #ff6b2c;
+            --accent-glow: rgba(255, 107, 44, 0.15);
+            --accent-light: #ff9566;
             --green: #00e676;
             --green-glow: rgba(0, 230, 118, 0.1);
             --red: #ff5252;
@@ -95,7 +95,7 @@
 
         .nav-back:hover {
             color: var(--accent);
-            border-color: rgba(41, 121, 255, 0.3);
+            border-color: rgba(255, 107, 44, 0.3);
             background: var(--accent-glow);
         }
 
@@ -143,8 +143,8 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(41, 121, 255, 0.1);
-            border: 1px solid rgba(41, 121, 255, 0.25);
+            background: rgba(255, 107, 44, 0.1);
+            border: 1px solid rgba(255, 107, 44, 0.25);
             padding: 6px 16px;
             border-radius: 30px;
             font-size: 0.75rem;
@@ -222,7 +222,7 @@
 
         .score-card:hover {
             transform: translateY(-2px);
-            border-color: rgba(41, 121, 255, 0.3);
+            border-color: rgba(255, 107, 44, 0.3);
         }
 
         .score-card .glow {
@@ -287,8 +287,8 @@
 
         /* ===== AI INSIGHT CARD ===== */
         .ai-insight {
-            background: linear-gradient(135deg, rgba(41, 121, 255, 0.08) 0%, rgba(179, 136, 255, 0.05) 100%);
-            border: 1px solid rgba(41, 121, 255, 0.2);
+            background: linear-gradient(135deg, rgba(255, 107, 44, 0.08) 0%, rgba(179, 136, 255, 0.05) 100%);
+            border: 1px solid rgba(255, 107, 44, 0.2);
             border-radius: 16px;
             padding: 32px;
             position: relative;
@@ -302,7 +302,7 @@
             right: -60px;
             width: 200px;
             height: 200px;
-            background: radial-gradient(circle, rgba(41, 121, 255, 0.08) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(255, 107, 44, 0.08) 0%, transparent 70%);
             border-radius: 50%;
         }
 
@@ -407,7 +407,7 @@
         }
 
         .feedback-item:hover {
-            border-color: rgba(41, 121, 255, 0.3);
+            border-color: rgba(255, 107, 44, 0.3);
         }
 
         .feedback-icon {
@@ -485,14 +485,14 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 8px 32px rgba(41, 121, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(255, 107, 44, 0.3);
             z-index: 100;
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .print-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(41, 121, 255, 0.4);
+            box-shadow: 0 12px 40px rgba(255, 107, 44, 0.4);
         }
 
         @media print {
@@ -535,7 +535,7 @@
             height: 36px;
             border-radius: 50%;
             background: var(--accent-glow);
-            border: 1px solid rgba(41, 121, 255, 0.3);
+            border: 1px solid rgba(255, 107, 44, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -623,6 +623,140 @@
             border-radius: 8px;
             transition: width 1.5s ease;
         }
+
+        .brand-emoji {
+            display: inline-grid;
+            place-items: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .brand-grad {
+            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* ===== MACROZONAS E SETORES DA PLANTA ===== */
+        .zone-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+        }
+
+        .zone-tile {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--tone);
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .zone-tile-name {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .zone-tile-value {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: var(--tone);
+            line-height: 1;
+        }
+
+        .zone-tile-sub {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        .sector-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.86rem;
+        }
+
+        .sector-table th {
+            text-align: left;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-dim);
+            padding: 0 12px 12px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .sector-table th.num,
+        .sector-table td.num {
+            text-align: right;
+        }
+
+        .sector-table td {
+            padding: 13px 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        .sector-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .sector-name {
+            font-weight: 600;
+        }
+
+        .sector-zone {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            margin-top: 3px;
+        }
+
+        .sector-pill {
+            display: inline-block;
+            min-width: 46px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.78rem;
+            padding: 3px 9px;
+            border-radius: 20px;
+        }
+
+        .approval-track {
+            width: 82px;
+            height: 6px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.07);
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 9px;
+        }
+
+        .approval-track span {
+            display: block;
+            height: 100%;
+            border-radius: 6px;
+        }
+
+        @media (max-width: 700px) {
+
+            .sector-table th.hide-sm,
+            .sector-table td.hide-sm {
+                display: none;
+            }
+        }
     </style>
 </head>
 
@@ -631,8 +765,8 @@
     <!-- TOP NAV -->
     <nav class="top-nav">
         <a href="/" class="nav-brand">
-            <img src="/static/logo.png" alt="Node Data">
-            <span>Node Data</span>
+            <span class="brand-emoji">🌴</span>
+            <span>Chat<span class="brand-grad">Bob</span></span>
         </a>
         <a href="/" class="nav-back">
             <i class="ri-arrow-left-line"></i>
@@ -647,9 +781,9 @@
                 <i class="ri-bar-chart-box-line"></i>
                 Relatório Pós-Evento
             </div>
-            <h1 class="hero-title">Análise Completa<br>do <span>Seu Evento</span></h1>
-            <p class="hero-subtitle">Dados coletados em tempo real via WhatsApp. Classificados por inteligência
-                artificial. Apresentados pra você tomar decisões melhores.</p>
+            <h1 class="hero-title">Análise Completa<br>da <span>Tropicadelia 2026</span></h1>
+            <p class="hero-subtitle">A voz do público coletada em tempo real pelo WhatsApp, classificada por
+                inteligência artificial e organizada por setor da planta do Parque Ney Braga.</p>
             <div class="hero-meta">
                 <div class="hero-meta-item">
                     <i class="ri-calendar-line"></i>
@@ -711,7 +845,7 @@
             <div class="ai-insight">
                 <div class="ai-insight-label">
                     <i class="ri-robot-line"></i>
-                    Gerado por IA · GPT-4o-mini
+                    Gerado por Inteligência Artificial
                 </div>
                 <div class="ai-insight-text" id="aiInsight">Analisando dados do evento...</div>
             </div>
@@ -783,6 +917,41 @@
             </div>
         </div>
 
+        <!-- MACROZONAS DA PLANTA -->
+        <div class="section">
+            <div class="section-header">
+                <i class="ri-compass-3-line"></i>
+                <h2 class="section-title">Macrozonas da Planta</h2>
+            </div>
+            <div class="zone-grid" id="zonesBreakdown">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- DESEMPENHO POR SETOR -->
+        <div class="section">
+            <div class="section-header">
+                <i class="ri-router-line"></i>
+                <h2 class="section-title">Desempenho por Setor</h2>
+            </div>
+            <div class="chart-card">
+                <table class="sector-table">
+                    <thead>
+                        <tr>
+                            <th>Setor</th>
+                            <th class="num">Mensagens</th>
+                            <th class="num hide-sm">Elogios</th>
+                            <th class="num hide-sm">Alertas</th>
+                            <th class="num">Aprovação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sectorsBreakdown">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- TOP POSITIVE FEEDBACKS -->
         <div class="section">
             <div class="section-header">
@@ -820,8 +989,8 @@
 
     <!-- FOOTER -->
     <footer class="report-footer">
-        <p>Relatório gerado automaticamente por <span class="brand">Node Data</span> · Powered by AI</p>
-        <p style="margin-top: 6px;">© 2026 Node Data · Monitoramento inteligente de eventos</p>
+        <p>Relatório gerado automaticamente pelo <span class="brand">ChatBob</span> · Análise por Inteligência Artificial</p>
+        <p style="margin-top: 6px;">© 2026 ChatBob · Escuta ativa e inteligência operacional para festivais</p>
     </footer>
 
     <!-- PRINT BUTTON -->
@@ -840,6 +1009,21 @@
             } catch (e) {
                 console.error('Error loading report:', e);
             }
+        }
+
+        // O texto vem do publico pelo WhatsApp: escapar antes de qualquer innerHTML.
+        function escHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Evita o classico "1 alertas" nos cartoes de zona.
+        function plural(n, singular, pluralForm) {
+            return n + ' ' + (n === 1 ? singular : pluralForm);
         }
 
         function renderReport(data) {
@@ -874,8 +1058,8 @@
             let gaugeColor, gaugeText;
             if (satPct >= 70) { gaugeColor = 'var(--green)'; gaugeText = '🟢 Excelente'; }
             else if (satPct >= 50) { gaugeColor = 'var(--orange)'; gaugeText = '🟡 Bom, com pontos de atenção'; }
-            else if (satPct >= 30) { gaugeColor = 'var(--orange)'; gaugeText = '🟠 Regular — precisa melhorar'; }
-            else { gaugeColor = 'var(--red)'; gaugeText = '🔴 Crítico — ação necessária'; }
+            else if (satPct >= 30) { gaugeColor = 'var(--orange)'; gaugeText = '🟠 Regular, precisa melhorar'; }
+            else { gaugeColor = 'var(--red)'; gaugeText = '🔴 Crítico, ação necessária'; }
 
             gaugeEl.style.color = gaugeColor;
             gaugeLabelEl.textContent = gaugeText;
@@ -890,7 +1074,7 @@
             // SENTIMENT CHART
             const sentLabels = ['Positivo', 'Neutro', 'Urgente', 'Crítico'];
             const sentValues = [sentiment.Positivo || 0, sentiment.Neutro || 0, sentiment.Urgente || 0, sentiment.Critico || 0];
-            const sentColors = ['#00e676', '#5c9aff', '#ffab40', '#ff5252'];
+            const sentColors = ['#00e676', '#ff9566', '#ffab40', '#ff5252'];
 
             new Chart(document.getElementById('sentimentChart'), {
                 type: 'doughnut',
@@ -920,7 +1104,7 @@
             // CATEGORY CHART
             const catLabels = Object.keys(categories);
             const catValues = Object.values(categories);
-            const catColors = ['#2979ff', '#b388ff', '#00e676', '#ffab40', '#ff5252', '#5c9aff', '#ff80ab'];
+            const catColors = ['#ff6b2c', '#b388ff', '#00e676', '#ffab40', '#ff5252', '#ff9566', '#ff80ab'];
 
             new Chart(document.getElementById('categoryChart'), {
                 type: 'bar',
@@ -956,13 +1140,13 @@
                     labels: timeLabels,
                     datasets: [{
                         data: timeValues,
-                        borderColor: '#2979ff',
-                        backgroundColor: 'rgba(41, 121, 255, 0.1)',
+                        borderColor: '#ff6b2c',
+                        backgroundColor: 'rgba(255, 107, 44, 0.1)',
                         fill: true,
                         borderWidth: 2.5,
                         tension: 0.4,
                         pointRadius: 4,
-                        pointBackgroundColor: '#2979ff',
+                        pointBackgroundColor: '#ff6b2c',
                         pointBorderWidth: 0
                     }]
                 },
@@ -992,7 +1176,7 @@
             const regLabels = Object.keys(regions);
             const regValues = Object.values(regions);
             const regBreakdown = document.getElementById('regionsBreakdown');
-            const regColors = ['#2979ff', '#00e676', '#ffab40', '#b388ff', '#ff5252', '#5c9aff', '#ff80ab', '#00bcd4', '#ffd740'];
+            const regColors = ['#ff6b2c', '#00e676', '#ffab40', '#b388ff', '#ff5252', '#ff9566', '#ff80ab', '#00bcd4', '#ffd740'];
             regBreakdown.innerHTML = '<div style="padding: 8px 0;">' + regLabels.map((reg, i) => {
                 const pct = stats.total > 0 ? Math.round(regValues[i] / stats.total * 100) : 0;
                 return `<div class="stat-row">
@@ -1002,15 +1186,56 @@
                 </div>`;
             }).join('') + '</div>';
 
+            // MACROZONAS DA PLANTA
+            const zonesBox = document.getElementById('zonesBreakdown');
+            const zoneList = data.zones || [];
+            zonesBox.innerHTML = zoneList.length
+                ? zoneList.map(z => {
+                    const tone = z.approval >= 60 ? 'var(--green)'
+                        : z.approval >= 30 ? 'var(--orange)' : 'var(--red)';
+                    return `<div class="zone-tile" style="--tone:${tone}">
+                        <div class="zone-tile-name">${escHtml(z.name)}</div>
+                        <div class="zone-tile-value">${z.approval}%</div>
+                        <div class="zone-tile-sub">${plural(z.total, 'mensagem', 'mensagens')} em ${plural(z.sectors, 'setor', 'setores')}<br>${plural(z.positive, 'elogio', 'elogios')} · ${plural(z.negative, 'alerta', 'alertas')}</div>
+                    </div>`;
+                }).join('')
+                : '<p style="color: var(--text-dim); padding: 20px;">Nenhum setor recebeu mensagens neste evento.</p>';
+
+            // DESEMPENHO POR SETOR
+            const sectorsBox = document.getElementById('sectorsBreakdown');
+            const sectorList = data.sectors || [];
+            sectorsBox.innerHTML = sectorList.length
+                ? sectorList.map(sec => {
+                    const tone = sec.approval >= 60 ? 'var(--green)'
+                        : sec.approval >= 30 ? 'var(--orange)' : 'var(--red)';
+                    const alertTone = sec.critical > 0 ? 'var(--red)'
+                        : sec.negative > 0 ? 'var(--orange)' : 'var(--text-dim)';
+                    const zoneLabel = sec.zone || 'não definida';
+                    return `<tr>
+                        <td>
+                            <div class="sector-name">${escHtml(sec.name)}</div>
+                            <div class="sector-zone">Zona ${escHtml(zoneLabel)}</div>
+                        </td>
+                        <td class="num" style="font-weight:700">${sec.total}</td>
+                        <td class="num hide-sm" style="color: var(--green)">${sec.positive}</td>
+                        <td class="num hide-sm"><span class="sector-pill" style="background:${alertTone}1f; color:${alertTone}">${sec.negative}</span></td>
+                        <td class="num" style="white-space:nowrap">
+                            <span class="approval-track"><span style="width:${sec.approval}%; background:${tone}"></span></span>
+                            <strong style="color:${tone}">${sec.approval}%</strong>
+                        </td>
+                    </tr>`;
+                }).join('')
+                : '<tr><td colspan="5" style="color: var(--text-dim); padding: 20px;">Nenhum setor recebeu mensagens ainda. Os QR Codes precisam estar em campo para esta seção ter dados.</td></tr>';
+
             // TOP POSITIVE
             const posList = document.getElementById('positiveFeedbacks');
             posList.innerHTML = topPositive.map(fb => `
                 <div class="feedback-item">
                     <div class="feedback-icon" style="background: var(--green-glow); color: var(--green);"><i class="ri-heart-fill"></i></div>
                     <div class="feedback-content">
-                        <div class="feedback-text">"${fb.message}"</div>
+                        <div class="feedback-text">"${escHtml(fb.message)}"</div>
                         <div class="feedback-meta">
-                            <span class="feedback-tag" style="background: var(--green-glow); color: var(--green);">${fb.category}</span>
+                            <span class="feedback-tag" style="background: var(--green-glow); color: var(--green);">${escHtml(fb.category)}</span>
                             <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${fb.name || 'Anônimo'}</span>
                         </div>
                     </div>
@@ -1028,15 +1253,15 @@
                 <div class="feedback-item">
                     <div class="feedback-icon" style="background: ${glow}; color: ${color};"><i class="${icon}"></i></div>
                     <div class="feedback-content">
-                        <div class="feedback-text">"${fb.message}"</div>
+                        <div class="feedback-text">"${escHtml(fb.message)}"</div>
                         <div class="feedback-meta">
-                            <span class="feedback-tag" style="background: ${glow}; color: ${color};">${fb.urgency}</span>
-                            <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${fb.category}</span>
+                            <span class="feedback-tag" style="background: ${glow}; color: ${color};">${escHtml(fb.urgency)}</span>
+                            <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${escHtml(fb.category)}</span>
                             <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${fb.region || 'N/A'}</span>
                         </div>
                     </div>
                 </div>`;
-            }).join('') || '<p style="color: var(--text-dim); padding: 20px;">Nenhum alerta registrado — excelente! 🎉</p>';
+            }).join('') || '<p style="color: var(--text-dim); padding: 20px;">Nenhum alerta registrado. Excelente! 🎉</p>';
 
             // TOP PARTICIPANTS
             const partList = document.getElementById('topParticipants');

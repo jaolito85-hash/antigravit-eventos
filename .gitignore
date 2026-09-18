@@ -10,3 +10,6 @@ credentials.json
 token.json
 __pycache__/
 *.pyc
+
+# Config local do Claude Code (caminhos da maquina, nao do deploy)
+.claude/

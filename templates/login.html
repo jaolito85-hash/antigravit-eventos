@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | Node Data</title>
+    <title>Entrar | ChatBob · Tropicadelia 2026</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <style>
@@ -12,7 +12,7 @@
             --bg-body: #0a0a0f;
             --bg-card: #13131f;
             --border: #1e1e2e;
-            --accent: #00d4aa;
+            --accent: #ff6b2c;
             --text-main: #ffffff;
             --text-muted: #8b949e;
             --error: #ff5252;
@@ -140,6 +140,24 @@
             justify-content: center;
             gap: 8px;
         }
+
+        .logo-emoji {
+            display: inline-grid;
+            place-items: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
+            box-shadow: 0 0 22px rgba(255, 107, 44, 0.4);
+            font-size: 1.25rem;
+        }
+
+        .logo-accent {
+            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
     </style>
 </head>
 
@@ -148,10 +166,10 @@
         <div class="login-card">
             <div class="logo-area">
                 <div class="logo-title">
-                    <i class="ri-radar-fill"></i>
-                    Node Data
+                    <span class="logo-emoji">🌴</span>
+                    <span>Chat<span class="logo-accent">Bob</span></span>
                 </div>
-                <div class="logo-subtitle">Event Monitor System</div>
+                <div class="logo-subtitle">Sala de Controle · Tropicadelia 2026</div>
             </div>
 
             {% if error %}

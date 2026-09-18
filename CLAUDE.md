@@ -1,75 +1,91 @@
-# Node Data — Eventos — Instruções para o Claude Code
+# ChatBob | Tropicadelia 2026 — Instruções para o Claude Code
 
 ## Sobre o Projeto
 
-Node Data Eventos é a plataforma central de coleta de feedback via WhatsApp, com análise de sentimento por IA, transcrição de áudio e dashboard em tempo real para eventos e monitoramento geral.
+ChatBob é a plataforma de escuta ativa e inteligência operacional em tempo real para
+festivais. O frequentador escaneia o QR Code do setor onde está, manda texto ou áudio
+pelo WhatsApp oficial, e a sala de controle vê o relato classificado por IA aparecer
+no mapa da planta em segundos.
 
-Stack: Flask (Python), Supabase, Evolution API, OpenAI, Coolify/Docker.
+Stack: Flask (Python 3.11), Supabase (PostgreSQL com RLS), Meta WhatsApp Cloud API,
+OpenAI (GPT-4o-mini e Whisper), Coolify/Docker.
 
-**Porta:** 5001 | **Domínio:** app.nodedata.com.br
+**Porta:** 5001 | **Domínio:** app.nodedata.com.br | **Evento ativo:** `tropicadelia-2026`
 
 ## Estrutura do Repositório
 
 ```
-server.py          — App Flask principal (1500+ linhas)
-Dockerfile         — Container (Gunicorn, 2 workers, 4 threads, timeout 120s)
-requirements.txt   — Dependências Python
-.env.example       — Template de variáveis de ambiente
-templates/         — relatorio.html, login.html, qrcode.html, data_node.html
-static/            — Logo, ícones, manifest PWA
-execution/         — Scripts SQL e Python determinísticos
-directives/        — event_monitor.md (SOP principal)
+server.py          — App Flask: webhook da Meta, APIs do dashboard, telas
+worker.py          — Processa a fila: transcreve, classifica e envia respostas
+event_store.py     — Persistência no Supabase (inbox, feedbacks, outbox, setores)
+meta_whatsapp.py   — Integração com a Graph API (assinatura, parse, envio, mídia)
+templates/         — telao.html, data_node.html, relatorio.html, qrcode.html, login.html
+static/            — Logo, ícones, planta aérea 3D, manifest PWA
+supabase/migrations/ — Schema, RLS e os 26 setores da planta
+execution/         — Scripts determinísticos de operação
+scripts/           — Verificação de banco e geração de documentos
+directives/        — event_monitor.md (SOP principal, leia antes de mexer no fluxo)
+docs/ENSAIO_SABADO.md — Roteiro de ensaio e diagnóstico de problemas
 AGENTE.md          — Arquitetura de 3 camadas
 PRODUCTION_CHECKLIST.md — Regras de qualidade e segurança
 ```
 
-## Variáveis de Ambiente Necessárias
+## Variáveis de Ambiente
 
-```
-SUPABASE_URL=
-SUPABASE_KEY=
-EVOLUTION_API_URL=
-EVOLUTION_API_KEY=
-EVOLUTION_INSTANCE_NAME=
-OPENAI_API_KEY=
-SECRET_KEY=
-ADMIN_USER=
-ADMIN_PASS=
-PORT=5001
-FLASK_ENV=production
-```
+O template completo está em `.env.example`. As marcadas com `(*)` são exigidas pelo
+`/health`: sem todas elas o endpoint devolve 503 e o Coolify trata o container como
+doente.
+
+As três que fazem o bot existir:
+
+- `META_APP_SECRET` — sem ela, toda mensagem recebida cai com 401 na validação da assinatura
+- `META_ACCESS_TOKEN` — sem ela, o worker morre no start e não envia resposta nenhuma
+- `META_PHONE_NUMBER_ID` — sem ela, o webhook descarta as mensagens recebidas
 
 ## Arquitetura de Trabalho
 
-Siga a arquitetura de 3 camadas descrita no `AGENTE.md`:
+Siga as 3 camadas do `AGENTE.md`:
+
 1. **Directive** (o que fazer) → `directives/event_monitor.md`
 2. **Orchestration** (decisões) → você, o agente
-3. **Execution** (fazer o trabalho) → scripts em `execution/`
+3. **Execution** (fazer o trabalho) → scripts em `execution/` e `scripts/`
 
 ## Funcionalidades Principais
 
-- Coleta de feedback via WhatsApp (Evolution API webhook em `/webhook`)
+- Recebimento via webhook oficial da Meta com validação HMAC-SHA256
+- Fila idempotente no Supabase: o webhook só persiste, o worker processa
 - Transcrição de áudio via OpenAI Whisper
-- Classificação de sentimento e categoria por IA
-- Dashboard em tempo real com filtros e exportação CSV/JSON
-- Geração de relatórios e insights por IA (`/api/ai-pulse`)
+- Classificação de urgência, categoria e região por IA com fallback por palavras-chave
+- Roteamento determinístico por setor através da tag `#SETOR:CODIGO` do QR Code
+- Telão da sala de controle (`/telao`) com a planta aérea 3D e alerta crítico em tela cheia
+- Mapa ao Vivo, dashboard com filtros, exportação CSV/JSON
+- Relatório pós-evento com resumo executivo e desempenho por setor
 - Autenticação por sessão (ADMIN_USER / ADMIN_PASS)
-- Fallback para JSON local se Supabase indisponível
 
 ## Regras que Valem Sempre
 
 ### Segurança
-- Nunca coloque chaves, tokens ou senhas no código — sempre em `.env`
-- Sempre valide a origem dos webhooks recebidos
-- Dados de cidadãos são protegidos por LGPD — nunca exponha em logs
+- Nunca coloque chaves, tokens ou senhas no código, sempre em `.env`
+- Sempre valide a assinatura dos webhooks recebidos (`verify_webhook_signature`)
+- Dados de frequentadores são protegidos por LGPD: telefone passa por HMAC-SHA256
+  antes de gravar, e as APIs do dashboard passam por `public_feedback()`
+- Texto vindo do público é escapado antes de qualquer `innerHTML` nos templates
 
 ### Código
-- Sempre use try/except em chamadas externas (Supabase, Evolution API, OpenAI)
+- Sempre use try/except em chamadas externas (Supabase, Graph API, OpenAI)
 - Sempre configure timeout nas requisições HTTP (mínimo 10s)
-- Retorne 200 rápido nos webhooks e processe pesado em background
-- Sempre mascare dados pessoais nos logs (telefone, CPF)
+- Retorne rápido no webhook e deixe o trabalho pesado para o worker
+- Toda chamada de IA precisa de fallback determinístico
+- Sempre mascare dados pessoais nos logs
 
 ### Estilo
 - Python com type hints quando possível
 - Docstrings em português
 - Comentários explicando o "porquê", não o "o quê"
+- Nunca use travessão em texto, copy ou comentário
+
+## Testes
+
+```bash
+python -m unittest discover -s tests
+```

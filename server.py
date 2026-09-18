@@ -1,7 +1,5 @@
 import os
-import requests
 import json
-import hashlib
 import hmac
 import csv
 import logging
@@ -9,11 +7,10 @@ import re
 import secrets
 from io import StringIO
 from functools import wraps
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from flask import Flask, request, jsonify, render_template, session, redirect
 from dotenv import load_dotenv
 from datetime import datetime
 from collections import Counter, defaultdict
-from time import time as time_now
 from event_store import EventStore
 from meta_whatsapp import parse_webhook, verify_webhook_signature
 
@@ -47,13 +44,13 @@ REQUIRED_PRODUCTION_ENV = (
 )
 
 # Config
-EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL")
-EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
-EVOLUTION_INSTANCE_NAME = os.getenv("EVOLUTION_INSTANCE_NAME")
 META_APP_SECRET = os.getenv("META_APP_SECRET", "")
 META_VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN", "")
 META_PHONE_NUMBER_ID = os.getenv("META_PHONE_NUMBER_ID", "")
-ENABLE_EVOLUTION_WEBHOOK = os.getenv("ENABLE_EVOLUTION_WEBHOOK", "false").lower() == "true"
+
+# Modelo de texto da OpenAI. Fica em variavel porque a disponibilidade muda
+# por projeto: em 18/09/2026 esta chave perdeu acesso ao gpt-4o-mini.
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
 
 # Supabase Config
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -92,47 +89,7 @@ def _reconnect_supabase():
     supabase = None
     return get_supabase()
 
-# Fallback to local JSON if Supabase not configured
-EVENTS_FILE = 'execution/events.json'
-CONFIG_FILE = 'execution/config.json'
-
-# --- MEDIA & TRANSCRIPTION ---
-
-def download_evolution_media(remote_jid, message_id):
-    """Downloads media from Evolution API and returns binary content."""
-    if not EVOLUTION_API_URL or not EVOLUTION_API_KEY or not EVOLUTION_INSTANCE_NAME:
-        print(f"❌ [DOWNLOAD] Evolution API not configured: URL={EVOLUTION_API_URL}, KEY={'SET' if EVOLUTION_API_KEY else 'MISSING'}, INSTANCE={EVOLUTION_INSTANCE_NAME}")
-        return None
-    
-    url = f"{EVOLUTION_API_URL}/chat/getBase64FromMediaMessage/{EVOLUTION_INSTANCE_NAME}"
-    headers = {"apikey": EVOLUTION_API_KEY, "Content-Type": "application/json"}
-    payload = {"message": {"key": {"id": message_id, "remoteJid": remote_jid, "fromMe": False}}, "convertToMp4": True}
-    
-    logger.info("Solicitando mídia à Evolution")
-    
-    try:
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
-        logger.info("Resposta de mídia Evolution | status=%d", response.status_code)
-        
-        if response.status_code in [200, 201]:
-            import base64
-            data = response.json()
-            if "base64" in data:
-                b64_content = data["base64"]
-                # Handle data URI prefix (e.g., "data:audio/ogg;base64,...")
-                if "," in b64_content and b64_content.startswith("data:"):
-                    b64_content = b64_content.split(",", 1)[1]
-                decoded = base64.b64decode(b64_content)
-                print(f"✅ [DOWNLOAD] Decoded {len(decoded)} bytes of audio")
-                return decoded
-            else:
-                print(f"❌ [DOWNLOAD] Response 200 but no 'base64' key. Keys: {list(data.keys())}")
-        else:
-            print(f"❌ [DOWNLOAD] Non-200 response: {response.status_code}")
-        return None
-    except Exception as e:
-        print(f"❌ [DOWNLOAD] Exception: {e}")
-        return None
+# --- TRANSCRIÇÃO DE ÁUDIO ---
 
 def transcribe_audio(audio_content):
     """Transcribes audio content using OpenAI Whisper API."""
@@ -158,22 +115,7 @@ def transcribe_audio(audio_content):
         print(f"❌ Transcription error: {e}")
         return None
 
-# --- HELPER FUNCTIONS ---
-
-def load_json(filepath, default):
-    """Fallback for local JSON files"""
-    if not os.path.exists(filepath):
-        return default
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except:
-        return default
-
-def save_json(filepath, data):
-    """Fallback for local JSON files"""
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+# --- ACESSO A DADOS DO DASHBOARD ---
 
 def get_feedbacks():
     """Retorna somente feedbacks do evento configurado."""
@@ -208,28 +150,6 @@ def get_feedbacks():
                     logger.error("Retry de feedbacks falhou: %s", type(e2).__name__)
     return []
 
-def save_feedback(feedback_data):
-    """Salva feedback no evento atual usando a sequence do PostgreSQL."""
-    sb = get_supabase()
-    if sb:
-        try:
-            payload = dict(feedback_data)
-            payload.pop("id", None)
-            payload.setdefault("event_id", EVENT_STORE.event_id())
-            payload.setdefault("source", "evolution")
-            sb.table('feedbacks').insert(payload).execute()
-            return True
-        except Exception as e:
-            logger.error("Falha ao inserir feedback: %s", type(e).__name__)
-            # Try reconnecting once
-            sb = _reconnect_supabase()
-            if sb:
-                try:
-                    sb.table('feedbacks').insert(payload).execute()
-                    return True
-                except Exception as e2:
-                    logger.error("Retry de inserção falhou: %s", type(e2).__name__)
-    return False
 
 def update_feedback(feedback_id, updates):
     """Atualiza feedback somente dentro do evento configurado."""
@@ -261,55 +181,9 @@ def update_feedback(feedback_id, updates):
                     logger.error("Retry de atualização falhou: %s", type(e2).__name__)
     return False
 
-def get_active_feedback(remote_jid):
-    """Verifica se existe um chamado Aberto ou Em Andamento para este número"""
-    sb = get_supabase()
-    if sb:
-        try:
-            response = sb.table('feedbacks')\
-                .select("*")\
-                .eq('event_id', EVENT_STORE.event_id())\
-                .eq('sender', remote_jid)\
-                .in_('status', ['aberto', 'em_andamento'])\
-                .order('id', desc=True)\
-                .limit(1)\
-                .execute()
-            if response.data and len(response.data) > 0:
-                return response.data[0]
-            return None
-        except Exception as e:
-            print(f"Erro ao buscar feedback ativo: {e}")
-            sb = _reconnect_supabase()
-            if sb:
-                try:
-                    response = sb.table('feedbacks')\
-                        .select("*")\
-                        .eq('event_id', EVENT_STORE.event_id())\
-                        .eq('sender', remote_jid)\
-                        .in_('status', ['aberto', 'em_andamento'])\
-                        .order('id', desc=True)\
-                        .limit(1)\
-                        .execute()
-                    if response.data and len(response.data) > 0:
-                        return response.data[0]
-                except Exception as e2:
-                    print(f"Supabase retry get_active_feedback failed: {e2}")
-            return None
-    return None
-
-def append_to_feedback(feedback_id, old_message, new_content, new_urgency=None):
-    """Adiciona mensagem ao feedback existente e opcionalmente faz upgrade de urgência"""
-    now = datetime.utcnow()
-    time_str = now.strftime("%H:%M")
-    updated_message = f"{old_message}\n\n[Atualização {time_str}]: {new_content}"
-    data = {'message': updated_message, 'updated_at': now.isoformat()}
-    if new_urgency:
-        data['urgency'] = new_urgency
-        data['sentiment'] = 'Negativo' if new_urgency in ['Critico', 'Urgente'] else 'Positivo' if new_urgency == 'Positivo' else 'Neutro'
-    return update_feedback(feedback_id, data)
 
 def get_config():
-    """Get config from Supabase or local JSON"""
+    """Retorna categorias e regiões configuradas para o evento atual."""
     sb = get_supabase()
     if sb:
         try:
@@ -337,20 +211,6 @@ def get_config():
             return {"categories": [], "regions": []}
     return {"categories": [], "regions": []}
 
-def get_next_id():
-    """Get next ID for new feedback"""
-    sb = get_supabase()
-    if sb:
-        try:
-            response = sb.table('feedbacks').select('id').order('id', desc=True).limit(1).execute()
-            if response.data:
-                return response.data[0]['id'] + 1
-            return 1
-        except:
-            return 1
-    else:
-        feedbacks = load_json(EVENTS_FILE, [])
-        return len(feedbacks) + 1
 
 # --- CLASSIFICATION FUNCTIONS (DETERMINISTIC - DO NOT CHANGE) ---
 
@@ -570,9 +430,9 @@ Exemplos:
 Responda APENAS a palavra, sem pontuação.'''
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=5,
+            max_completion_tokens=5,
             temperature=0
         )
         
@@ -619,9 +479,9 @@ Regras:
 - Neutro = perguntas ou informações'''
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=100,
+            max_completion_tokens=100,
             temperature=0
         )
         
@@ -637,10 +497,10 @@ Regras:
         return None
 
 # --- AI RESPONSE FUNCTION ---
-def generate_ai_response(text, category, urgency):
-    """Generates a fun response using AI — like a friend who works at the event"""
+def generate_ai_response(text, category, urgency, sector_name=None):
+    """Generates a fun response using AI, like a friend who works at the event"""
     api_key = os.getenv("OPENAI_API_KEY")
-    
+
     # Fallback if AI unavailable
     if not api_key:
         emoji_map = {"Positivo": "🎉", "Neutro": "👍", "Critico": "🚨", "Urgente": "⚠️"}
@@ -651,7 +511,7 @@ def generate_ai_response(text, category, urgency):
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
         
-        system_msg = '''You are a fun backstage crew member at a live event. You MUST detect the language of the participant's message and ALWAYS reply in THAT SAME LANGUAGE. This is your #1 rule.
+        system_msg = '''You are ChatBob, a fun backstage crew member at the Tropicadelia festival in Brazil. You MUST detect the language of the participant's message and ALWAYS reply in THAT SAME LANGUAGE. This is your #1 rule.
 
 Your personality:
 - You're a young, energetic person stuck working backstage and jealous of the people enjoying the event
@@ -685,19 +545,20 @@ Spanish input → Spanish reply:
 "El show está increíble!" → "UFFF qué envidia!! 🔥🔥 Yo aquí atrapado trabajando y ustedes disfrutando!! Mándame un video porfa!! 🎶😭"
 "El baño está inundado" → "No puede ser!! 😤 Ya estoy mandando al equipo para allá AHORA! Aguanta un momento!! 💪🔧"'''
 
+        sector_line = f'\nThe participant scanned a QR code at this festival sector: "{sector_name}". Mention the place naturally in your reply (translated to their language if needed).' if sector_name else ''
         user_msg = f'''Sentiment: {urgency}
 Category: {category}
-Participant message: "{text}"
+Participant message: "{text}"{sector_line}
 
 Generate ONE creative, unique reply (do NOT copy the examples). Reply in the SAME LANGUAGE as the participant's message:'''
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": user_msg}
             ],
-            max_tokens=120,
+            max_completion_tokens=120,
             temperature=0.9
         )
         
@@ -720,24 +581,6 @@ Generate ONE creative, unique reply (do NOT copy the examples). Reply in the SAM
         else:
             return "👍 Valeu por mandar! Já anotei aqui! Aproveita o evento!! 🎶"
 
-def send_whatsapp_message(remote_jid, message):
-    """Sends a text message using Evolution API."""
-    if not EVOLUTION_API_URL or not EVOLUTION_API_KEY or not EVOLUTION_INSTANCE_NAME:
-        print(f"❌ Evolution API not configured!")
-        return
-    
-    url = f"{EVOLUTION_API_URL}/message/sendText/{EVOLUTION_INSTANCE_NAME}"
-    headers = {
-        "apikey": EVOLUTION_API_KEY,
-        "Content-Type": "application/json"
-    }
-    payload = {"number": remote_jid, "text": message}
-    
-    try:
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        logger.info("Resposta enviada pela Evolution | status=%d", response.status_code)
-    except Exception as e:
-        logger.error("Falha ao enviar pela Evolution: %s", type(e).__name__)
 
 # --- AI EVENT PULSE ---
 def generate_ai_pulse(feedbacks):
@@ -781,9 +624,9 @@ Exemplo: "🟢 Evento estável! Show está sendo muito elogiado. Atenção: 2 re
 Seja MUITO conciso, máximo 150 caracteres.'''
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=100,
+            max_completion_tokens=100,
             temperature=0.7
         )
         
@@ -803,23 +646,7 @@ Seja MUITO conciso, máximo 150 caracteres.'''
         print(f"Erro AI Pulse: {e}")
         return {"summary": "Não foi possível gerar análise.", "status": "error"}
 
-# --- SPAM PROTECTION ---
-
-# Rate Limiter: max messages per sender in a time window
-rate_limit_store = defaultdict(list)  # {remoteJid: [timestamps]}
-RATE_LIMIT_MAX = 3        # max messages per window
-RATE_LIMIT_WINDOW = 600   # 10 minutes (in seconds)
-
-def is_rate_limited(remote_jid):
-    """Verifica se o número excedeu o limite de mensagens"""
-    now = time_now()
-    # Remove timestamps fora da janela
-    rate_limit_store[remote_jid] = [t for t in rate_limit_store[remote_jid] if now - t < RATE_LIMIT_WINDOW]
-    # Verifica limite
-    if len(rate_limit_store[remote_jid]) >= RATE_LIMIT_MAX:
-        return True
-    rate_limit_store[remote_jid].append(now)
-    return False
+# --- FILTRO DE CONTEÚDO ---
 
 def is_emoji_only(text):
     """Verifica se a mensagem contém apenas emojis (sem texto real)"""
@@ -845,32 +672,13 @@ def is_emoji_only(text):
     cleaned = emoji_pattern.sub('', text).strip()
     return len(cleaned) == 0
 
-MIN_MESSAGE_LENGTH = 3  # Mínimo de caracteres para processar
-
-# --- IN-MEMORY MESSAGE ID DEDUPLICATION ---
-# Evolution API fires the same message ID multiple times (queued/sent/delivered).
-# This prevents duplicate processing regardless of race conditions with Supabase.
-_processed_msg_ids = []
-_MAX_MSG_ID_CACHE = 500  # keep last 500 IDs to avoid unbounded memory growth
-
-def _is_already_processed(msg_id: str) -> bool:
-    """Returns True if this Evolution message ID was already processed."""
-    if not msg_id:
-        return False
-    if msg_id in _processed_msg_ids:
-        return True
-    _processed_msg_ids.append(msg_id)
-    if len(_processed_msg_ids) > _MAX_MSG_ID_CACHE:
-        _processed_msg_ids.pop(0)  # drop oldest
-    return False
-
 
 # --- AI REPORT SUMMARY ---
 def generate_report_summary(feedbacks, sentiment, categories, regions, total, participants):
     """Gera resumo executivo do evento usando IA"""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        return "Resumo indisponível — chave OpenAI não configurada."
+        return "Resumo indisponível: chave OpenAI não configurada."
     
     try:
         from openai import OpenAI
@@ -916,9 +724,9 @@ Escreva um resumo profissional de 4-5 frases que:
 Seja profissional mas acessível. Use dados concretos. Não use emojis demais (máximo 2-3).'''
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=300,
+            max_completion_tokens=300,
             temperature=0.7
         )
         
@@ -1080,6 +888,86 @@ def relatorio():
 def qrcode_page():
     return render_template("qrcode.html")
 
+@app.route("/telao")
+@login_required
+def telao():
+    """Modo telão da sala de controle: planta ao vivo em tela cheia."""
+    return render_template("telao.html")
+
+# Ordem de gravidade usada para pintar cada setor no mapa da planta.
+_URGENCY_RANK = {"Critico": 3, "Urgente": 2, "Neutro": 1, "Positivo": 0}
+
+
+def aggregate_sectors(feedbacks):
+    """Cruza os feedbacks com os setores da planta.
+
+    Usada pelo mapa ao vivo e pelo relatório pós-evento, para os dois nunca
+    divergirem na conta.
+    """
+    try:
+        sectors = EVENT_STORE.list_sectors()
+    except Exception as e:
+        logger.error("Falha ao listar setores: %s", type(e).__name__)
+        return []
+
+    # Índices por sector_id e por nome (fallback para feedbacks sem QR)
+    by_sector_id = defaultdict(list)
+    by_region_name = defaultdict(list)
+    for fb in feedbacks:
+        if fb.get("sector_id"):
+            by_sector_id[str(fb["sector_id"])].append(fb)
+        elif fb.get("region") and fb.get("region") != "N/A":
+            by_region_name[fb["region"]].append(fb)
+
+    result = []
+    for sector in sectors:
+        metadata = sector.get("metadata") or {}
+        matched = list(by_sector_id.get(str(sector.get("id")), []))
+        matched += by_region_name.get(sector.get("name"), [])
+
+        open_items = [f for f in matched if (f.get("status") or "aberto") != "resolvido"]
+        counts = Counter(f.get("urgency", "Neutro") for f in matched)
+        open_counts = Counter(f.get("urgency", "Neutro") for f in open_items)
+
+        worst = "ok"
+        if open_counts:
+            worst = max(open_counts, key=lambda u: _URGENCY_RANK.get(u, 0))
+            if _URGENCY_RANK.get(worst, 0) == 0 and len(open_counts) == 1:
+                worst = "Positivo"
+
+        last_ts = None
+        for f in matched:
+            ts = f.get("updated_at") or f.get("timestamp")
+            if ts and (last_ts is None or ts > last_ts):
+                last_ts = ts
+
+        result.append({
+            "code": sector.get("code"),
+            "name": sector.get("name"),
+            "zone": metadata.get("zone"),
+            "coord": metadata.get("coord"),
+            "team": metadata.get("team"),
+            "total": len(matched),
+            "open": len(open_items),
+            "counts": dict(counts),
+            "openCounts": dict(open_counts),
+            "worst": worst,
+            "lastAt": last_ts,
+        })
+
+    return result
+
+
+@app.route("/api/sectors")
+@login_required
+def api_sectors():
+    """Setores da planta com termômetro operacional agregado dos feedbacks."""
+    return jsonify({
+        "sectors": aggregate_sectors(get_feedbacks()),
+        "generatedAt": datetime.utcnow().isoformat(),
+    })
+
+
 @app.route("/api/relatorio")
 @login_required
 def api_relatorio():
@@ -1089,7 +977,8 @@ def api_relatorio():
     if not feedbacks:
         return jsonify({"stats": {"total": 0, "participants": 0, "dateRange": "Sem dados", "duration": "--", "perHour": 0}, 
                         "sentiment": {}, "categories": {}, "regions": {}, "timeline": {},
-                        "topPositive": [], "topNegative": [], "topParticipants": [], "aiSummary": "Sem dados para análise."})
+                        "topPositive": [], "topNegative": [], "topParticipants": [],
+                        "sectors": [], "zones": [], "aiSummary": "Sem dados para análise."})
     
     # --- STATS ---
     total = len(feedbacks)
@@ -1113,7 +1002,7 @@ def api_relatorio():
     if timestamps:
         first = min(timestamps)
         last = max(timestamps)
-        date_range = f"{first.strftime('%d/%m/%Y %H:%M')} — {last.strftime('%d/%m/%Y %H:%M')}"
+        date_range = f"{first.strftime('%d/%m/%Y %H:%M')} a {last.strftime('%d/%m/%Y %H:%M')}"
         duration_hours = max(1, int((last - first).total_seconds() / 3600))
         duration = f"{duration_hours}h de monitoramento"
         per_hour = round(total / duration_hours, 1)
@@ -1160,6 +1049,49 @@ def api_relatorio():
     
     top_participants = [{"name": sender_names.get(sender, 'Anônimo'), "count": count} for sender, count in sender_counts.most_common(6)]
     
+    # --- DESEMPENHO POR SETOR DA PLANTA ---
+    sector_rows = [s for s in aggregate_sectors(feedbacks) if s["total"] > 0]
+    sector_rows.sort(key=lambda s: (-s["total"], s["name"]))
+
+    sectors_report = []
+    for sector in sector_rows:
+        counts = sector["counts"]
+        negativos = counts.get("Critico", 0) + counts.get("Crítico", 0) + counts.get("Urgente", 0)
+        positivos = counts.get("Positivo", 0)
+        sectors_report.append({
+            "name": sector["name"],
+            "zone": sector["zone"],
+            "total": sector["total"],
+            "positive": positivos,
+            "negative": negativos,
+            "critical": counts.get("Critico", 0) + counts.get("Crítico", 0),
+            "open": sector["open"],
+            # Percentual de aprovação do setor, para ranquear o que funcionou.
+            "approval": round(positivos / sector["total"] * 100) if sector["total"] else 0,
+        })
+
+    # --- CONSOLIDADO POR MACROZONA ---
+    zone_totals = defaultdict(lambda: {"total": 0, "positive": 0, "negative": 0, "sectors": 0})
+    for sector in sectors_report:
+        zone = sector["zone"] or "Sem zona"
+        bucket = zone_totals[zone]
+        bucket["total"] += sector["total"]
+        bucket["positive"] += sector["positive"]
+        bucket["negative"] += sector["negative"]
+        bucket["sectors"] += 1
+
+    zones_report = [
+        {
+            "name": name,
+            "total": data["total"],
+            "positive": data["positive"],
+            "negative": data["negative"],
+            "sectors": data["sectors"],
+            "approval": round(data["positive"] / data["total"] * 100) if data["total"] else 0,
+        }
+        for name, data in sorted(zone_totals.items(), key=lambda kv: -kv[1]["total"])
+    ]
+
     # --- AI SUMMARY ---
     ai_summary = generate_report_summary(feedbacks, sentiment, categories, regions, total, participants)
     
@@ -1172,6 +1104,8 @@ def api_relatorio():
         "topPositive": top_positive,
         "topNegative": top_negative,
         "topParticipants": top_participants,
+        "sectors": sectors_report,
+        "zones": zones_report,
         "aiSummary": ai_summary
     })
 
@@ -1337,269 +1271,6 @@ def get_top_analytics():
         "problems": res['top_problemas']
     })
 
-@app.route("/webhook/evolution", methods=["POST"])
-def evolution_webhook():
-    """Compatibilidade temporária, desativada por padrão e protegida por segredo."""
-
-    if not ENABLE_EVOLUTION_WEBHOOK:
-        return jsonify({"status": "disabled"}), 410
-    configured_secret = os.getenv("EVOLUTION_WEBHOOK_SECRET", "")
-    provided_secret = request.headers.get("X-Webhook-Secret", "")
-    if (
-        not configured_secret
-        or not hmac.compare_digest(configured_secret, provided_secret)
-    ):
-        return jsonify({"error": "unauthorized"}), 401
-    try:
-        data = request.json
-    except Exception:
-        return jsonify({"error": "invalid_json"}), 400
-    
-    try:
-        event_type = data.get("type") or data.get("event")
-        
-        if event_type in ["message", "messages.upsert", "MESSAGES_UPSERT"]:
-            msg_data = data.get("data", {})
-            print(f"DEBUG [Eventos]: Incoming event {event_type}")
-            print(f"DEBUG [Eventos]: Payload message keys: {list(msg_data.get('message', {}).keys())}")
-
-            key = msg_data.get("key", {})
-
-            # Ignore own (sent) messages immediately
-            if key.get("fromMe"):
-                return jsonify({"status": "ignored_self"}), 200
-
-            # Ignore delivery/read receipts that have no actual message content
-            message_content = msg_data.get("message", {})
-            if not message_content:
-                return jsonify({"status": "ignored_no_content"}), 200
-
-            # In-memory dedup by Evolution message ID (handles duplicate webhook fires)
-            msg_id = key.get("id", "")
-            if _is_already_processed(msg_id):
-                print(f"[DEDUP] Duplicate message ID {msg_id} — ignored")
-                return jsonify({"status": "ignored_duplicate_id"}), 200
-
-            remote_jid = key.get("remoteJid")
-            push_name = msg_data.get("pushName", "Desconhecido")
-
-            
-            # Identify text or audio
-            text = message_content.get("conversation") or message_content.get("extendedTextMessage", {}).get("text")
-            
-            # Check if Evolution already provided a transcription
-            native_transcription = message_content.get("transcription")
-            audio_msg = message_content.get("audioMessage")
-            
-            # Audio Processing
-            if not text and audio_msg and remote_jid:
-                seconds = audio_msg.get("seconds", 0)
-                if seconds > 35:
-                    print(f"[AUDIO] Ignored too long: {seconds}s")
-                    send_whatsapp_message(remote_jid, "⚠️ O seu áudio é muito longo. Por favor, envie áudios de no máximo 35 segundos para que eu possa processar.")
-                    return jsonify({"status": "audio_too_long"}), 200
-                
-                if native_transcription:
-                    print(f"[AUDIO] Using native transcription from Evolution: {native_transcription}")
-                    text = native_transcription
-                else:
-                    print(f"[AUDIO] Manual transcription required for {seconds}s audio...")
-                    
-                    # Check if base64 is available in message_content
-                    import base64
-                    audio_data = None
-                    
-                    # Case 1: Base64 in message_content (Standard Evolution Webhook Base64)
-                    if "base64" in message_content:
-                        print(f"[AUDIO] Found base64 in message_content")
-                        try:
-                            audio_data = base64.b64decode(message_content["base64"])
-                        except Exception as e:
-                            logger.error("Base64 inválido: %s", type(e).__name__)
-
-                    # Case 2: Base64 in msg_data (Legacy/Alternative)
-                    if not audio_data and "base64" in msg_data:
-                        print(f"[AUDIO] Found base64 in msg_data")
-                        try:
-                            audio_data = base64.b64decode(msg_data["base64"])
-                        except Exception as e:
-                            print(f"❌ Error decoding base64 from msg_data: {e}")
-
-                    # Case 2: Base64 in message content (audioMessage) - rarer but possible
-                    if not audio_data and "base64" in audio_msg:
-                        print(f"[AUDIO] Found base64 in audio_msg")
-                        try:
-                            audio_data = base64.b64decode(audio_msg["base64"])
-                        except Exception as e:
-                            print(f"❌ Error decoding base64 from audio_msg: {e}")
-                    
-                    # Case 3: Download from API (Fallback)
-                    if not audio_data:
-                        print(f"[AUDIO] No base64 found, attempting download...")
-                        audio_data = download_evolution_media(remote_jid, msg_data.get("key", {}).get("id"))
-                    
-                    if audio_data:
-                        print(f"[AUDIO] Audio data ready ({len(audio_data)} bytes). Starting Whisper...")
-                        text = transcribe_audio(audio_data)
-                        if not text:
-                            print(f"❌ Whisper transcription returned None")
-                            send_whatsapp_message(remote_jid, "❌ Não consegui transcrever seu áudio no momento. Tente novamente ou digite sua mensagem.")
-                            return jsonify({"status": "transcription_failed"}), 200
-                    else:
-                        print(f"❌ Media download failed from Evolution")
-                        send_whatsapp_message(remote_jid, "❌ Erro ao baixar o áudio para transcrição. Verifique a configuração da Evolution API.")
-                        return jsonify({"status": "download_failed"}), 200
-
-            if text and remote_jid:
-                # 0. SPAM PROTECTION
-                # 0a. Minimum length check
-                if len(text.strip()) < MIN_MESSAGE_LENGTH:
-                    logger.info("Mensagem curta ignorada | tamanho=%d", len(text))
-                    return jsonify({"status": "ignored_too_short"}), 200
-                
-                # 0b. Emoji-only filter
-                if is_emoji_only(text):
-                    logger.info("Mensagem somente com emoji ignorada")
-                    return jsonify({"status": "ignored_emoji_only"}), 200
-                
-                # 0c. Rate limiting
-                if is_rate_limited(remote_jid):
-                    logger.info("Remetente limitado por excesso de mensagens")
-                    send_whatsapp_message(remote_jid, "⚠️ Você já enviou várias mensagens recentes. Aguarde alguns minutos antes de enviar outra.")
-                    return jsonify({"status": "rate_limited"}), 200
-                
-                # 1. Load Data for deduplication
-                feedbacks = get_feedbacks()
-                
-                # 2. Deduplication using Hash
-                msg_hash = hashlib.md5(f"{text}{remote_jid}".encode()).hexdigest()
-                existing_hashes = {hashlib.md5(f"{fb.get('message', '')}{fb.get('sender', '')}".encode()).hexdigest() for fb in feedbacks}
-                
-                if msg_hash in existing_hashes:
-                    logger.info("Mensagem duplicada ignorada")
-                    return jsonify({"status": "ignored_duplicate"}), 200
-
-                # --- CLASSIFY FIRST (needed for smart threading) ---
-                logger.info("Processando mensagem legada")
-                sentimento = classificar_sentimento_ia(text)  # IA first
-                if not sentimento:
-                    print(f"[FALLBACK] IA unavailable, using keywords for sentiment")
-                    sentimento = classificar_sentimento(text)  # Keywords fallback
-                
-                # Category & Region
-                categoria = classificar_categoria(text)
-                regiao = classificar_regiao(text)
-                
-                # AI enrichment for ambiguous category/region
-                if categoria == 'Experiência Geral':
-                    print(f"[HYBRID] Category ambiguous, trying AI for enrichment...")
-                    ia_result = classificar_com_ia(text)
-                    if ia_result:
-                        categoria = ia_result.get('categoria', categoria)
-                        regiao = ia_result.get('regiao', regiao) if ia_result.get('regiao') != 'N/A' else regiao
-                        print(f"[HYBRID] IA enriched: {categoria} / {regiao}")
-
-                # --- SMART THREADING LOGIC ---
-                # Se já existe um chamado aberto deste número, verifica categoria
-                active_feedback = get_active_feedback(remote_jid)
-                linked_from_id = None
-
-                if active_feedback:
-                    old_category = (active_feedback.get('category') or '').strip().lower()
-                    new_category = (categoria or '').strip().lower()
-                    same_category = old_category == new_category
-
-                    if same_category:
-                        # MESMA CATEGORIA → append ao card existente
-                        print(f"[THREADING] Same category '{categoria}' — appending to feedback {active_feedback.get('id')}")
-
-                        current_urgency = active_feedback.get('urgency', 'Neutro')
-                        priority_map = {"Critico": 3, "Urgente": 2, "Positivo": 1, "Neutro": 0}
-                        upgrade_urgency = sentimento if priority_map.get(sentimento, 0) > priority_map.get(current_urgency, 0) else None
-
-                        append_to_feedback(active_feedback['id'], active_feedback['message'], text, upgrade_urgency)
-
-                        # Resposta para a nova informação
-                        try:
-                            from openai import OpenAI
-                            client_ai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-                            thread_prompt = f'''You are a fun backstage crew member at a live event. The person already sent a message before and now sent an update.
-New message: "{text}"
-Upgraded urgency: {upgrade_urgency or 'none'}
-Detect the language and reply in the SAME LANGUAGE. Max 2 sentences, casual and fun.
-If urgency was upgraded to Critico/Urgente, be urgent but still human.
-Acknowledge you\'re adding this info to their ticket. Keep it short.'''
-                            resp = client_ai.chat.completions.create(
-                                model="gpt-4o-mini",
-                                messages=[{"role": "system", "content": thread_prompt}],
-                                max_tokens=80,
-                                temperature=0.8,
-                                timeout=15
-                            )
-                            thread_reply = resp.choices[0].message.content.strip()
-                        except Exception:
-                            thread_reply = "Anotei aqui também! Já passei pra equipe. 💪"
-
-                        send_whatsapp_message(remote_jid, thread_reply)
-                        return jsonify({"status": "updated_existing"}), 200
-                    else:
-                        # CATEGORIA DIFERENTE → criar card novo, linkado ao anterior
-                        print(f"[THREADING] Category changed '{old_category}' → '{categoria}' — creating NEW card linked to {active_feedback.get('id')}")
-                        linked_from_id = active_feedback.get('id')
-                # --- FIM SMART THREADING ---
-
-                # Simple topic extraction
-                topic = "Geral"
-                text_lower = text.lower()
-                if categoria != 'Experiência Geral':
-                    topic = f"{categoria}"
-                    if "banheiro" in text_lower: topic = "Banheiro Sujo" if sentimento == "Urgente" else "Banheiro"
-                    elif "show" in text_lower: topic = "Show"
-                    elif "fila" in text_lower: topic = "Fila"
-                    elif "comida" in text_lower: topic = "Comida"
-                else:
-                    topic = text if len(text.split()) <= 3 else text[:20] + "..."
-
-                now = datetime.utcnow()
-                new_report = {
-                    "id": get_next_id(),
-                    "sender": remote_jid,
-                    "name": push_name,
-                    "message": text,
-                    "timestamp": now.isoformat(),
-                    "updated_at": now.isoformat(),
-                    "category": categoria,
-                    "region": regiao,
-                    "urgency": sentimento,
-                    "sentiment": "Positivo" if sentimento == "Positivo" else ("Negativo" if sentimento in ["Critico", "Urgente"] else "Neutro"),
-                    "topic": topic.title(),
-                    "status": "aberto",
-                    "resolved_at": None
-                }
-                if linked_from_id:
-                    new_report["linked_from"] = linked_from_id
-                
-                # Save feedback FIRST (before AI response to avoid data loss)
-                save_feedback(new_report)
-                
-                # Reply (AI Generated) — wrapped in try/except so failure doesn't lose the saved data
-                try:
-                    reply = generate_ai_response(text, categoria, sentimento)
-                    send_whatsapp_message(remote_jid, reply)
-                except Exception as e:
-                    print(f"❌ [WEBHOOK] AI reply failed: {e}")
-                    # Send fallback reply
-                    fallback = "👍 Valeu pelo feedback! Já foi registrado aqui! 🎶"
-                    send_whatsapp_message(remote_jid, fallback)
-                
-                return jsonify({"status": "processed"}), 200
-
-        return jsonify({"status": "ignored"}), 200
-
-    except Exception as e:
-        print(f"❌❌ [WEBHOOK CRITICAL] Unhandled error: {e}")
-        logger.exception("Falha crítica no webhook legado")
-        return jsonify({"status": "error"}), 500
 
 @app.route("/api/feedback/<int:feedback_id>/status", methods=["PUT"])
 @login_required
