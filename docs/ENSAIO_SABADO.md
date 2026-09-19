@@ -1,4 +1,4 @@
-# Ensaio do ChatBob na Tropicadelia 2026
+# Ensaio do Tuca na Tropicadelia 2026
 
 Roteiro operacional para o teste com o organizador. Siga na ordem.
 
@@ -184,7 +184,7 @@ Faça este teste com o seu próprio número antes de mostrar para o organizador:
 
 | Envie | Resposta esperada | No dashboard |
 |---|---|---|
-| `oi` | Boas-vindas do ChatBob com a regra de ouro anti-golpe | Nenhum card (saudação não polui o painel) |
+| `oi` | Boas-vindas do Tuca com a regra de ouro anti-golpe | Nenhum card (saudação não polui o painel) |
 | Escanear um QR e enviar | Convite com o nome do setor | Nenhum card ainda |
 | `acabou o papel e a fila tá enorme` | Resposta com jeito de gente, citando o setor | Card Urgente, pin do setor fica laranja |
 | Um áudio de 10s reclamando | Começa com "🎤 Ouvi seu áudio!" | Card com o texto transcrito |
@@ -216,7 +216,7 @@ Atenção ao limite: o rate limit corta a partir de 4 mensagens do mesmo número
 3. **Mapa ao Vivo** no dashboard, para mostrar o ranking de setores em alerta e
    a cobertura por zona.
 4. **Chamados**, a fila de trabalho. Cada cartão traz o número, a mensagem
-   completa, as atualizações e **a resposta que o ChatBob enviou**, com o
+   completa, as atualizações e **a resposta que o Tuca enviou**, com o
    estado de entrega. É aqui que se mostra a troca inteira e a mudança de
    status, e onde se assume o atendimento pelo botão de conversar.
 5. **Relatório** (`/relatorio`), o entregável pós-evento: resumo executivo
@@ -238,7 +238,7 @@ celular:
    aparecem em laranja, as do bot em azul.
 4. Mande outra mensagem do celular e mostre que **o bot não responde mais**:
    o chamado entra no dashboard, mas quem fala é você.
-5. Clique em **Devolver ao ChatBob** e mande mais uma do celular. O automático
+5. Clique em **Devolver ao Tuca** e mande mais uma do celular. O automático
    volta a responder.
 
 Na aba **Chamados**, o filtro **Só em atendimento humano** mostra o que está
@@ -249,7 +249,7 @@ responder por cima de uma conversa que outra pessoa assumiu.
 
 ## 5.2. Deixar os sócios brincarem com o bot
 
-Abra `/chatbob` e passe o teclado para eles. É a parte que convence sem
+Abra `/tuca` e passe o teclado para eles. É a parte que convence sem
 precisar de celular, número da Meta ou nada configurado.
 
 À esquerda eles escrevem como um frequentador escreveria. O bot responde igual
@@ -280,9 +280,9 @@ boas-vindas. Tom é só jeito de falar; informação vai nas perguntas e respost
 | Pin não acende | Mensagem foi enviada sem a tag `#SETOR:` | Gere o QR de novo pelo `/qrcode` com o setor selecionado |
 | Telão sem atualizar | Sessão expirou | Recarregue e entre de novo |
 | Resposta sem graça, genérica | OpenAI fora do ar ou sem crédito | O sistema cai no texto fixo de propósito, para nunca deixar ninguém sem resposta |
-| Bot não responde uma pessoa só | A conversa foi assumida e não devolvida | Em Chamados, ligue o filtro "Só em atendimento humano", abra a conversa e clique em Devolver ao ChatBob |
+| Bot não responde uma pessoa só | A conversa foi assumida e não devolvida | Em Chamados, ligue o filtro "Só em atendimento humano", abra a conversa e clique em Devolver ao Tuca |
 | Não consigo enviar pelo painel | Conversa sem mensagem recebida, ou passou de 24h | O painel explica o motivo no próprio campo de escrita |
-| Bot responde errado uma pergunta | Falta gatilho na base | Abra `/chatbob`, teste a frase e acrescente o jeito de perguntar que falhou |
+| Bot responde errado uma pergunta | Falta gatilho na base | Abra `/tuca`, teste a frase e acrescente o jeito de perguntar que falhou |
 
 Os logs em produção ficam no Coolify, em cada serviço: `web` para recebimento e
 `worker` para classificação e envio.

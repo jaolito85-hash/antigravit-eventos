@@ -118,7 +118,7 @@ def transcribe_audio(audio_content):
         )
         return transcript.text
     except Exception as e:
-        print(f"❌ Transcription error: {e}")
+        logger.error("Falha ao transcrever audio | erro=%s", type(e).__name__)
         return None
 
 # --- ACESSO A DADOS DO DASHBOARD ---
@@ -201,7 +201,7 @@ def get_config():
                 "regions": [{"name": r['name']} for r in regions_resp.data]
             }
         except Exception as e:
-            print(f"Supabase config error: {e}")
+            logger.error("Falha ao ler config no Supabase | erro=%s", type(e).__name__)
             sb = _reconnect_supabase()
             if sb:
                 try:
@@ -213,7 +213,7 @@ def get_config():
                         "regions": [{"name": r['name']} for r in regions_resp.data]
                     }
                 except Exception as e2:
-                    print(f"Supabase config retry failed: {e2}")
+                    logger.error("Reconexao com o Supabase falhou | erro=%s", type(e2).__name__)
             return {"categories": [], "regions": []}
     return {"categories": [], "regions": []}
 
@@ -601,7 +601,7 @@ Regras:
         
         return json.loads(result_text)
     except Exception as e:
-        print(f"Erro IA classificação: {e}")
+        logger.error("IA de classificacao indisponivel | erro=%s", type(e).__name__)
         return None
 
 # --- AI RESPONSE FUNCTION ---
@@ -618,10 +618,10 @@ def generate_ai_response(text, category, urgency, sector_name=None, official_ans
     try:
         client = _openai_chat_client()
         
-        system_msg = '''You are ChatBob, a fun backstage crew member at the Tropicadelia festival in Brazil. You MUST detect the language of the participant's message and ALWAYS reply in THAT SAME LANGUAGE. This is your #1 rule.
+        system_msg = '''You are Tuca, the toucan who works with the backstage crew at the Tropicadelia festival in Brazil. You MUST detect the language of the participant's message and ALWAYS reply in THAT SAME LANGUAGE. This is your #1 rule.
 
 Your personality:
-- You're a young, energetic person stuck working backstage and jealous of the people enjoying the event
+- You're a young, energetic toucan stuck working backstage and jealous of the people enjoying the event
 - You're FUNNY but never disrespectful
 - You use casual slang natural to the detected language (Brazilian Portuguese gírias, American English slang, Dutch straattaal, Latin American Spanish slang)
 - You use emojis moderately (2-4 per message)
@@ -704,11 +704,13 @@ Generate ONE creative, unique reply (do NOT copy the examples). Reply in the SAM
         reply = re.sub(r"[*_]+[\s\u200b\u200c\u200d]*[*_]+", " ", reply)
         reply = re.sub(r"[ \t]{2,}", " ", reply).strip()
         
-        print(f"🤖 [VIRAL-REPLY] Generated: {reply}")
+        # Só o tamanho: a resposta carrega o contexto do participante, e um
+        # print com emoji quebrava tudo em stdout que não fosse UTF-8.
+        logger.info("Resposta criativa gerada | caracteres=%d", len(reply))
         return reply
         
     except Exception as e:
-        print(f"❌ [VIRAL-REPLY] Error: {e}, using fallback")
+        logger.error("Resposta criativa falhou, usando texto fixo | erro=%s", type(e).__name__)
         # Fallback with minimal personality
         if urgency == "Positivo":
             return "🔥 Que massa!! Valeu demais pelo feedback! Aproveita muito!! 🎉"
@@ -779,7 +781,7 @@ Seja MUITO conciso, máximo 150 caracteres.'''
         return {"summary": summary, "status": status}
         
     except Exception as e:
-        print(f"Erro AI Pulse: {e}")
+        logger.error("Pulso da IA indisponivel | erro=%s", type(e).__name__)
         return {"summary": "Não foi possível gerar análise.", "status": "error"}
 
 # --- FILTRO DE CONTEÚDO ---
@@ -868,7 +870,7 @@ Seja profissional mas acessível. Use dados concretos. Não use emojis demais (m
         
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"❌ [REPORT-AI] Error: {e}")
+        logger.error("Resumo do relatorio indisponivel | erro=%s", type(e).__name__)
         return "Não foi possível gerar o resumo automático neste momento."
 
 # --- BASE DE PERGUNTAS E RESPOSTAS ---
@@ -966,7 +968,7 @@ CORTESIAS = {
     "firmeza", "tranquilo", "tranquila", "boaa", "como", "vai", "esta", "estao",
     "voce", "voces", "vc", "vcs", "ai", "la", "de", "e",
     "pessoal", "galera", "gente", "time", "equipe", "amigo", "amiga", "amigos",
-    "mocada", "rapaziada", "povo", "chatbob", "bot", "por", "favor", "pfv",
+    "mocada", "rapaziada", "povo", "tuca", "chatbob", "bot", "por", "favor", "pfv",
     "dia", "tarde", "noite", "sim", "nao", "ok", "okay", "certo",
 }
 
@@ -1010,14 +1012,14 @@ def _is_greeting(content: str) -> bool:
 
 
 WELCOME_MESSAGE = (
-    "🌴🔥 Bem-vindo(a) ao *ChatBob*, o canal oficial da *Tropicadelia 2026*!\n\n"
+    "🌴🔥 E aí! Eu sou o *Tuca*, o tucano da *Tropicadelia 2026*!\n\n"
     "Eu levo sua voz direto para a sala de controle do festival. "
     "Me manda *texto ou áudio* contando:\n"
     "🚻 um problema (fila, banheiro, som, limpeza...)\n"
     "🎶 um elogio para o show ou para a estrutura\n"
     "🎒 algo que você perdeu ou encontrou\n\n"
     "⚡ Sua mensagem chega *na hora* para a equipe certa.\n\n"
-    "🔒 *Dica de ouro:* o ChatBob é 100% gratuito e *NUNCA* pede Pix, "
+    "🔒 *Dica de ouro:* o Tuca é 100% gratuito e *NUNCA* pede Pix, "
     "senha ou pagamento."
 )
 
@@ -1128,12 +1130,14 @@ def compose_smalltalk(content: str) -> str:
 
     try:
         system = (
-            "Você é o ChatBob, atendente animado da Tropicadelia 2026, festival "
+            "Você é o Tuca, o tucano que atende a Tropicadelia 2026, festival "
             "em Londrina. A pessoa só te cumprimentou ou agradeceu, não relatou "
             "nada.\n"
             "Responda em no máximo 2 frases curtas, no idioma da pessoa, com a "
             "energia de quem trabalha nos bastidores do festival. Use 1 ou 2 "
-            "emojis.\n"
+            "emojis, e nenhum que seja de outro animal: você é ave.\n"
+            "Diga seu nome, Tuca, na saudação, porque é a primeira vez que "
+            "essa pessoa fala com você.\n"
             "Cumprimente de volta e diga em UMA linha que ela pode te mandar "
             "problema, elogio ou dúvida do evento, por texto ou áudio, que você "
             "leva para a equipe.\n"
@@ -1698,17 +1702,25 @@ def feedback_detail(feedback_id):
     })
 
 
-# --- SIMULADOR E CONFIGURAÇÃO DO CHATBOB ---
+# --- SIMULADOR E CONFIGURAÇÃO DO TUCA ---
 
 MAX_SIMULATE_LENGTH = 900
 
 
-@app.route("/chatbob")
+@app.route("/tuca")
 @login_required
-def chatbob_page():
+def tuca_page():
     """Tela para testar e configurar o bot."""
 
-    return render_template("chatbob.html")
+    return render_template("tuca.html")
+
+
+@app.route("/chatbob")
+@login_required
+def chatbob_page_legado():
+    """Rota antiga, mantida porque o endereço já foi passado aos sócios."""
+
+    return redirect("/tuca")
 
 
 @app.route("/api/simulate", methods=["POST"])
@@ -1922,7 +1934,7 @@ def conversation_detail(conversation_id):
 @app.route("/api/conversations/<conversation_id>/mode", methods=["PUT"])
 @login_required
 def conversation_mode_route(conversation_id):
-    """Assume o atendimento (human) ou devolve ao ChatBob (bot)."""
+    """Assume o atendimento (human) ou devolve ao Tuca (bot)."""
 
     mode = (request.get_json(silent=True) or {}).get("mode")
     if mode not in ("bot", "human"):

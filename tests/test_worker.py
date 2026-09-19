@@ -80,7 +80,7 @@ class WorkerTests(unittest.TestCase):
         # A conversa por IA também sai do caminho. O patch vai no worker, que é
         # quem chama a função: o nome foi importado para o namespace dele.
         smalltalk = mock.patch.object(
-            worker, "compose_smalltalk", lambda _c: "BOAS-VINDAS DO CHATBOB"
+            worker, "compose_smalltalk", lambda _c: "BOAS-VINDAS DO TUCA"
         )
         smalltalk.start()
         self.addCleanup(smalltalk.stop)
@@ -176,7 +176,7 @@ class WorkerTests(unittest.TestCase):
 
         self.assertIsNone(store.feedback)
         self.assertEqual(store.finished, "ignored")
-        self.assertIn("CHATBOB", store.response[1])
+        self.assertIn("TUCA", store.response[1])
 
     def test_scan_de_qr_sem_texto_responde_o_convite_do_setor(self):
         store = FakeStore()

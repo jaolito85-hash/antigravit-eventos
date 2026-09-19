@@ -1,8 +1,8 @@
-# ChatBob | Tropicadelia 2026 — Instruções para o Claude Code
+# Tuca | Tropicadelia 2026 — Instruções para o Claude Code
 
 ## Sobre o Projeto
 
-ChatBob é a plataforma de escuta ativa e inteligência operacional em tempo real para
+Tuca é a plataforma de escuta ativa e inteligência operacional em tempo real para
 festivais. O frequentador escaneia o QR Code do setor onde está, manda texto ou áudio
 pelo WhatsApp oficial, e a sala de controle vê o relato classificado por IA aparecer
 no mapa da planta em segundos.
@@ -59,7 +59,7 @@ Siga as 3 camadas do `AGENTE.md`:
 - Roteamento determinístico por setor através da tag `#SETOR:CODIGO` do QR Code
 - Telão da sala de controle (`/telao`) com a planta aérea 3D e alerta crítico em tela cheia
 - Mapa ao Vivo, dashboard com filtros, exportação CSV/JSON
-- Simulador do bot em `/chatbob`: a produção conversa com o ChatBob no navegador
+- Simulador do bot em `/tuca`: a produção conversa com o Tuca no navegador
   e vê a classificação, sem gravar nem enviar mensagem
 - Base de perguntas e respostas configurável: o conteúdo é cadastrado pela
   produção e a IA só escolhe o jeito de dizer

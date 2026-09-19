@@ -92,10 +92,10 @@ macrozona, fluxo ao vivo e o próprio alerta crítico abrem o chamado ou a conve
 e o status pode ser trocado dali. Em qualquer um desses caminhos o operador pode:
 
 - **Assumir atendimento (handon):** a conversa passa para o modo `human`. O
-  participante recebe um aviso de que a equipe entrou, e o ChatBob para de
+  participante recebe um aviso de que a equipe entrou, e o Tuca para de
   responder aquela pessoa. O chamado continua entrando no dashboard e no mapa,
   só a resposta automática deixa de sair.
-- **Devolver ao ChatBob (handoff):** volta para o modo `bot` e o automático
+- **Devolver ao Tuca (handoff):** volta para o modo `bot` e o automático
   reassume na mensagem seguinte.
 
 O estado vive em `conversation_handoff`, uma linha por conversa, identificada
@@ -113,7 +113,7 @@ Dois limites que o painel avisa na tela:
 
 ## Base de perguntas e respostas
 
-A tela `/chatbob` tem duas metades. Na esquerda, uma caixa de conversa onde a
+A tela `/tuca` tem duas metades. Na esquerda, uma caixa de conversa onde a
 produção fala com o bot e vê o que ele entendeu, sem gravar nada e sem enviar
 mensagem para ninguém. Na direita, a configuração.
 
@@ -182,8 +182,8 @@ resposta por causa de uma indisponibilidade.
 | Validar as migrações | `python scripts/validate_migrations.py` |
 | Conferir o schema no Supabase | `python scripts/verify_supabase_db.py` |
 | Gerar as placas dos setores | Tela `/qrcode` |
-| Testar o bot sem celular | Tela `/chatbob`, caixa de conversa |
-| Ensinar uma resposta ao bot | Tela `/chatbob`, perguntas e respostas |
+| Testar o bot sem celular | Tela `/tuca`, caixa de conversa |
+| Ensinar uma resposta ao bot | Tela `/tuca`, perguntas e respostas |
 | Roteiro de ensaio e diagnóstico | `docs/ENSAIO_SABADO.md` |
 
 ## Histórico

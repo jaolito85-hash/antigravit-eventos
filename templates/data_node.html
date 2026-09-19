@@ -4,12 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatBob • Tropicadelia 2026</title>
+    <title>Tuca • Tropicadelia 2026</title>
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#2979ff">
-    <meta name="description" content="ChatBob: escuta ativa e inteligência operacional em tempo real para a Tropicadelia 2026">
+    <meta name="description" content="Tuca: escuta ativa e inteligência operacional em tempo real para a Tropicadelia 2026">
 
     <!-- Icons -->
     <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
@@ -18,7 +18,7 @@
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="ChatBob">
+    <meta name="apple-mobile-web-app-title" content="Tuca">
 
     <!-- Fonts & Libraries -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1862,7 +1862,7 @@
 <body>
     <!-- Mobile Header -->
     <div class="mobile-header">
-        <div class="logo"><img src="/static/logo.png" class="brand-mark" alt="ChatBob"> Chat<span class="brand-accent">Bob</span></div>
+        <div class="logo"><img src="/static/logo.png" class="brand-mark" alt="Tuca"> Tu<span class="brand-accent">ca</span></div>
         <button class="burger-btn" onclick="toggleMobileMenu()">
             <i class="ri-menu-line" id="burger-icon"></i>
         </button>
@@ -1872,9 +1872,9 @@
     <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
     <div class="sidebar">
         <div class="logo">
-            <img src="/static/logo.png" class="brand-mark" alt="ChatBob">
+            <img src="/static/logo.png" class="brand-mark" alt="Tuca">
             <div>
-                Chat<span class="brand-accent">Bob</span>
+                Tu<span class="brand-accent">ca</span>
                 <small>Tropicadelia 2026</small>
             </div>
         </div>
@@ -1892,7 +1892,7 @@
         <a class="nav-item" href="/relatorio"><i class="ri-file-chart-line"></i> Relatório</a>
 
         <div class="nav-label">FERRAMENTAS</div>
-        <a class="nav-item" href="/chatbob"><i class="ri-robot-2-line"></i> Testar e Configurar</a>
+        <a class="nav-item" href="/tuca"><i class="ri-robot-2-line"></i> Testar e Configurar</a>
         <a class="nav-item" href="/telao" target="_blank"><i class="ri-tv-2-line"></i> Modo Telão
             <i class="ri-external-link-line" style="margin-left:auto; font-size:0.85rem; opacity:0.5"></i>
         </a>
@@ -2111,7 +2111,7 @@
 
         <div class="view-note">
             <i class="ri-information-line"></i>
-            <span>Cada cartão é um chamado, com a mensagem completa e a resposta que o ChatBob
+            <span>Cada cartão é um chamado, com a mensagem completa e a resposta que o Tuca
                 enviou. Em <strong>Conversar com quem enviou</strong> você assume o atendimento e fala
                 direto com a pessoa; enquanto isso o bot fica calado para ela.</span>
         </div>
@@ -2359,13 +2359,13 @@
         function blocoResposta(replies) {
             if (!replies.length) {
                 return `<div class="ticket-pending"><i class="ri-hourglass-line"></i>
-                    O ChatBob ainda não respondeu este chamado.</div>`;
+                    O Tuca ainda não respondeu este chamado.</div>`;
             }
             return replies.map(r => {
                 const e = ENTREGA[r.status] || ENTREGA['queued'];
                 const quem = r.origin === 'operator'
                     ? '<i class="ri-user-voice-line"></i> A equipe respondeu'
-                    : '<i class="ri-robot-2-line"></i> O ChatBob respondeu';
+                    : '<i class="ri-robot-2-line"></i> O Tuca respondeu';
                 return `<div class="ticket-reply">
                     <div class="ticket-reply-label">${quem}</div>
                     <div class="ticket-reply-text">${escHtml(r.content)}</div>
@@ -2910,7 +2910,7 @@
                     ? ' · ' + escHtml(m.status)
                     : '';
                 return `<div class="bubble ${operador ? 'out-operator' : 'out-bot'}">${escHtml(m.content)}
-                    <div class="bubble-meta">${operador ? 'Você' : 'ChatBob'} · ${escHtml(formatarTempo(m.at))}${entrega}</div></div>`;
+                    <div class="bubble-meta">${operador ? 'Você' : 'Tuca'} · ${escHtml(formatarTempo(m.at))}${entrega}</div></div>`;
             }).join('');
 
             const vazio = data.carregando
@@ -2923,7 +2923,7 @@
             const foraDaJanela = data.canReply === false && !semContato;
             let aviso = '';
             if (!humano) {
-                aviso = `<div class="chat-warn"><i class="ri-robot-2-line"></i> O ChatBob está respondendo
+                aviso = `<div class="chat-warn"><i class="ri-robot-2-line"></i> O Tuca está respondendo
                    esta conversa. Assuma o atendimento para escrever você mesmo.</div>`;
             } else if (semContato) {
                 aviso = `<div class="chat-warn"><i class="ri-error-warning-line"></i> Esta conversa não tem
@@ -2942,12 +2942,12 @@
                             Participante ${escHtml(data.participant || '')}</div>
                         <div class="chat-sub">${humano
                             ? 'Você assumiu esta conversa. O bot está calado.'
-                            : 'Respondida automaticamente pelo ChatBob.'}</div>
+                            : 'Respondida automaticamente pelo Tuca.'}</div>
                     </div>
                     <div class="chat-actions">
                         ${humano
                             ? `<button class="btn-handoff release" onclick="trocarAtendimento('bot')">
-                                   <i class="ri-robot-2-line"></i> Devolver ao ChatBob</button>`
+                                   <i class="ri-robot-2-line"></i> Devolver ao Tuca</button>`
                             : `<button class="btn-handoff take" onclick="trocarAtendimento('human')">
                                    <i class="ri-user-voice-line"></i> Assumir atendimento</button>`}
                         <button class="drill-close" onclick="closeChat()">&times;</button>
@@ -2975,7 +2975,7 @@
 
         async function trocarAtendimento(mode) {
             if (!_chatId) return;
-            if (mode === 'bot' && !confirm('Devolver esta conversa para o ChatBob responder automaticamente?')) return;
+            if (mode === 'bot' && !confirm('Devolver esta conversa para o Tuca responder automaticamente?')) return;
             try {
                 const res = await fetch('/api/conversations/' + encodeURIComponent(_chatId) + '/mode', {
                     method: 'PUT',

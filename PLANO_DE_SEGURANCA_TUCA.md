@@ -1,10 +1,10 @@
 # 🛡️ Plano Diretor de Segurança & Mitigação de Riscos
-## ChatBob × Tropicadelia 2026 — Operação e Proteção Contra Adulteração de QR Codes (Anti-Quishing)
+## Tuca × Tropicadelia 2026 — Operação e Proteção Contra Adulteração de QR Codes (Anti-Quishing)
 
 > **Documento Estratégico e Diretriz Operacional**  
 > **Evento:** Tropicadelia Festival 2026  
 > **Local:** Parque de Exposições Governador Ney Braga — Londrina/PR  
-> **Responsáveis:** Coordenação Técnica ChatBob & Diretoria de Operações Tropicadelia  
+> **Responsáveis:** Coordenação Técnica Tuca & Diretoria de Operações Tropicadelia  
 > **Versão:** 1.0 — Setembro/2026  
 
 ---
@@ -65,7 +65,7 @@ A primeira barreira deve tornar visualmente óbvia qualquer tentativa de adulter
 O que acontece no smartphone do frequentador no momento em que a câmera escaneia o código:
 
 1. **WhatsApp Cloud API Oficial (WABA):**
-   * O ChatBob opera sob a infraestrutura oficial da Meta via Cloud API corporativa (Graph API v20+).
+   * O Tuca opera sob a infraestrutura oficial da Meta via Cloud API corporativa (Graph API v20+).
    * Não se trata de um chip pré-pago ou número comum: ao abrir a conversa, o próprio WhatsApp exibe a chancela nativa:
      > *"Esta é uma conta comercial oficial da Tropicadelia Festival"*.
    * Perfil comercial completo com logotipo oficial, descrição corporativa, link para o site do evento e horário de atendimento.
@@ -81,7 +81,7 @@ O que acontece no smartphone do frequentador no momento em que a câmera escanei
 A conscientização do público transforma 20 mil frequentadores em auditores naturais:
 
 1. **A "Regra de Ouro" Institucional:**
-   > **"O ChatBob é 100% gratuito e NUNCA pede Pix, dinheiro, senhas, cartões ou códigos de confirmação."**
+   > **"O Tuca é 100% gratuito e NUNCA pede Pix, dinheiro, senhas, cartões ou códigos de confirmação."**
    * Essa declaração será repetida sistematicamente:
      * No rodapé de 100% das placas de QR Code.
      * Na mensagem automática de boas-vindas do próprio bot no WhatsApp.
@@ -97,7 +97,7 @@ A conscientização do público transforma 20 mil frequentadores em auditores na
 
 ### CAMADA 4: Blindagem Tecnológica do Software & Inteligência Artificial
 
-O sistema de retaguarda do ChatBob possui travas de segurança ativas no código-fonte:
+O sistema de retaguarda do Tuca possui travas de segurança ativas no código-fonte:
 
 1. **Filtro Anti-Phishing no Processamento de Mensagens:**
    * Se um usuário mal-intencionado enviar mensagens contendo links externos (`http://`, `https://`, links encurtados ou chaves Pix), o sistema:
@@ -122,7 +122,7 @@ A equipe humana em solo garantirá a integridade física ao longo de todo o fest
 1. **Ronda de "Hora Zero" (Pré-Abertura):**
    * 2 horas antes da abertura dos portões, a liderança de operações de TI percorre os 26 setores da planta com o checklist oficial, escaneando cada QR Code para validar roteamento e ausência de danos.
 2. **Ronda Preventiva Periódica (A cada 2 Horas):**
-   * Fiscais de setor, brigadistas e líderes de equipe de higienização recebem no briefing a instrução: *"Ao inspecionar o setor, verifique o cartaz do ChatBob. Caso note adesivo sobreposto ou rasura, remova imediatamente ou acione a central via rádio"*.
+   * Fiscais de setor, brigadistas e líderes de equipe de higienização recebem no briefing a instrução: *"Ao inspecionar o setor, verifique o cartaz do Tuca. Caso note adesivo sobreposto ou rasura, remova imediatamente ou acione a central via rádio"*.
 3. **Kit de Contingência Sobressalente:**
    * A sala de controle de TI manterá um estoque de 20 placas sobressalentes pré-impressas com fita dupla-face industrial de fixação rápida. Tempo máximo de substituição de uma placa danificada: **inferior a 5 minutos**.
 4. **Alerta Rápido no Dashboard:**
@@ -145,10 +145,10 @@ A equipe humana em solo garantirá a integridade física ao longo de todo o fest
 
 Para a reunião de homologação com a diretoria do festival, utilize a seguinte síntese:
 
-> *"A segurança do ChatBob foi desenhada sob a premissa de que o ataque físico (colar adesivo) pode até ser tentado, mas é tornado inútil por 4 fatores conjugados:*
+> *"A segurança do Tuca foi desenhada sob a premissa de que o ataque físico (colar adesivo) pode até ser tentado, mas é tornado inútil por 4 fatores conjugados:*
 > 1. *O nosso canal tem **Selo Oficial de Empresa na Meta**, impossível de ser clonado num WhatsApp comum.*
 > 2. *O número oficial estará impresso por extenso na própria arte e anunciado nos telões dos palcos.*
-> 3. *Toda a comunicação do evento estabelece a **Regra de Ouro**: o ChatBob é gratuito e jamais pede Pix, dinheiro ou senha.*
+> 3. *Toda a comunicação do evento estabelece a **Regra de Ouro**: o Tuca é gratuito e jamais pede Pix, dinheiro ou senha.*
 > 4. *Nossa equipe de campo possui protocolo de ronda a cada 2 horas nos 26 setores da planta física."*
 
 ---

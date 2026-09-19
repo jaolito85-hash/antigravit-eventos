@@ -1,4 +1,4 @@
-"""Testes do casamento entre a mensagem e a base de perguntas do ChatBob."""
+"""Testes do casamento entre a mensagem e a base de perguntas do Tuca."""
 
 import unittest
 

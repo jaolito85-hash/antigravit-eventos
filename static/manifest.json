@@ -1,7 +1,7 @@
 {
-    "name": "Data Node",
-    "short_name": "DataNode",
-    "description": "Dashboard de análise de feedbacks em tempo real para eventos",
+    "name": "Tuca · Tropicadelia 2026",
+    "short_name": "Tuca",
+    "description": "Escuta ativa e inteligência operacional em tempo real para festivais",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#050507",

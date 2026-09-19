@@ -6,8 +6,8 @@ import subprocess
 import sys
 
 IMAGE_PATH = os.path.abspath("docs/assets/planta-tropicadelia-2026.jpg")
-HTML_OUTPUT = os.path.abspath("docs/chatbob-tropicadelia-masterplan-planta.html")
-PDF_OUTPUT = os.path.abspath("docs/ChatBob-Tropicadelia-Masterplan-Planta.pdf")
+HTML_OUTPUT = os.path.abspath("docs/tuca-tropicadelia-masterplan-planta.html")
+PDF_OUTPUT = os.path.abspath("docs/Tuca-Tropicadelia-Masterplan-Planta.pdf")
 
 with open(IMAGE_PATH, "rb") as f:
     b64_image = base64.b64encode(f.read()).decode("utf-8")
@@ -17,7 +17,7 @@ html_content = f"""<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ChatBob × Tropicadelia 2026 — Masterplan Operacional & Matriz da Planta</title>
+  <title>Tuca × Tropicadelia 2026 — Masterplan Operacional & Matriz da Planta</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Righteous&display=swap');
 
@@ -368,7 +368,7 @@ html_content = f"""<!doctype html>
         <dt>Data</dt><dd>26 de setembro de 2026 (12h de duração)</dd>
         <dt>Local</dt><dd>Parque de Exposições Governador Ney Braga • Londrina-PR</dd>
         <dt>Público Estimado</dt><dd>30.000 participantes projetados</dd>
-        <dt>Solução</dt><dd>ChatBob — Anfitrião Digital & Radar Operacional</dd>
+        <dt>Solução</dt><dd>Tuca — Anfitrião Digital & Radar Operacional</dd>
         <dt>Tecnologia</dt><dd>Node Data Tecnologia (WhatsApp Cloud API + Supabase)</dd>
         <dt>Apresentação</dt><dd>Diretoria, Produção Executiva e Coordenação Operacional</dd>
       </dl>
@@ -383,7 +383,7 @@ html_content = f"""<!doctype html>
     </div>
 
     <div class="footer">
-      <span>ChatBob × Tropicadelia 2026</span>
+      <span>Tuca × Tropicadelia 2026</span>
       <span>01 • Masterplan Operacional</span>
     </div>
     <div class="bands"><i></i><i></i><i></i></div>
@@ -458,7 +458,7 @@ html_content = f"""<!doctype html>
         <tr>
           <td><code>PALCO-PRINCIPAL-PCD</code></td>
           <td>Plataforma PCD em frente à House Mix</td>
-          <td>“Precisa de apoio ou acessibilidade? Chame o ChatBob.”</td>
+          <td>“Precisa de apoio ou acessibilidade? Chame o Tuca.”</td>
           <td><strong>Acessibilidade</strong><br><span style="color:var(--pink); font-weight:700;">Urgência • &lt; 3 min</span></td>
         </tr>
         <tr>
@@ -470,7 +470,7 @@ html_content = f"""<!doctype html>
         <tr>
           <td><code>WC-MASC-CENTRAL</code></td>
           <td>Bateria masculina central (próx. Lockers)</td>
-          <td>“Banheiro precisa de limpeza? Avise o ChatBob agora.”</td>
+          <td>“Banheiro precisa de limpeza? Avise o Tuca agora.”</td>
           <td><strong>Limpeza & WC</strong><br>SLA &lt; 5 min</td>
         </tr>
         <tr>
@@ -512,7 +512,7 @@ html_content = f"""<!doctype html>
         <tr>
           <td><code>ACESSO-CREDENCIAMENTO</code></td>
           <td>Portões leste / Entrada principal</td>
-          <td>“Dúvida com ingresso ou fila? Chame o ChatBob.”</td>
+          <td>“Dúvida com ingresso ou fila? Chame o Tuca.”</td>
           <td><strong>Portaria & Acesso</strong><br>SLA &lt; 3 min</td>
         </tr>
         <tr>
@@ -541,7 +541,7 @@ html_content = f"""<!doctype html>
   <section class="page">
     <div class="eyebrow">Experiência Real • Campo e Operação</div>
     <h2>CASOS PRÁTICOS: A DIFERENÇA NA OPERAÇÃO</h2>
-    <p class="lead" style="margin-bottom: 4mm;">Como a triagem automática do ChatBob age nos gargalos mais comuns de grandes festivais.</p>
+    <p class="lead" style="margin-bottom: 4mm;">Como a triagem automática do Tuca age nos gargalos mais comuns de grandes festivais.</p>
 
     <div class="grid-2">
       <!-- Caso 1 -->
@@ -553,7 +553,7 @@ html_content = f"""<!doctype html>
           “#SETOR:BAR-CELEIRO-01 Acabou o gelo no balcão 2 e a fila tá parada faz 20 min!”
         </div>
         <div class="chat-bubble" style="border-left-color: var(--blue);">
-          <div class="sender">ChatBob • Sistema Operacional</div>
+          <div class="sender">Tuca • Sistema Operacional</div>
           “Obrigado pelo aviso! O CCO já acionou o reabastecimento de gelo para o Bar Celeiro. Se preferir, os bares de Destilados P1 logo ao lado estão com fila rápida!”
         </div>
         <p style="font-size: 7.2pt; color: #475569; margin: 0;">
@@ -570,7 +570,7 @@ html_content = f"""<!doctype html>
           “#SETOR:WC-FEM-PRINCIPAL As cabines 4 e 5 estão sem papel e com torneira vazando.”
         </div>
         <div class="chat-bubble" style="border-left-color: var(--pink);">
-          <div class="sender">ChatBob • Limpeza & Manutenção</div>
+          <div class="sender">Tuca • Limpeza & Manutenção</div>
           “Recebido! A equipe volante de limpeza e reposição já está a caminho desta bateria. Agradecemos por cuidar do nosso festival!”
         </div>
         <p style="font-size: 7.2pt; color: #475569; margin: 0;">
@@ -587,7 +587,7 @@ html_content = f"""<!doctype html>
           “#SETOR:PALCO-PRINCIPAL-PCD Sou cadeirante e a rampa de saída está bloqueada por pedestres.”
         </div>
         <div class="chat-bubble" style="border-left-color: #dc2626;">
-          <div class="sender">ChatBob • Central de Acessibilidade</div>
+          <div class="sender">Tuca • Central de Acessibilidade</div>
           “🚨 Alerta prioritário recebido! Nossos monitores de acessibilidade foram acionados para liberação imediata do acesso. Estamos com você!”
         </div>
         <p style="font-size: 7.2pt; color: #475569; margin: 0;">
@@ -604,7 +604,7 @@ html_content = f"""<!doctype html>
           “Perdi minha CNH e o cartão de crédito perto da praça de alimentação!”
         </div>
         <div class="chat-bubble" style="border-left-color: var(--blue);">
-          <div class="sender">ChatBob • Achados & Perdidos</div>
+          <div class="sender">Tuca • Achados & Perdidos</div>
           “Não se preocupe! Documentos encontrados estão sendo centralizados no posto <strong>CCO / L&P</strong> (em frente à Feirinha). Vá até lá com uma foto sua para conferência.”
         </div>
         <p style="font-size: 7.2pt; color: #475569; margin: 0;">

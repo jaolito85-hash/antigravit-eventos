@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatBob | Testar e Configurar</title>
+    <title>Tuca | Testar e Configurar</title>
     <meta name="theme-color" content="#2979ff">
     <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
@@ -454,9 +454,9 @@
 <body>
     <div class="top">
         <div class="brand">
-            <img src="/static/logo.png" class="brand-mark" alt="ChatBob">
+            <img src="/static/logo.png" class="brand-mark" alt="Tuca">
             <div>
-                <h1>ChatBob</h1>
+                <h1>Tuca</h1>
                 <p>Converse com o bot e ensine as respostas oficiais do festival</p>
             </div>
         </div>
@@ -469,7 +469,7 @@
             <div class="panel-head">
                 <div>
                     <div class="panel-title"><i class="ri-whatsapp-line" style="color:#25D366"></i> Converse com o
-                        ChatBob</div>
+                        Tuca</div>
                     <div class="panel-sub">Responde exatamente como responderia no WhatsApp. Nada é gravado e nenhuma
                         mensagem é enviada para ninguém.</div>
                 </div>
@@ -520,7 +520,7 @@
             <div class="panel-head">
                 <div>
                     <div class="panel-title"><i class="ri-settings-4-line" style="color:var(--accent)"></i> Configurar o
-                        ChatBob</div>
+                        Tuca</div>
                     <div class="panel-sub">O que você cadastra aqui o bot obedece. A resposta manda no conteúdo, e a IA
                         só dá o jeito de falar.</div>
                 </div>
@@ -827,7 +827,7 @@
 
         async function remover(entry) {
             if (!entry) return;
-            if (!confirm('Remover esta pergunta da base do ChatBob?')) return;
+            if (!confirm('Remover esta pergunta da base do Tuca?')) return;
             try {
                 const res = await fetch('/api/bot/knowledge/' + encodeURIComponent(entry.id), { method: 'DELETE' });
                 if (!res.ok) { aviso('Não foi possível remover.', true); return; }

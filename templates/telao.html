@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatBob • Telão da Sala de Controle</title>
+    <title>Tuca • Telão da Sala de Controle</title>
     <meta name="theme-color" content="#2979ff">
     <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Oxanium:wght@500;600;700;800&display=swap"
@@ -1104,9 +1104,9 @@
         <!-- ================= TOPBAR ================= -->
         <header class="topbar">
             <div class="brand">
-                <img src="/static/logo.png" class="brand-mark" alt="ChatBob">
+                <img src="/static/logo.png" class="brand-mark" alt="Tuca">
                 <div class="brand-text">
-                    <h1>Chat<span>Bob</span> · Sala de Controle</h1>
+                    <h1>Tu<span>ca</span> · Sala de Controle</h1>
                     <p>Tropicadelia 2026 · Parque Ney Braga</p>
                 </div>
             </div>
@@ -1628,13 +1628,13 @@
                 }
                 const operador = m.origin === 'operator';
                 return '<div class="talk-bubble ' + (operador ? 'operator' : 'bot') + '">' +
-                    esc(m.content) + '<small>' + (operador ? 'Equipe' : 'ChatBob') +
+                    esc(m.content) + '<small>' + (operador ? 'Equipe' : 'Tuca') +
                     ' · ' + esc(relTime(m.at)) + '</small></div>';
             }).join('');
 
             let aviso = '';
             if (!humano) {
-                aviso = '<div class="talk-warn"><i class="ri-robot-2-line"></i> O ChatBob responde esta ' +
+                aviso = '<div class="talk-warn"><i class="ri-robot-2-line"></i> O Tuca responde esta ' +
                     'conversa automaticamente. Assuma o atendimento para escrever você mesmo.</div>';
             } else if (semContato) {
                 aviso = '<div class="talk-warn"><i class="ri-error-warning-line"></i> Esta conversa não tem ' +
@@ -1650,12 +1650,12 @@
                 '<i class="ri-whatsapp-line" style="color:#25D366"></i> Participante ' +
                 esc(data.participant || '') + '</div>' +
                 '<div class="panel-note" style="margin-top:6px">' +
-                (humano ? 'Você assumiu esta conversa. O bot está calado.' : 'Respondida pelo ChatBob.') +
+                (humano ? 'Você assumiu esta conversa. O bot está calado.' : 'Respondida pelo Tuca.') +
                 '</div></div>' +
                 '<div style="display:flex; gap:10px; align-items:center">' +
                 (humano
                     ? '<button class="act ghost" onclick="switchTalkMode(\'bot\')">' +
-                      '<i class="ri-robot-2-line"></i> Devolver ao ChatBob</button>'
+                      '<i class="ri-robot-2-line"></i> Devolver ao Tuca</button>'
                     : '<button class="act primary" onclick="switchTalkMode(\'human\')">' +
                       '<i class="ri-user-voice-line"></i> Assumir atendimento</button>') +
                 '<button class="act ghost" onclick="closeTalk()">&times;</button>' +

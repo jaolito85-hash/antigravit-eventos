@@ -1,8 +1,8 @@
-# 🧠 ChatBob — Documento Fonte Mestre (Master Source Document)
+# 🧠 Tuca — Documento Fonte Mestre (Master Source Document)
 ## Guia de Conhecimento Completo para NotebookLM, Slides Executivos & Roteiros de Vídeo
 
 > **COMO USAR ESTE DOCUMENTO NO GOOGLE NOTEBOOKLM:**  
-> 1. Acesse **[notebooklm.google.com](https://notebooklm.google.com)** e crie um novo Notebook chamado **"ChatBob — Inteligência para Festivais"**.  
+> 1. Acesse **[notebooklm.google.com](https://notebooklm.google.com)** e crie um novo Notebook chamado **"Tuca — Inteligência para Festivais"**.  
 > 2. Clique em **"Adicionar Fonte" (Add Source)** e faça o upload deste arquivo (`NOTEBOOKLM_MASTER_SOURCE.md`) ou copie e cole seu conteúdo.  
 > 3. **Pronto!** O NotebookLM terá todo o contexto para:  
 >    * Gerar o **Audio Overview (Podcast em formato de debate)** explicando o projeto.  
@@ -14,7 +14,7 @@
 
 ## 1. Visão Geral do Produto (Executive Overview)
 
-* **Nome do Produto:** ChatBob
+* **Nome do Produto:** Tuca
 * **Slogan:** *A voz do público em tempo real. A inteligência da sua operação no festival.*
 * **O que é:** Plataforma de inteligência operacional, escuta ativa e despacho em tempo real para festivais, arenas e eventos de grande porte (20k+ pessoas), operando 100% nativa via **WhatsApp Cloud API oficial da Meta** com análise de sentimento por IA e integração com a planta física do evento.
 * **Modelo Operacional:** Não exige download de nenhum aplicativo pelo público. O frequentador apenas aponta a câmera do celular para o QR Code do setor onde está (ex: Banheiro Feminino, Bar Principal, Palco Hype), e uma mensagem com a tag do setor é aberta pronta para envio no WhatsApp.
@@ -32,9 +32,9 @@ Grandes festivais de música e eventos de massa compartilham de uma dor crônica
 
 ---
 
-## 3. A Solução ChatBob (The Solution Flow)
+## 3. A Solução Tuca (The Solution Flow)
 
-O ChatBob conecta o público à operação em **3 passos instantâneos (< 10 segundos)**:
+O Tuca conecta o público à operação em **3 passos instantâneos (< 10 segundos)**:
 
 ```
 [Frequentador na Planta] 
@@ -43,7 +43,7 @@ O ChatBob conecta o público à operação em **3 passos instantâneos (< 10 seg
 [WhatsApp Oficial Meta] 
        │ 
        ▼ (2) Envia relato em áudio ou texto ("Fila travada e sem papel higiênico")
-[Pipeline ChatBob / IA] 
+[Pipeline Tuca / IA] 
        │ 
        ▼ (3) IA analisa sentimento, urgência (Normal/Urgente/Crítico) e equipe
 [Roteamento Operacional]
@@ -101,11 +101,11 @@ O ChatBob conecta o público à operação em **3 passos instantâneos (< 10 seg
 
 ## 6. O Diferencial de Segurança Anti-Quishing (As 5 Camadas)
 
-Grandes festivais sofrem com o risco de criminosos colando adesivos com QR Codes falsos (golpes de Pix falso ou clonagem). O ChatBob implementa um plano exclusivo em **5 Camadas de Defesa**:
+Grandes festivais sofrem com o risco de criminosos colando adesivos com QR Codes falsos (golpes de Pix falso ou clonagem). O Tuca implementa um plano exclusivo em **5 Camadas de Defesa**:
 
 1. **A Regra do Número Visível:** A arte impressa exibe por extenso em caixa alta: *"Ao escanear, confirme o número oficial: (43) 9XXXX-XXXX"*. O golpista não consegue adulterar o número que a placa física anuncia.
 2. **Design Gráfico Anti-Adesivo:** O QR Code é integrado a uma arte com grafismos contínuos da Tropicadelia (efeito casca de ovo). Qualquer adesivo colado por cima causa uma quebra visual gritante.
-3. **A "Regra de Ouro" de Comunicação:** Repetida nos cartazes, no bot e nos telões dos palcos: *"O ChatBob é 100% gratuito e NUNCA pede Pix, senhas, pagamentos ou cartões"*.
+3. **A "Regra de Ouro" de Comunicação:** Repetida nos cartazes, no bot e nos telões dos palcos: *"O Tuca é 100% gratuito e NUNCA pede Pix, senhas, pagamentos ou cartões"*.
 4. **Blindagem de Software no Chatbot:** O sistema bloqueia links externos enviados no chat e aplica rate limiting para evitar spam e fraudes.
 5. **Ronda Operacional em Campo:** Fiscais de setor e equipe de apoio checam e tateiam as placas dos 26 setores a cada 2 horas, contando com kit sobressalente para substituição em menos de 5 minutos.
 
@@ -114,32 +114,32 @@ Grandes festivais sofrem com o risco de criminosos colando adesivos com QR Codes
 ## 7. Roteiros de Vídeo Prontos para Gravação
 
 ### Roteiro 1: Vídeo Pitch B2B — Para Produtores de Festivais e Sócios (60 Segundos)
-* **Objetivo:** Vender a contratação do ChatBob para diretores de eventos.
+* **Objetivo:** Vender a contratação do Tuca para diretores de eventos.
 * **Tom:** Profissional, seguro, tecnológico e orientado a ROI.
 * **Visual:** Imagens de multidão em festival cortando para a tela do dashboard e celulares interagindo.
 
 * **[00:00 - 00:10] Gancho:**  
   *"Você investe milhões no line-up, no palco e na luz do seu festival... mas quando um banheiro fica sem papel ou uma fila de bar trava, onde o seu público reclama? No Twitter e no Instagram do seu evento."*
 * **[00:10 - 00:25] A Revelação:**  
-  *"Apresentamos o ChatBob: a inteligência operacional que escuta o seu festival em tempo real. Sem baixar nenhum aplicativo. O público aponta a câmera para o QR Code do setor e fala direto com o nosso bot oficial no WhatsApp."*
+  *"Apresentamos o Tuca: a inteligência operacional que escuta o seu festival em tempo real. Sem baixar nenhum aplicativo. O público aponta a câmera para o QR Code do setor e fala direto com o nosso bot oficial no WhatsApp."*
 * **[00:25 - 00:45] O Mecanismo:**  
   *"Em segundos, nossa Inteligência Artificial entende o sentimento, classifica a gravidade e avisa no rádio da equipe certa — antes que a fila vire uma crise na internet. Mais de 26 setores monitorados simultaneamente, com segurança oficial da Meta e conformidade com a LGPD."*
 * **[00:45 - 01:00] Chamada para Ação (CTA):**  
-  *"Não opere seu próximo festival às cegas. Conheça o ChatBob e transforme reclamações em eficiência operacional. Fale com nossa equipe e agende uma demonstração ao vivo."*
+  *"Não opere seu próximo festival às cegas. Conheça o Tuca e transforme reclamações em eficiência operacional. Fale com nossa equipe e agende uma demonstração ao vivo."*
 
 ---
 
 ### Roteiro 2: Vídeo de Conscientização para o Público — Reels / TikTok (30 Segundos)
-* **Objetivo:** Ensinar o frequentador a usar o ChatBob e alertar contra fraudes.
+* **Objetivo:** Ensinar o frequentador a usar o Tuca e alertar contra fraudes.
 * **Tom:** Jovem, dinâmico, festival vibe, direto ao ponto.
 * **Visual:** Alguém curtindo o show na Tropicadelia, mostrando o QR Code no copo/placa e a tela do WhatsApp com o selo oficial.
 
 * **[00:00 - 00:08] Abertura:**  
   *"Perdeu um documento? Fila do banheiro travou? Quer elogiar o som do palco? Na Tropicadelia 2026, você não precisa passar perrengue!"*
 * **[00:08 - 00:18] Como Usar:**  
-  *"É só achar o QR Code do ChatBob espalhado pelo evento e mandar um 'oi' no WhatsApp. Pode mandar áudio ou texto que a nossa equipe resolve na hora!"*
+  *"É só achar o QR Code do Tuca espalhado pelo evento e mandar um 'oi' no WhatsApp. Pode mandar áudio ou texto que a nossa equipe resolve na hora!"*
 * **[00:18 - 00:30] Segurança & Encerramento:**  
-  *"E ó: dica de ouro da Tropicadelia! Confira sempre o nosso número oficial na tela. O ChatBob é 100% gratuito e NUNCA pede Pix nem senha. Curta seu festival com a tranquilidade que você merece!"*
+  *"E ó: dica de ouro da Tropicadelia! Confira sempre o nosso número oficial na tela. O Tuca é 100% gratuito e NUNCA pede Pix nem senha. Curta seu festival com a tranquilidade que você merece!"*
 
 ---
 
@@ -148,23 +148,23 @@ Grandes festivais sofrem com o risco de criminosos colando adesivos com QR Codes
 * **Tom:** Inspirador, técnico, focado em alta disponibilidade e confiabilidade sob estresse.
 
 * **[00:00 - 00:30] O Desafio da Conectividade em Massa:**  
-  *"Em uma arena com 20 mil smartphones disputando a mesma antena 4G, arquiteturas pesadas falham. O ChatBob foi construído com uma premissa fundamental: simplicidade na ponta do usuário e robustez militar no backend."*
+  *"Em uma arena com 20 mil smartphones disputando a mesma antena 4G, arquiteturas pesadas falham. O Tuca foi construído com uma premissa fundamental: simplicidade na ponta do usuário e robustez militar no backend."*
 * **[00:30 - 01:00] A Arquitetura Invisível:**  
   *"Utilizamos a API Oficial da Meta WhatsApp para garantir entrega com baixo consumo de dados. Por trás, uma fila idempotente no Supabase PostgreSQL processa cada mensagem sem perdas, enquanto o motor de IA classifica sentimento, prioridade e despacha para a equipe certa em menos de 180 milissegundos."*
 * **[01:00 - 01:30] Segurança e Defesa contra Quishing:**  
   *"Integrando a planta física oficial com códigos determinísticos e proteção de PII via HMAC-SHA256, resolvemos o maior dilema dos festivais modernos: como ser acessível para 20 mil pessoas sem expor dados e sem abrir brechas para códigos adulterados."*
 * **[01:30 - 02:00] O Futuro dos Grandes Eventos:**  
-  *"O Tropicadelia 2026 é o primeiro festival do Sul do Brasil a adotar escuta ativa setorial com IA. O ChatBob não é apenas um chatbot; é o sistema nervoso da experiência do entretenimento ao vivo."*
+  *"O Tropicadelia 2026 é o primeiro festival do Sul do Brasil a adotar escuta ativa setorial com IA. O Tuca não é apenas um chatbot; é o sistema nervoso da experiência do entretenimento ao vivo."*
 
 ---
 
 ## 8. Estrutura de Slides (Pitch Deck Executivo — 10 Slides)
 
 ### Slide 1: Capa
-* **Título:** ChatBob × Tropicadelia 2026
+* **Título:** Tuca × Tropicadelia 2026
 * **Subtítulo:** Sistema Nervoso Operacional & Escuta Ativa em Tempo Real
 * **Visual:** Mockup do celular com WhatsApp aberto sobre a planta iluminada do festival em dark mode.
-* **Fala do Apresentador:** *"Hoje vamos apresentar como a tecnologia do ChatBob vai revolucionar a operação do Tropicadelia 2026, transformando a voz de 20 mil pessoas em agilidade operacional para a produção."*
+* **Fala do Apresentador:** *"Hoje vamos apresentar como a tecnologia do Tuca vai revolucionar a operação do Tropicadelia 2026, transformando a voz de 20 mil pessoas em agilidade operacional para a produção."*
 
 ### Slide 2: O Problema Invisível
 * **Título:** O "Ponto Cego" dos Grandes Festivais
@@ -175,7 +175,7 @@ Grandes festivais sofrem com o risco de criminosos colando adesivos com QR Codes
 * **Fala:** *"O maior pesadelo de quem produz evento não é o problema acontecer — é descobrir o problema 3 horas depois, quando o festival já virou meme negativo na internet."*
 
 ### Slide 3: A Solução
-* **Título:** ChatBob: Simples para o Público, Cirúrgico para a Produção
+* **Título:** Tuca: Simples para o Público, Cirúrgico para a Produção
 * **Tópicos:**
   * Zero aplicativos novos (100% no WhatsApp oficial).
   * 1 toque na câmera do celular para acionar o setor exato.
@@ -211,7 +211,7 @@ Grandes festivais sofrem com o risco de criminosos colando adesivos com QR Codes
 * **Tópicos:**
   * Conta Oficial Verificada na Meta (WABA).
   * Regra do Número Visível na arte física contra adesivos fraudulentos.
-  * Regra de Ouro institucional: ChatBob é 100% gratuito e nunca pede Pix.
+  * Regra de Ouro institucional: Tuca é 100% gratuito e nunca pede Pix.
   * Anonimização rigorosa em conformidade com a LGPD.
 * **Fala:** *"Pensamos na segurança física e digital: nossas placas têm número visível e selo oficial da Meta. É impossível um golpista com adesivo sequestrar nosso canal."*
 
@@ -234,7 +234,7 @@ Grandes festivais sofrem com o risco de criminosos colando adesivos com QR Codes
 ### Slide 10: Conclusão & Encerramento
 * **Título:** Tropicadelia 2026 no Padrão dos Maiores Festivais do Mundo
 * **Subtítulo:** Vamos transformar este festival no mais conectado da história do evento.
-* **CTA:** *ChatBob — Tecnologia que se escuta. Operação que resolve.*
+* **CTA:** *Tuca — Tecnologia que se escuta. Operação que resolve.*
 * **Fala:** *"Agradecemos a confiança dos sócios. Estamos prontos para fazer história no Parque Ney Braga."*
 
 ---
@@ -242,16 +242,16 @@ Grandes festivais sofrem com o risco de criminosos colando adesivos com QR Codes
 ## 9. Perguntas Frequentes (FAQ Estruturado para o NotebookLM)
 
 **P: O que acontece se a internet do festival oscilar ou cair?**  
-*R:* O WhatsApp é o protocolo mais resiliente do mercado para conexões degradadas, consumindo fração mínima de dados. No servidor, a fila de ingestão é assíncrona: se o frequentador conseguir disparar a mensagem mesmo em 2G/3G, o ChatBob enfileira e processa sem perdas.
+*R:* O WhatsApp é o protocolo mais resiliente do mercado para conexões degradadas, consumindo fração mínima de dados. No servidor, a fila de ingestão é assíncrona: se o frequentador conseguir disparar a mensagem mesmo em 2G/3G, o Tuca enfileira e processa sem perdas.
 
 **P: Um concorrente ou usuário chato pode derrubar o sistema mandando 1.000 mensagens?**  
 *R:* Não. O backend possui rate-limiter ativo (máximo de 3 mensagens por remetente a cada 10 minutos para mensagens repetidas) e deduplicação de identificadores, silenciando remetentes abusivos automaticamente.
 
 **P: Quanto custa para o frequentador?**  
-*R:* O ChatBob é 100% gratuito para o público. O usuário só precisa de acesso básico ao WhatsApp.
+*R:* O Tuca é 100% gratuito para o público. O usuário só precisa de acesso básico ao WhatsApp.
 
 **P: Como os dados dos frequentadores são tratados perante a LGPD?**  
-*R:* O ChatBob adota o princípio de Privacy by Design. O número de telefone passa por um hash criptográfico irreversível (HMAC-SHA256 com sal secreto). As telas dos operadores mostram apenas a mensagem e o setor, nunca dados cadastrais privados.
+*R:* O Tuca adota o princípio de Privacy by Design. O número de telefone passa por um hash criptográfico irreversível (HMAC-SHA256 com sal secreto). As telas dos operadores mostram apenas a mensagem e o setor, nunca dados cadastrais privados.
 
 ---
 *Documento compilado e otimizado para o processamento pelo Google NotebookLM.*

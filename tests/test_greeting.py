@@ -24,7 +24,7 @@ SAUDACOES = [
     "boa noite pessoal",
     "oie tudo bom",
     "tudo bem?",
-    "Oi ChatBob, tudo bem?",
+    "Oi Tuca, tudo bem?",
     "menu",
     "ajuda",
     "help",
