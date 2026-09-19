@@ -1,3 +1,4 @@
+import contextvars
 import os
 import json
 import hmac
@@ -6,6 +7,7 @@ import logging
 import re
 import secrets
 from io import StringIO
+from contextlib import contextmanager
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, session, redirect
 from dotenv import load_dotenv
@@ -606,6 +608,100 @@ Regras:
         logger.error("IA de classificacao indisponivel | erro=%s", type(e).__name__)
         return None
 
+# --- CONFIGURAÇÃO DO BOT: O QUE ESTÁ NO AR E O QUE É RASCUNHO ---
+
+# O simulador em modo rascunho precisa que as mesmas funções do worker leiam a
+# configuração não publicada, sem que isso vaze para o fluxo real. Um
+# ContextVar resolve porque cada requisição roda no seu próprio contexto: o
+# worker nunca entra aqui e continua lendo o que está publicado.
+_CONFIG_PREVIEW: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "config_preview", default=None
+)
+
+
+@contextmanager
+def usando_rascunho():
+    """Faz o bloco inteiro responder com a configuração ainda não publicada."""
+
+    try:
+        preview = {
+            "settings": EVENT_STORE.draft_settings(),
+            "rules": [r for r in EVENT_STORE.draft_rules() if r.get("active", True)],
+            "knowledge": [
+                k for k in EVENT_STORE.draft_knowledge() if k.get("active", True)
+            ],
+        }
+    except Exception as e:  # noqa: BLE001 - rascunho indisponível cai no publicado
+        logger.error("Falha ao montar rascunho: %s", type(e).__name__)
+        preview = None
+
+    token = _CONFIG_PREVIEW.set(preview)
+    try:
+        yield preview is not None
+    finally:
+        _CONFIG_PREVIEW.reset(token)
+
+
+def _bot_config() -> dict[str, Any]:
+    """Ajustes e regras que valem nesta chamada."""
+
+    preview = _CONFIG_PREVIEW.get()
+    if preview is not None:
+        return preview
+    try:
+        return {"settings": EVENT_STORE.bot_settings(), "rules": EVENT_STORE.rules()}
+    except Exception as e:  # noqa: BLE001 - configuração fora não cala o bot
+        logger.error("Configuração do bot indisponível: %s", type(e).__name__)
+        return {"settings": {}, "rules": []}
+
+
+def _rules_block(idioma: str = "pt") -> str:
+    """Regras de negócio prontas para entrar no prompt, da maior prioridade.
+
+    Vão como bloco separado da persona porque valem mais que o tom: a IA pode
+    escolher as palavras, não pode escolher se obedece.
+    """
+
+    config = _bot_config()
+    regras = config.get("rules") or []
+    app_url = (config.get("settings") or {}).get("appUrl") or ""
+
+    linhas = []
+    for regra in regras:
+        titulo = str(regra.get("title") or "").strip()
+        corpo = str(regra.get("body") or "").strip()
+        if titulo and corpo:
+            linhas.append(f"- {titulo}: {corpo}")
+
+    if not linhas and not app_url:
+        return ""
+
+    if idioma == "en":
+        cabecalho = (
+            "\n\nNON-NEGOTIABLE RULES FROM THE FESTIVAL STAFF (these outrank your "
+            "personality and creativity):"
+        )
+        link = (
+            f"\n- The official festival app link is: {app_url}"
+            if app_url
+            else "\n- The official app link is NOT configured yet. Never invent a link "
+                 "or a URL. Tell the person to ask the staff on site instead."
+        )
+    else:
+        cabecalho = (
+            "\n\nREGRAS INEGOCIÁVEIS DA PRODUÇÃO (valem mais que o seu tom e a sua "
+            "criatividade):"
+        )
+        link = (
+            f"\n- O link do app oficial é: {app_url}"
+            if app_url
+            else "\n- O link do app oficial ainda NÃO está configurado. Nunca invente "
+                 "link nem endereço. Nesse caso oriente a pessoa a procurar a equipe no local."
+        )
+
+    return cabecalho + "\n" + "\n".join(linhas) + link
+
+
 # --- AI RESPONSE FUNCTION ---
 def generate_ai_response(text, category, urgency, sector_name=None, official_answer=None):
     """Generates a fun response using AI, like a friend who works at the event"""
@@ -667,19 +763,19 @@ Spanish input → Spanish reply:
             )
 
         # Tom de voz extra configurado no painel.
-        persona_line = ''
-        try:
-            persona = (EVENT_STORE.bot_settings() or {}).get('persona')
-        except Exception:  # noqa: BLE001
-            persona = None
-        if persona:
-            persona_line = f'\n\nEXTRA INSTRUCTIONS FROM THE ORGANIZERS:\n{persona}'
+        persona = (_bot_config().get('settings') or {}).get('persona')
+        persona_line = (
+            f'\n\nEXTRA INSTRUCTIONS FROM THE ORGANIZERS:\n{persona}' if persona else ''
+        )
+        # Regras vão por último de propósito: é a parte do prompt que a IA
+        # menos ignora, e são elas que não podem ser negociadas.
+        rules_line = _rules_block('en')
         user_msg = f'''Sentiment: {urgency}
 Category: {category}
 Participant message: "{text}"{sector_line}
 
 Generate ONE creative, unique reply (do NOT copy the examples). Reply in the SAME LANGUAGE as the participant's message:'''
-        user_msg += official_line + persona_line
+        user_msg += official_line + persona_line + rules_line
 
         response = client.chat.completions.create(
             **_chat_completion_kwargs(
@@ -895,11 +991,16 @@ def match_knowledge(content, entries=None):
     """
 
     if entries is None:
-        try:
-            entries = EVENT_STORE.knowledge()
-        except Exception as e:
-            logger.error("Base do bot indisponível: %s", type(e).__name__)
-            return None
+        preview = _CONFIG_PREVIEW.get()
+        if preview is not None:
+            # Simulação em modo rascunho: casa contra o que ainda não foi publicado.
+            entries = preview.get("knowledge") or []
+        else:
+            try:
+                entries = EVENT_STORE.knowledge()
+            except Exception as e:
+                logger.error("Base do bot indisponível: %s", type(e).__name__)
+                return None
 
     alvo = _normalize(content)
     if not alvo:
@@ -1037,10 +1138,7 @@ def _extract_sector(content: str) -> tuple[str | None, str]:
 def welcome_text() -> str:
     """Boas-vindas configurada no painel, ou a padrão do produto."""
 
-    try:
-        custom = (EVENT_STORE.bot_settings() or {}).get("welcome")
-    except Exception:  # noqa: BLE001
-        custom = None
+    custom = (_bot_config().get("settings") or {}).get("welcome")
     return custom or WELCOME_MESSAGE
 
 
@@ -1146,9 +1244,10 @@ def compose_smalltalk(content: str) -> str:
             "Nunca diga que é robô, IA ou sistema. Nunca peça Pix, senha ou "
             "pagamento."
         )
-        persona = (EVENT_STORE.bot_settings() or {}).get("persona")
+        persona = (_bot_config().get("settings") or {}).get("persona")
         if persona:
             system += f"\n\nINSTRUÇÕES DOS ORGANIZADORES:\n{persona}"
+        system += _rules_block("pt")
 
         response = client.chat.completions.create(
             **_chat_completion_kwargs(
@@ -1738,11 +1837,31 @@ def api_simulate():
     payload = request.get_json(silent=True) or {}
     content_raw = str(payload.get("content") or "").strip()
     sector_code = (payload.get("setor") or "").strip().upper() or None
+    # O padrão é testar o rascunho: é para isso que a tela existe. Quem quiser
+    # conferir o que o participante recebe agora manda rascunho falso.
+    testar_rascunho = bool(payload.get("rascunho", True))
 
     if not content_raw:
         return jsonify({"error": "escreva uma mensagem"}), 400
     if len(content_raw) > MAX_SIMULATE_LENGTH:
         return jsonify({"error": "mensagem muito longa"}), 400
+
+    if testar_rascunho:
+        with usando_rascunho() as montou:
+            resultado = _simular(content_raw, sector_code)
+            resultado["modo"] = "rascunho" if montou else "publicado"
+    else:
+        resultado = _simular(content_raw, sector_code)
+        resultado["modo"] = "publicado"
+    return jsonify(resultado)
+
+
+def _simular(content_raw, sector_code):
+    """Roda o caminho do worker e devolve o que ele responderia, como dicionário.
+
+    Fica separado da rota porque o modo rascunho precisa envolver tudo isso em
+    um contexto só, e uma função com vários returns não caberia no with.
+    """
 
     # O QR do setor entra como o participante enviaria, na primeira linha.
     if sector_code and not content_raw.upper().startswith("#SETOR:"):
@@ -1758,23 +1877,23 @@ def api_simulate():
 
     triagem = triar_mensagem(content)
     if triagem["tipo"] == "conversa":
-        return jsonify({
+        return {
             "reply": compose_smalltalk(content),
             "kind": "conversa",
             "explain": "A IA entendeu que é só conversa, sem relato: o bot responde no tom "
                        "dele e não abre chamado.",
             "sector": sector["name"] if sector else None,
             "createsCard": False,
-        })
+        }
 
     if len(content) < 3 or is_emoji_only(content):
-        return jsonify({
+        return {
             "reply": _sector_prompt(sector),
             "kind": "convite",
             "explain": "Mensagem curta ou só emoji: o bot convida a pessoa a contar o que houve.",
             "sector": sector["name"] if sector else None,
             "createsCard": False,
-        })
+        }
 
     urgency, category, region = _classify(content, sector, urgency=triagem["urgencia"])
     known = match_knowledge(content) if urgency != "Positivo" else None
@@ -1787,7 +1906,7 @@ def api_simulate():
     else:
         explain = "Sem pergunta cadastrada para isso: o bot responde no tom dele e registra o chamado."
 
-    return jsonify({
+    return {
         "reply": reply,
         "kind": "chamado",
         "urgency": urgency,
@@ -1798,7 +1917,7 @@ def api_simulate():
         "matched": {"question": known["question"], "id": known["id"]} if known else None,
         "explain": explain,
         "createsCard": True,
-    })
+    }
 
 
 @app.route("/api/bot/knowledge", methods=["GET"])
@@ -1807,7 +1926,7 @@ def list_knowledge():
     """Base completa, inclusive as perguntas desativadas."""
 
     try:
-        return jsonify({"entries": EVENT_STORE.knowledge(only_active=False)})
+        return jsonify({"entries": EVENT_STORE.draft_knowledge()})
     except Exception as e:
         logger.error("Falha ao listar base do bot: %s", type(e).__name__)
         return jsonify({"error": "unavailable"}), 503
@@ -1867,25 +1986,150 @@ def bot_settings_route():
 
     if request.method == "GET":
         try:
-            settings = EVENT_STORE.bot_settings() or {}
+            settings = EVENT_STORE.draft_settings() or {}
         except Exception as e:
             logger.error("Falha ao ler ajustes do bot: %s", type(e).__name__)
             settings = {}
         return jsonify({
             "persona": settings.get("persona") or "",
             "welcome": settings.get("welcome") or "",
+            "appUrl": settings.get("appUrl") or "",
             "defaultWelcome": WELCOME_MESSAGE,
         })
 
     payload = request.get_json(silent=True) or {}
+    app_url = str(payload.get("appUrl") or "").strip()
+    # Link do app vai no prompt do bot: só aceita endereço de verdade, senão a
+    # IA recebe lixo e repassa para o participante.
+    if app_url and not re.match(r"^https?://\S+$", app_url):
+        return jsonify({"error": "o link do app precisa começar com http:// ou https://"}), 400
     try:
         EVENT_STORE.save_bot_settings(
             payload.get("persona"),
             payload.get("welcome"),
+            app_url,
         )
     except Exception as e:
         logger.error("Falha ao salvar ajustes do bot: %s", type(e).__name__)
         return jsonify({"error": "não foi possível salvar"}), 503
+    return jsonify({"success": True})
+
+
+# --- REGRAS DE NEGÓCIO ---
+
+
+@app.route("/api/bot/rules", methods=["GET"])
+@login_required
+def list_rules():
+    """Regras cadastradas, ligadas e desligadas."""
+
+    try:
+        return jsonify({"rules": EVENT_STORE.draft_rules()})
+    except Exception as e:
+        logger.error("Falha ao listar regras: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+
+
+@app.route("/api/bot/rules", methods=["POST"])
+@login_required
+def save_rule_route():
+    """Cria ou atualiza uma regra de negócio."""
+
+    payload = request.get_json(silent=True) or {}
+    title = str(payload.get("title") or "").strip()
+    body = str(payload.get("body") or "").strip()
+    if len(title) < 3:
+        return jsonify({"error": "dê um nome para a regra"}), 400
+    if len(body) < 3:
+        return jsonify({"error": "escreva a regra"}), 400
+
+    try:
+        rule = EVENT_STORE.save_rule({
+            "id": payload.get("id"),
+            "title": title,
+            "body": body,
+            "priority": payload.get("priority", 50),
+            "active": payload.get("active", True),
+        })
+    except Exception as e:
+        logger.error("Falha ao salvar regra: %s", type(e).__name__)
+        return jsonify({"error": "não foi possível salvar"}), 503
+    return jsonify({"success": True, "rule": rule})
+
+
+@app.route("/api/bot/rules/<rule_id>", methods=["DELETE"])
+@login_required
+def delete_rule_route(rule_id):
+    """Remove uma regra do cadastro."""
+
+    try:
+        removida = EVENT_STORE.delete_rule(rule_id)
+    except Exception as e:
+        logger.error("Falha ao remover regra: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+    if not removida:
+        return jsonify({"error": "not_found"}), 404
+    return jsonify({"success": True})
+
+
+# --- PUBLICAÇÃO ---
+
+# O cadastro é rascunho. O participante só recebe o que foi publicado, e toda
+# publicação vira uma linha do histórico, com autor, para poder voltar atrás.
+
+
+@app.route("/api/bot/publication", methods=["GET"])
+@login_required
+def publication_status():
+    """Diz se há alteração esperando publicação e lista o histórico."""
+
+    try:
+        return jsonify({
+            "pendente": EVENT_STORE.has_unpublished_changes(),
+            "versoes": EVENT_STORE.config_versions(limit=20),
+            "janelaSegundos": EventStore._KNOWLEDGE_TTL_SECONDS,
+        })
+    except Exception as e:
+        logger.error("Falha ao ler estado da publicação: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+
+
+@app.route("/api/bot/publication", methods=["POST"])
+@login_required
+def publish_config_route():
+    """Coloca o rascunho no ar."""
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        versao = EVENT_STORE.publish_config(
+            author=session.get("user") or os.getenv("ADMIN_USER") or "painel",
+            note=payload.get("note"),
+        )
+    except Exception as e:
+        logger.error("Falha ao publicar configuração: %s", type(e).__name__)
+        return jsonify({"error": "não foi possível publicar"}), 503
+    return jsonify({
+        "success": True,
+        "versaoId": versao.get("id"),
+        "janelaSegundos": EventStore._KNOWLEDGE_TTL_SECONDS,
+    })
+
+
+@app.route("/api/bot/publication/<version_id>/restore", methods=["POST"])
+@login_required
+def restore_config_route(version_id):
+    """Volta uma versão do histórico para o ar e para o rascunho."""
+
+    try:
+        EVENT_STORE.restore_version(
+            version_id,
+            author=session.get("user") or os.getenv("ADMIN_USER") or "painel",
+        )
+    except LookupError:
+        return jsonify({"error": "not_found"}), 404
+    except Exception as e:
+        logger.error("Falha ao restaurar versão: %s", type(e).__name__)
+        return jsonify({"error": "não foi possível restaurar"}), 503
     return jsonify({"success": True})
 
 

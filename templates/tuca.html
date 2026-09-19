@@ -425,6 +425,37 @@
 
         .tab.on { background: var(--accent); color: #fff; }
 
+        /* Faixa de publicação: o estado de "o que o participante recebe agora"
+           fica sempre visível, em qualquer aba, porque é o que confunde. */
+        .pub {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 12px 16px; border-bottom: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .pub-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+        .pub.limpo .pub-dot { background: #22c55e; }
+        .pub.sujo .pub-dot { background: #f59e0b; }
+        .pub-txt { font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; }
+        .pub-txt strong { color: #fff; font-weight: 600; }
+        .pub .btn { margin-left: auto; }
+
+        .regra {
+            border: 1px solid var(--border); border-radius: 10px;
+            padding: 13px 15px; margin-bottom: 10px;
+        }
+        .regra.off { opacity: 0.45; }
+        .regra-t { font-weight: 600; font-size: 0.88rem; margin-bottom: 5px; }
+        .regra-b { font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; }
+        .regra-actions { display: flex; gap: 7px; align-items: center; margin-top: 11px; }
+
+        .versao {
+            display: flex; align-items: center; gap: 11px; flex-wrap: wrap;
+            border: 1px solid var(--border); border-radius: 10px;
+            padding: 11px 14px; margin-bottom: 9px; font-size: 0.82rem;
+        }
+        .versao.live { border-color: var(--accent); }
+        .versao-meta { color: var(--text-dim); font-size: 0.75rem; }
+
         .toast {
             position: fixed;
             bottom: 22px;
@@ -504,6 +535,13 @@
                         <option value="">Nenhum (mensagem direta)</option>
                     </select>
                 </div>
+                <div class="sim-opts">
+                    <label for="modo">Testar com:</label>
+                    <select id="modo" style="flex:1; min-width:180px">
+                        <option value="rascunho">Meu rascunho (ainda não publicado)</option>
+                        <option value="publicado">O que está no ar agora</option>
+                    </select>
+                </div>
                 <div class="sim-row">
                     <textarea id="msg" rows="1" placeholder="Escreva como um frequentador..."
                         onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); enviar();}"></textarea>
@@ -526,10 +564,19 @@
                 </div>
             </div>
 
+            <div class="pub limpo" id="pub">
+                <span class="pub-dot"></span>
+                <span class="pub-txt" id="pub-txt">Conferindo o que está no ar...</span>
+                <button class="btn primary" id="btn-publicar" onclick="publicar()" disabled>
+                    <i class="ri-rocket-line"></i> Publicar</button>
+            </div>
+
             <div class="cfg-body">
                 <div class="tabs" style="margin-bottom:17px">
                     <button class="tab on" id="tab-qa" onclick="verAba('qa')">Perguntas e respostas</button>
+                    <button class="tab" id="tab-regras" onclick="verAba('regras')">Regras de negócio</button>
                     <button class="tab" id="tab-tom" onclick="verAba('tom')">Jeito de falar</button>
+                    <button class="tab" id="tab-hist" onclick="verAba('hist')">Histórico</button>
                 </div>
 
                 <!-- Perguntas e respostas -->
@@ -584,11 +631,58 @@
                         <div class="field-hint">É o que a pessoa recebe quando manda só "oi". Deixe em branco para usar
                             a padrão. O WhatsApp usa *asterisco* para negrito.</div>
                     </div>
+                    <div class="field">
+                        <label for="appurl">Link do app oficial do festival</label>
+                        <input type="url" id="appurl" maxlength="300" placeholder="https://...">
+                        <div class="field-hint">É o destino de tudo que o bot não sabe responder. Enquanto estiver em
+                            branco, ele é instruído a nunca inventar um link e a mandar procurar a equipe no local.
+                        </div>
+                    </div>
                     <div style="display:flex; gap:9px">
                         <button class="btn primary" onclick="salvarTom()"><i class="ri-save-line"></i> Salvar
                             ajustes</button>
                         <button class="btn ghost" onclick="usarPadrao()">Usar boas-vindas padrão</button>
                     </div>
+                </div>
+
+                <!-- Regras de negócio -->
+                <div id="aba-regras" class="hidden">
+                    <div class="field">
+                        <label for="r-titulo">Nome da regra</label>
+                        <input type="text" id="r-titulo" maxlength="120" placeholder="Ex: Nunca prometer reembolso">
+                    </div>
+                    <div class="field">
+                        <label for="r-corpo">O que o bot deve fazer</label>
+                        <textarea id="r-corpo" rows="4" maxlength="1000"
+                            placeholder="Ex: Nunca diga que o ingresso será reembolsado. Diga que o pedido foi registrado e que a produção entra em contato."></textarea>
+                        <div class="field-hint">Escreva como uma ordem direta. A regra vale mais que o tom de voz: a IA
+                            escolhe as palavras, não escolhe se obedece.</div>
+                    </div>
+                    <div class="field">
+                        <label for="r-prio">Prioridade (0 a 100)</label>
+                        <input type="number" id="r-prio" min="0" max="100" value="50">
+                        <div class="field-hint">As mais altas aparecem primeiro no prompt, onde a IA menos ignora.</div>
+                    </div>
+                    <div style="display:flex; gap:9px; margin-bottom:20px">
+                        <button class="btn primary" onclick="salvarRegra()" id="btn-salvar-regra"><i
+                                class="ri-save-line"></i> Salvar regra</button>
+                        <button class="btn ghost hidden" onclick="cancelarRegra()" id="btn-cancelar-regra">Cancelar
+                            edição</button>
+                    </div>
+
+                    <div class="panel-title" style="font-size:0.85rem; margin-bottom:11px">
+                        <i class="ri-scales-3-line"></i> Regras cadastradas (<span id="r-count">0</span>)
+                    </div>
+                    <div id="regras-list"></div>
+                </div>
+
+                <!-- Histórico de publicações -->
+                <div id="aba-hist" class="hidden">
+                    <div class="field-hint" style="margin-bottom:15px">
+                        Cada publicação vira uma linha aqui. Restaurar devolve aquela versão para o ar e também para o
+                        cadastro, então a tela volta a mostrar exatamente o que o participante está recebendo.
+                    </div>
+                    <div id="hist-list"></div>
                 </div>
             </div>
         </div>
@@ -619,11 +713,17 @@
             setTimeout(() => { t.className = 'toast'; }, 3200);
         }
 
+        const ABAS = ['qa', 'regras', 'tom', 'hist'];
+
         function verAba(qual) {
-            document.getElementById('aba-qa').classList.toggle('hidden', qual !== 'qa');
-            document.getElementById('aba-tom').classList.toggle('hidden', qual !== 'tom');
+            ABAS.forEach(nome => {
+                document.getElementById('aba-' + nome).classList.toggle('hidden', nome !== qual);
+            });
             document.getElementById('tab-qa').classList.toggle('on', qual === 'qa');
+            document.getElementById('tab-regras').classList.toggle('on', qual === 'regras');
             document.getElementById('tab-tom').classList.toggle('on', qual === 'tom');
+            document.getElementById('tab-hist').classList.toggle('on', qual === 'hist');
+            if (qual === 'hist') carregarPublicacao();
         }
 
         // ================= SIMULADOR =================
@@ -687,7 +787,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         content,
-                        setor: document.getElementById('setor').value || null
+                        setor: document.getElementById('setor').value || null,
+                        rascunho: document.getElementById('modo').value === 'rascunho'
                     })
                 });
                 const data = await res.json();
@@ -800,9 +901,10 @@
                 return;
             }
 
-            aviso(editando ? 'Pergunta atualizada.' : 'Pergunta cadastrada.');
+            aviso(editando ? 'Pergunta atualizada no rascunho.' : 'Pergunta cadastrada no rascunho.');
             cancelarEdicao();
             carregarBase();
+            carregarPublicacao();
         }
 
         async function alternar(entry) {
@@ -821,8 +923,9 @@
                 aviso('Erro ao alterar.', true);
                 return;
             }
-            aviso(entry.active ? 'Pergunta desativada.' : 'Pergunta ativada.');
+            aviso(entry.active ? 'Pergunta desativada no rascunho.' : 'Pergunta ativada no rascunho.');
             carregarBase();
+            carregarPublicacao();
         }
 
         async function remover(entry) {
@@ -835,8 +938,9 @@
                 aviso('Erro ao remover.', true);
                 return;
             }
-            aviso('Pergunta removida.');
+            aviso('Pergunta removida do rascunho.');
             carregarBase();
+            carregarPublicacao();
         }
 
         // ================= TOM DE VOZ =================
@@ -847,6 +951,7 @@
                 padraoWelcome = data.defaultWelcome || '';
                 document.getElementById('persona').value = data.persona || '';
                 document.getElementById('welcome').value = data.welcome || padraoWelcome;
+                document.getElementById('appurl').value = data.appUrl || '';
             } catch (err) {
                 console.error('Erro ao carregar ajustes:', err);
             }
@@ -865,15 +970,243 @@
                     body: JSON.stringify({
                         persona: document.getElementById('persona').value.trim(),
                         // Igual ao padrão significa "não personalizado".
-                        welcome: welcome === padraoWelcome ? '' : welcome
+                        welcome: welcome === padraoWelcome ? '' : welcome,
+                        appUrl: document.getElementById('appurl').value.trim()
                     })
                 });
-                if (!res.ok) { aviso('Não foi possível salvar.', true); return; }
+                if (!res.ok) {
+                    const erro = await res.json().catch(() => ({}));
+                    aviso(erro.error || 'Não foi possível salvar.', true);
+                    return;
+                }
             } catch (err) {
                 aviso('Erro ao salvar.', true);
                 return;
             }
-            aviso('Ajustes salvos. Valem para a próxima mensagem.');
+            aviso('Ajustes salvos no rascunho. Publique para o participante receber.');
+            carregarPublicacao();
+        }
+
+        // ================= REGRAS DE NEGÓCIO =================
+        let editandoRegra = null;
+
+        async function carregarRegras() {
+            let regras = [];
+            try {
+                const res = await fetch('/api/bot/rules');
+                regras = (await res.json()).rules || [];
+            } catch (err) {
+                console.error('Erro ao carregar regras:', err);
+            }
+
+            document.getElementById('r-count').textContent = regras.length;
+            const box = document.getElementById('regras-list');
+
+            if (!regras.length) {
+                box.innerHTML = '<p style="color:var(--text-dim); font-size:0.85rem">Nenhuma regra cadastrada ainda.</p>';
+                return;
+            }
+
+            box.innerHTML = regras.map(r => `
+                <div class="regra ${r.active ? '' : 'off'}">
+                    <div class="regra-t">${esc(r.title)}</div>
+                    <div class="regra-b">${esc(r.body)}</div>
+                    <div class="regra-actions">
+                        <button class="btn ghost" data-editar="${esc(r.id)}"><i class="ri-pencil-line"></i> Editar</button>
+                        <button class="btn ghost" data-alternar="${esc(r.id)}">
+                            <i class="ri-${r.active ? 'pause' : 'play'}-line"></i> ${r.active ? 'Desligar' : 'Ligar'}</button>
+                        <button class="btn danger" data-remover="${esc(r.id)}"><i class="ri-delete-bin-line"></i></button>
+                        <span style="margin-left:auto; font-size:0.72rem; color:var(--text-dim)">prioridade ${r.priority}</span>
+                    </div>
+                </div>`).join('');
+
+            const porId = {};
+            regras.forEach(r => { porId[r.id] = r; });
+            box.querySelectorAll('[data-editar]').forEach(b => {
+                b.onclick = () => editarRegra(porId[b.getAttribute('data-editar')]);
+            });
+            box.querySelectorAll('[data-alternar]').forEach(b => {
+                b.onclick = () => alternarRegra(porId[b.getAttribute('data-alternar')]);
+            });
+            box.querySelectorAll('[data-remover]').forEach(b => {
+                b.onclick = () => removerRegra(porId[b.getAttribute('data-remover')]);
+            });
+        }
+
+        function editarRegra(regra) {
+            if (!regra) return;
+            editandoRegra = regra.id;
+            document.getElementById('r-titulo').value = regra.title;
+            document.getElementById('r-corpo').value = regra.body;
+            document.getElementById('r-prio').value = regra.priority;
+            document.getElementById('btn-salvar-regra').innerHTML = '<i class="ri-save-line"></i> Salvar alteração';
+            document.getElementById('btn-cancelar-regra').classList.remove('hidden');
+            document.getElementById('r-titulo').focus();
+        }
+
+        function cancelarRegra() {
+            editandoRegra = null;
+            document.getElementById('r-titulo').value = '';
+            document.getElementById('r-corpo').value = '';
+            document.getElementById('r-prio').value = 50;
+            document.getElementById('btn-salvar-regra').innerHTML = '<i class="ri-save-line"></i> Salvar regra';
+            document.getElementById('btn-cancelar-regra').classList.add('hidden');
+        }
+
+        async function gravarRegra(corpo, mensagem) {
+            try {
+                const res = await fetch('/api/bot/rules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(corpo)
+                });
+                if (!res.ok) {
+                    const erro = await res.json().catch(() => ({}));
+                    aviso(erro.error || 'Não foi possível salvar.', true);
+                    return false;
+                }
+            } catch (err) {
+                aviso('Erro ao salvar a regra.', true);
+                return false;
+            }
+            aviso(mensagem);
+            carregarRegras();
+            carregarPublicacao();
+            return true;
+        }
+
+        async function salvarRegra() {
+            const title = document.getElementById('r-titulo').value.trim();
+            const body = document.getElementById('r-corpo').value.trim();
+            if (title.length < 3) { aviso('Dê um nome para a regra.', true); return; }
+            if (body.length < 3) { aviso('Escreva a regra.', true); return; }
+
+            const ok = await gravarRegra({
+                id: editandoRegra,
+                title,
+                body,
+                priority: Number(document.getElementById('r-prio').value) || 50,
+                active: true
+            }, 'Regra salva no rascunho. Publique para valer no WhatsApp.');
+            if (ok) cancelarRegra();
+        }
+
+        async function alternarRegra(regra) {
+            if (!regra) return;
+            await gravarRegra(
+                { id: regra.id, title: regra.title, body: regra.body, priority: regra.priority, active: !regra.active },
+                regra.active ? 'Regra desligada no rascunho.' : 'Regra ligada no rascunho.'
+            );
+        }
+
+        async function removerRegra(regra) {
+            if (!regra) return;
+            if (!confirm('Remover a regra "' + regra.title + '"?')) return;
+            try {
+                const res = await fetch('/api/bot/rules/' + encodeURIComponent(regra.id), { method: 'DELETE' });
+                if (!res.ok) { aviso('Não foi possível remover.', true); return; }
+            } catch (err) {
+                aviso('Erro ao remover.', true);
+                return;
+            }
+            aviso('Regra removida do rascunho.');
+            if (editandoRegra === regra.id) cancelarRegra();
+            carregarRegras();
+            carregarPublicacao();
+        }
+
+        // ================= PUBLICAÇÃO =================
+        let janelaSegundos = 30;
+
+        async function carregarPublicacao() {
+            let data = {};
+            try {
+                const res = await fetch('/api/bot/publication');
+                if (!res.ok) throw new Error('falhou');
+                data = await res.json();
+            } catch (err) {
+                console.error('Erro ao ler publicação:', err);
+                document.getElementById('pub-txt').textContent = 'Não consegui conferir o que está no ar.';
+                return;
+            }
+
+            janelaSegundos = data.janelaSegundos || 30;
+            const pendente = !!data.pendente;
+            const faixa = document.getElementById('pub');
+            faixa.classList.toggle('sujo', pendente);
+            faixa.classList.toggle('limpo', !pendente);
+            document.getElementById('pub-txt').innerHTML = pendente
+                ? '<strong>Você tem alterações não publicadas.</strong> O participante ainda recebe a versão anterior.'
+                : '<strong>Tudo publicado.</strong> O que está na tela é o que o participante recebe.';
+            document.getElementById('btn-publicar').disabled = !pendente;
+
+            const box = document.getElementById('hist-list');
+            const versoes = data.versoes || [];
+            if (!versoes.length) {
+                box.innerHTML = '<p style="color:var(--text-dim); font-size:0.85rem">Nenhuma publicação ainda.</p>';
+                return;
+            }
+            box.innerHTML = versoes.map(v => `
+                <div class="versao ${v.isLive ? 'live' : ''}">
+                    <div>
+                        <div>${v.isLive ? '<i class="ri-broadcast-line" style="color:var(--accent)"></i> No ar agora' : esc(v.note || 'Publicação')}</div>
+                        <div class="versao-meta">${esc(quando(v.createdAt))} por ${esc(v.author || 'painel')} · ${v.perguntas} perguntas · ${v.regras} regras</div>
+                    </div>
+                    ${v.isLive ? '' : `<button class="btn ghost" style="margin-left:auto" data-restaurar="${esc(v.id)}"><i class="ri-arrow-go-back-line"></i> Restaurar</button>`}
+                </div>`).join('');
+
+            box.querySelectorAll('[data-restaurar]').forEach(b => {
+                b.onclick = () => restaurar(b.getAttribute('data-restaurar'));
+            });
+        }
+
+        function quando(iso) {
+            if (!iso) return 'data desconhecida';
+            try {
+                return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+            } catch (err) {
+                return iso;
+            }
+        }
+
+        async function publicar() {
+            const botao = document.getElementById('btn-publicar');
+            botao.disabled = true;
+            try {
+                const res = await fetch('/api/bot/publication', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                if (!res.ok) {
+                    const erro = await res.json().catch(() => ({}));
+                    aviso(erro.error || 'Não foi possível publicar.', true);
+                    botao.disabled = false;
+                    return;
+                }
+            } catch (err) {
+                aviso('Erro ao publicar.', true);
+                botao.disabled = false;
+                return;
+            }
+            aviso('Publicado. O bot passa a usar em até ' + janelaSegundos + ' segundos.');
+            carregarPublicacao();
+        }
+
+        async function restaurar(id) {
+            if (!confirm('Restaurar esta versão? Ela volta para o ar e substitui o que está cadastrado agora.')) return;
+            try {
+                const res = await fetch('/api/bot/publication/' + encodeURIComponent(id) + '/restore', { method: 'POST' });
+                if (!res.ok) { aviso('Não foi possível restaurar.', true); return; }
+            } catch (err) {
+                aviso('Erro ao restaurar.', true);
+                return;
+            }
+            aviso('Versão restaurada. O bot volta a ela em até ' + janelaSegundos + ' segundos.');
+            carregarBase();
+            carregarRegras();
+            carregarTom();
+            carregarPublicacao();
         }
 
         // ================= SETORES NO SIMULADOR =================
@@ -892,7 +1225,9 @@
 
         carregarSetores();
         carregarBase();
+        carregarRegras();
         carregarTom();
+        carregarPublicacao();
     </script>
 </body>
 

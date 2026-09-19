@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import logging
 import os
 import threading
@@ -410,36 +411,87 @@ class EventStore:
     # banco por participante; com 30s o operador ainda ve o efeito na hora.
     _KNOWLEDGE_TTL_SECONDS = 30
 
-    def knowledge(self, only_active: bool = True) -> list[dict[str, Any]]:
-        """Perguntas e respostas do evento, da maior para a menor prioridade."""
+    def live_config(self) -> dict[str, Any]:
+        """A versão publicada, que é a única que o bot enxerga.
 
-        cache = getattr(self, "_knowledge_cache", None)
+        O worker roda em outro processo, então o cache de 30s é também o tempo
+        máximo entre alguém publicar e o WhatsApp responder com o conteúdo novo.
+        """
+
+        cache = getattr(self, "_live_cache", None)
         now = datetime.now(timezone.utc)
-        if (
-            only_active
-            and cache
-            and (now - cache["at"]).total_seconds() < self._KNOWLEDGE_TTL_SECONDS
-        ):
-            return cache["rows"]
+        if cache and (now - cache["at"]).total_seconds() < self._KNOWLEDGE_TTL_SECONDS:
+            return cache["payload"]
 
-        query = (
-            self._get_client()
-            .table("bot_knowledge")
-            .select("id,question,answer,keywords,priority,active")
-            .eq("event_id", self.event_id())
-        )
-        if only_active:
-            query = query.eq("active", True)
         try:
-            response = query.order("priority", desc=True).execute()
+            response = (
+                self._get_client()
+                .table("bot_config_version")
+                .select("payload")
+                .eq("event_id", self.event_id())
+                .eq("is_live", True)
+                .limit(1)
+                .execute()
+            )
         except Exception as exc:  # noqa: BLE001 - base indisponível não cala o bot
-            logger.error("Falha ao ler base do bot: %s", type(exc).__name__)
-            return cache["rows"] if cache else []
+            logger.error("Falha ao ler versão publicada: %s", type(exc).__name__)
+            return cache["payload"] if cache else self._fallback_para_rascunho()
 
-        rows = list(response.data or [])
+        rows = response.data or []
+        if not rows:
+            # Sem versão no ar o bot ficaria sem base nenhuma e responderia
+            # genérico sem ninguém perceber. Num festival isso é pior que
+            # publicar sem revisão, então o rascunho assume.
+            logger.warning("Nenhuma versão publicada: o bot vai usar o rascunho")
+            payload = self._fallback_para_rascunho()
+        else:
+            payload = dict(rows[0].get("payload") or {})
+        self._live_cache = {"payload": payload, "at": now}
+        return payload
+
+    def _fallback_para_rascunho(self) -> dict[str, Any]:
+        """Último recurso: o cadastro cru, quando não há versão publicada legível."""
+
+        try:
+            return self.draft_payload()
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Rascunho também indisponível: %s", type(exc).__name__)
+            return {}
+
+    def knowledge(self, only_active: bool = True) -> list[dict[str, Any]]:
+        """Perguntas e respostas no ar, da maior para a menor prioridade.
+
+        Lê da versão publicada: o que está em rascunho não chega no participante
+        enquanto ninguém apertar Publicar.
+        """
+
+        entries = list(self.live_config().get("knowledge") or [])
         if only_active:
-            self._knowledge_cache = {"rows": rows, "at": now}
-        return rows
+            entries = [e for e in entries if e.get("active", True)]
+        return entries
+
+    def rules(self) -> list[dict[str, Any]]:
+        """Regras de negócio no ar, da maior para a menor prioridade."""
+
+        entries = list(self.live_config().get("rules") or [])
+        return [e for e in entries if e.get("active", True)]
+
+    def draft_knowledge(self) -> list[dict[str, Any]]:
+        """Perguntas como estão no cadastro, publicadas ou não. Só o painel usa."""
+
+        try:
+            response = (
+                self._get_client()
+                .table("bot_knowledge")
+                .select("id,question,answer,keywords,priority,active")
+                .eq("event_id", self.event_id())
+                .order("priority", desc=True)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Falha ao ler rascunho da base: %s", type(exc).__name__)
+            return []
+        return list(response.data or [])
 
     def save_knowledge(self, entry: dict[str, Any]) -> dict[str, Any]:
         """Cria ou atualiza uma pergunta e resposta."""
@@ -467,7 +519,6 @@ class EventStore:
             )
         else:
             response = client.table("bot_knowledge").insert(row).execute()
-        self._knowledge_cache = None
         if not response.data:
             raise RuntimeError("Supabase não retornou a pergunta salva")
         return response.data[0]
@@ -483,39 +534,49 @@ class EventStore:
             .eq("event_id", self.event_id())
             .execute()
         )
-        self._knowledge_cache = None
         return bool(response.data)
 
     def bot_settings(self) -> dict[str, Any]:
-        """Tom de voz e boas-vindas configurados, com cache curto."""
+        """Tom de voz, boas-vindas e link do app que estão no ar."""
 
-        cache = getattr(self, "_settings_cache", None)
-        now = datetime.now(timezone.utc)
-        if cache and (now - cache["at"]).total_seconds() < self._KNOWLEDGE_TTL_SECONDS:
-            return cache["row"]
+        return dict(self.live_config().get("settings") or {})
+
+    def draft_settings(self) -> dict[str, Any]:
+        """Ajustes como estão no cadastro. Só o painel usa."""
+
         try:
             response = (
                 self._get_client()
                 .table("bot_settings")
-                .select("persona,welcome")
+                .select("persona,welcome,app_url")
                 .eq("event_id", self.event_id())
                 .limit(1)
                 .execute()
             )
         except Exception as exc:  # noqa: BLE001
-            logger.error("Falha ao ler ajustes do bot: %s", type(exc).__name__)
-            return cache["row"] if cache else {}
+            logger.error("Falha ao ler rascunho dos ajustes: %s", type(exc).__name__)
+            return {}
         row = (response.data or [{}])[0]
-        self._settings_cache = {"row": row, "at": now}
-        return row
+        # O painel e a versão publicada falam appUrl; só a coluna é app_url.
+        return {
+            "persona": row.get("persona"),
+            "welcome": row.get("welcome"),
+            "appUrl": row.get("app_url"),
+        }
 
-    def save_bot_settings(self, persona: str | None, welcome: str | None) -> dict[str, Any]:
-        """Grava tom de voz e boas-vindas, uma linha por evento."""
+    def save_bot_settings(
+        self,
+        persona: str | None,
+        welcome: str | None,
+        app_url: str | None = None,
+    ) -> dict[str, Any]:
+        """Grava tom de voz, boas-vindas e link do app, uma linha por evento."""
 
         row = {
             "event_id": self.event_id(),
             "persona": (persona or "").strip()[:2000] or None,
             "welcome": (welcome or "").strip()[:1500] or None,
+            "app_url": (app_url or "").strip()[:300] or None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         response = (
@@ -524,8 +585,239 @@ class EventStore:
             .upsert(row, on_conflict="event_id")
             .execute()
         )
-        self._settings_cache = None
         return (response.data or [row])[0]
+
+    # ------------------------------------------------------------------
+    # Regras de negócio (rascunho)
+    # ------------------------------------------------------------------
+
+    def draft_rules(self) -> list[dict[str, Any]]:
+        """Regras como estão no cadastro, ligadas ou não."""
+
+        try:
+            response = (
+                self._get_client()
+                .table("bot_rules")
+                .select("id,title,body,priority,active")
+                .eq("event_id", self.event_id())
+                .order("priority", desc=True)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Falha ao ler rascunho das regras: %s", type(exc).__name__)
+            return []
+        return list(response.data or [])
+
+    def save_rule(self, entry: dict[str, Any]) -> dict[str, Any]:
+        """Cria ou atualiza uma regra de negócio."""
+
+        row = {
+            "event_id": self.event_id(),
+            "title": str(entry.get("title") or "").strip()[:120],
+            "body": str(entry.get("body") or "").strip()[:1000],
+            "priority": max(0, min(100, int(entry.get("priority") or 50))),
+            "active": bool(entry.get("active", True)),
+        }
+        client = self._get_client()
+        if entry.get("id"):
+            response = (
+                client.table("bot_rules")
+                .update(row)
+                .eq("id", entry["id"])
+                .eq("event_id", row["event_id"])
+                .execute()
+            )
+        else:
+            response = client.table("bot_rules").insert(row).execute()
+        if not response.data:
+            raise RuntimeError("Supabase não retornou a regra salva")
+        return response.data[0]
+
+    def delete_rule(self, rule_id: str) -> bool:
+        """Remove uma regra do cadastro."""
+
+        response = (
+            self._get_client()
+            .table("bot_rules")
+            .delete()
+            .eq("id", rule_id)
+            .eq("event_id", self.event_id())
+            .execute()
+        )
+        return bool(response.data)
+
+    # ------------------------------------------------------------------
+    # Publicação
+    # ------------------------------------------------------------------
+
+    def draft_payload(self) -> dict[str, Any]:
+        """Monta a fotografia do rascunho, no mesmo formato da versão no ar."""
+
+        return {
+            "knowledge": [e for e in self.draft_knowledge() if e.get("active", True)],
+            "rules": [r for r in self.draft_rules() if r.get("active", True)],
+            "settings": self.draft_settings(),
+        }
+
+    @staticmethod
+    def _comparable(payload: dict[str, Any]) -> str:
+        """Texto estável de um payload, para comparar rascunho com o que está no ar."""
+
+        def limpa(itens: Any) -> list[dict[str, Any]]:
+            saida = []
+            for item in itens or []:
+                saida.append({k: v for k, v in sorted(item.items()) if k != "id"})
+            return sorted(saida, key=lambda d: json.dumps(d, sort_keys=True, ensure_ascii=False))
+
+        settings = payload.get("settings") or {}
+        return json.dumps(
+            {
+                "knowledge": limpa(payload.get("knowledge")),
+                "rules": limpa(payload.get("rules")),
+                "settings": {
+                    "persona": settings.get("persona") or "",
+                    "welcome": settings.get("welcome") or "",
+                    "appUrl": settings.get("appUrl") or "",
+                },
+            },
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+
+    def has_unpublished_changes(self) -> bool:
+        """Diz se o rascunho difere do que está no ar."""
+
+        try:
+            return self._comparable(self.draft_payload()) != self._comparable(self.live_config())
+        except Exception as exc:  # noqa: BLE001 - dúvida não trava o painel
+            logger.error("Falha ao comparar rascunho: %s", type(exc).__name__)
+            return False
+
+    def publish_config(self, author: str | None = None, note: str | None = None) -> dict[str, Any]:
+        """Tira a fotografia do rascunho e coloca no ar.
+
+        Desmarca a versão anterior antes de inserir a nova, porque o índice
+        único parcial só admite uma linha com is_live por evento.
+        """
+
+        payload = self.draft_payload()
+        client = self._get_client()
+        event_id = self.event_id()
+
+        client.table("bot_config_version").update({"is_live": False}).eq(
+            "event_id", event_id
+        ).eq("is_live", True).execute()
+
+        response = (
+            client.table("bot_config_version")
+            .insert({
+                "event_id": event_id,
+                "payload": payload,
+                "author": (author or "").strip()[:80] or None,
+                "note": (note or "").strip()[:200] or None,
+                "is_live": True,
+            })
+            .execute()
+        )
+        self._live_cache = None
+        if not response.data:
+            raise RuntimeError("Supabase não retornou a versão publicada")
+        return response.data[0]
+
+    def config_versions(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Histórico de publicações, da mais recente para a mais antiga."""
+
+        try:
+            response = (
+                self._get_client()
+                .table("bot_config_version")
+                .select("id,author,note,is_live,created_at,payload")
+                .eq("event_id", self.event_id())
+                .order("created_at", desc=True)
+                .limit(max(1, min(50, int(limit))))
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Falha ao ler histórico: %s", type(exc).__name__)
+            return []
+
+        versoes = []
+        for row in response.data or []:
+            payload = row.get("payload") or {}
+            versoes.append({
+                "id": row.get("id"),
+                "author": row.get("author"),
+                "note": row.get("note"),
+                "isLive": bool(row.get("is_live")),
+                "createdAt": row.get("created_at"),
+                "perguntas": len(payload.get("knowledge") or []),
+                "regras": len(payload.get("rules") or []),
+            })
+        return versoes
+
+    def restore_version(self, version_id: str, author: str | None = None) -> dict[str, Any]:
+        """Volta uma versão antiga para o ar e devolve o rascunho ao mesmo estado.
+
+        Restaurar sem mexer no rascunho deixaria o painel mostrando uma coisa e
+        o participante recebendo outra, que é exatamente a confusão que esse
+        fluxo existe para evitar.
+        """
+
+        client = self._get_client()
+        event_id = self.event_id()
+
+        alvo = (
+            client.table("bot_config_version")
+            .select("payload")
+            .eq("id", version_id)
+            .eq("event_id", event_id)
+            .limit(1)
+            .execute()
+        )
+        if not alvo.data:
+            raise LookupError("versão não encontrada")
+        payload = dict(alvo.data[0].get("payload") or {})
+
+        # Rascunho volta a espelhar a versão restaurada.
+        client.table("bot_knowledge").delete().eq("event_id", event_id).execute()
+        perguntas = [
+            {
+                "event_id": event_id,
+                "question": e.get("question"),
+                "answer": e.get("answer"),
+                "keywords": e.get("keywords") or [],
+                "priority": e.get("priority") or 0,
+                "active": e.get("active", True),
+            }
+            for e in (payload.get("knowledge") or [])
+            if e.get("question") and e.get("answer")
+        ]
+        if perguntas:
+            client.table("bot_knowledge").insert(perguntas).execute()
+
+        client.table("bot_rules").delete().eq("event_id", event_id).execute()
+        regras = [
+            {
+                "event_id": event_id,
+                "title": r.get("title"),
+                "body": r.get("body"),
+                "priority": r.get("priority") or 50,
+                "active": r.get("active", True),
+            }
+            for r in (payload.get("rules") or [])
+            if r.get("title") and r.get("body")
+        ]
+        if regras:
+            client.table("bot_rules").insert(regras).execute()
+
+        settings = payload.get("settings") or {}
+        self.save_bot_settings(
+            settings.get("persona"),
+            settings.get("welcome"),
+            settings.get("appUrl"),
+        )
+
+        return self.publish_config(author=author, note="Versão restaurada do histórico")
 
     # ------------------------------------------------------------------
     # Atendimento humano (handon / handoff)
