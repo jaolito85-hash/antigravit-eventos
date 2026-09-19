@@ -164,8 +164,7 @@ Atenção ao limite: o rate limit corta a partir de 4 mensagens do mesmo número
 4. **Chamados**, a fila de trabalho. Cada cartão traz o número, a mensagem
    completa, as atualizações e **a resposta que o ChatBob enviou**, com o
    estado de entrega. É aqui que se mostra a troca inteira e a mudança de
-   status. Não confunda com **Atendimento**, que é uma linha por pessoa: a
-   mesma pessoa pode ter três chamados.
+   status, e onde se assume o atendimento pelo botão de conversar.
 5. **Relatório** (`/relatorio`), o entregável pós-evento: resumo executivo
    escrito pela IA, aprovação por macrozona e a tabela de desempenho por setor,
    que mostra exatamente qual ponto da planta funcionou e qual deu trabalho.
@@ -188,8 +187,9 @@ celular:
 5. Clique em **Devolver ao ChatBob** e mande mais uma do celular. O automático
    volta a responder.
 
-A aba **Atendimento** lista todas as conversas, com as assumidas no topo, e o
-contador laranja na barra lateral mostra quantas estão na mão da equipe.
+Na aba **Chamados**, o filtro **Só em atendimento humano** mostra o que está
+na mão da equipe, e o selo **equipe atende** aparece no cartão, para ninguém
+responder por cima de uma conversa que outra pessoa assumiu.
 
 ---
 

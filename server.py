@@ -1583,6 +1583,7 @@ def get_events():
     status_filter = request.args.get('status')
     setor = request.args.get('setor')
     topico = request.args.get('topico')
+    atendimento = request.args.get('atendimento')
 
     if setor:
         # Usa a mesma agregacao do mapa para o filtro nao divergir do pin.
@@ -1604,7 +1605,26 @@ def get_events():
     if topico:
         feedbacks = [f for f in feedbacks if f.get('topic') == topico]
     
-    return jsonify([public_feedback(feedback) for feedback in feedbacks])
+    # Quem esta em atendimento humano precisa aparecer no proprio chamado,
+    # senao a equipe responde por cima de uma conversa que alguem assumiu.
+    try:
+        modos = EVENT_STORE.conversation_modes()
+    except Exception as e:
+        logger.error("Falha ao ler modos de atendimento: %s", type(e).__name__)
+        modos = {}
+
+    if atendimento == 'humano':
+        feedbacks = [
+            f for f in feedbacks
+            if modos.get(f.get('sender_hash')) == 'human'
+        ]
+
+    saida = []
+    for feedback in feedbacks:
+        item = public_feedback(feedback)
+        item['humanAttended'] = modos.get(feedback.get('sender_hash')) == 'human'
+        saida.append(item)
+    return jsonify(saida)
 
 # Cache para AI Pulse (evita chamadas excessivas)
 ai_pulse_cache = {"data": None, "timestamp": None}
@@ -1860,55 +1880,6 @@ def _conversation_payload(sender_hash):
     thread["conversationId"] = sender_hash
     thread["participant"] = sender_hash[:12]
     return thread
-
-
-@app.route("/api/conversations")
-@login_required
-def list_conversations():
-    """Lista as conversas do evento, com quem está em atendimento humano no topo."""
-
-    feedbacks = get_feedbacks()
-    modes = EVENT_STORE.conversation_modes()
-
-    agrupadas = {}
-    for fb in feedbacks:
-        sender_hash = fb.get("sender_hash")
-        if not sender_hash:
-            continue
-        item = agrupadas.setdefault(sender_hash, {
-            "conversationId": sender_hash,
-            "participant": sender_hash[:12],
-            "total": 0,
-            "open": 0,
-            "worst": "Positivo",
-            "lastAt": None,
-            "lastMessage": None,
-            "region": None,
-            "mode": modes.get(sender_hash, "bot"),
-        })
-        item["total"] += 1
-        if (fb.get("status") or "aberto") != "resolvido":
-            item["open"] += 1
-        if _URGENCY_RANK.get(fb.get("urgency"), 0) > _URGENCY_RANK.get(item["worst"], 0):
-            item["worst"] = fb.get("urgency")
-        ts = fb.get("updated_at") or fb.get("timestamp")
-        if ts and (item["lastAt"] is None or ts > item["lastAt"]):
-            item["lastAt"] = ts
-            item["lastMessage"] = (fb.get("message") or "")[:160]
-            item["region"] = fb.get("region")
-
-    conversas = sorted(
-        agrupadas.values(),
-        key=lambda c: (
-            c["mode"] != "human",
-            -_URGENCY_RANK.get(c["worst"], 0),
-            c["lastAt"] or "",
-        ),
-    )
-    return jsonify({
-        "conversations": conversas,
-        "humanCount": sum(1 for c in conversas if c["mode"] == "human"),
-    })
 
 
 @app.route("/api/conversations/by-feedback/<int:feedback_id>")

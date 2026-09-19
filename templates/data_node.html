@@ -991,91 +991,6 @@
             margin-top: 1px;
         }
 
-        /* ===== ATENDIMENTO: LISTA E CHAT ===== */
-        .conv-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-            gap: 14px;
-        }
-
-        .conv-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-left: 3px solid var(--tone);
-            border-radius: 12px;
-            padding: 16px;
-            cursor: pointer;
-            transition: 0.15s;
-        }
-
-        .conv-card:hover {
-            border-color: var(--accent-primary);
-            transform: translateY(-1px);
-        }
-
-        .conv-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .conv-who {
-            font-size: 0.86rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-        }
-
-        .conv-mode {
-            font-size: 0.64rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            padding: 3px 9px;
-            border-radius: 20px;
-            white-space: nowrap;
-        }
-
-        .conv-mode.human {
-            background: rgba(41, 121, 255, 0.18);
-            color: #8ab4ff;
-            border: 1px solid rgba(41, 121, 255, 0.55);
-        }
-
-        .conv-mode.bot {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-        }
-
-        .conv-msg {
-            font-size: 0.85rem;
-            color: #cbd2dd;
-            line-height: 1.45;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            min-height: 36px;
-        }
-
-        .conv-foot {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-top: 12px;
-            padding-top: 11px;
-            border-top: 1px solid var(--border);
-            font-size: 0.73rem;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
         /* ---------- Painel de chat ---------- */
         .chat-box {
             background: var(--bg-card);
@@ -1968,9 +1883,6 @@
         <div class="nav-item" onclick="nav('feedbacks', this)"><i class="ri-task-line"></i> Chamados
             <span class="nav-badge hidden" id="nav-badge-open">0</span>
         </div>
-        <div class="nav-item" onclick="nav('conversas', this)"><i class="ri-customer-service-2-line"></i> Atendimento
-            <span class="nav-badge hidden" id="nav-badge-human" style="background:var(--accent-primary)">0</span>
-        </div>
 
         <div class="nav-label">ANÁLISE</div>
         <div class="nav-item" onclick="nav('regions', this)"><i class="ri-map-pin-line"></i> Regiões</div>
@@ -2144,34 +2056,6 @@
         </div>
     </div>
 
-    <!-- ATENDIMENTO VIEW -->
-    <div class="main hidden" id="view-conversas">
-        <div class="page-header">
-            <div class="page-title">
-                <h1>Atendimento</h1>
-                <p>Uma linha por pessoa, com a conversa dela de ponta a ponta</p>
-            </div>
-            <div class="filters-bar" style="margin:0">
-                <select id="filtro-conversa" class="filter-select" onchange="loadConversas()">
-                    <option value="">Todas as conversas</option>
-                    <option value="human">Em atendimento humano</option>
-                    <option value="bot">No ChatBob</option>
-                    <option value="abertos">Com chamado em aberto</option>
-                </select>
-            </div>
-        </div>
-        <div class="view-note">
-            <i class="ri-user-voice-line"></i>
-            <span>Esta é a <strong>caixa de pessoas</strong>: cada cartão é um participante e sua
-                conversa. A mesma pessoa pode ter vários chamados. Para trabalhar chamado por chamado,
-                use a aba <strong>Chamados</strong>.</span>
-        </div>
-
-        <div class="conv-list" id="conv-list">
-            <p style="color:var(--text-muted)">Carregando conversas...</p>
-        </div>
-    </div>
-
     <!-- FEEDBACKS VIEW -->
     <div class="main hidden" id="view-feedbacks">
         <div class="page-header">
@@ -2207,6 +2091,10 @@
             <select id="filtro-setor" class="filter-select" onchange="aplicarFiltros()">
                 <option value="">Todos os Setores</option>
             </select>
+            <select id="filtro-atendimento" class="filter-select" onchange="aplicarFiltros()">
+                <option value="">Bot e equipe</option>
+                <option value="humano">Só em atendimento humano</option>
+            </select>
             <select id="filtro-status" class="filter-select" onchange="aplicarFiltros()">
                 <option value="ativos" selected>Cards Ativos</option>
                 <option value="todos">Todos os Status</option>
@@ -2221,9 +2109,9 @@
 
         <div class="view-note">
             <i class="ri-information-line"></i>
-            <span>Esta é a <strong>fila de trabalho</strong>: cada cartão é um chamado, com a mensagem
-                completa e a resposta que o ChatBob enviou. Para ver a conversa inteira de uma pessoa,
-                use a aba <strong>Atendimento</strong>.</span>
+            <span>Cada cartão é um chamado, com a mensagem completa e a resposta que o ChatBob
+                enviou. Em <strong>Conversar com quem enviou</strong> você assume o atendimento e fala
+                direto com a pessoa; enquanto isso o bot fica calado para ela.</span>
         </div>
 
         <div class="ticket-list" id="feed-list-container">
@@ -2307,7 +2195,6 @@
 
             if (view === 'dashboard') loadData();
             if (view === 'mapa') loadMapa();
-            if (view === 'conversas') loadConversas();
             if (view === 'feedbacks') {
                 document.getElementById('filtro-status').value = 'ativos';
                 aplicarFiltros();
@@ -2533,9 +2420,16 @@
                         ${escHtml(item.text)}
                     </div>`).join('');
 
+                const seloEquipe = e.humanAttended
+                    ? `<span class="ticket-pill" style="--tone:var(--accent-primary)"
+                          title="Alguém da equipe assumiu a conversa desta pessoa">
+                          <i class="ri-user-voice-line"></i> equipe atende</span>`
+                    : '';
+
                 return `<div class="ticket" style="--tone:${tone}" data-ticket="${e.id}">
                     <div class="ticket-head">
                         <span class="ticket-id">#${e.id}</span>
+                        ${seloEquipe}
                         <span class="ticket-pill" style="--tone:${tone}">${escHtml(e.urgency || 'Neutro')}</span>
                         <span class="ticket-where"><i class="ri-map-pin-line"></i> ${escHtml(onde)}</span>
                         <span class="ticket-where"><i class="ri-price-tag-3-line"></i> ${escHtml(e.category || 'Geral')}</span>
@@ -2685,11 +2579,13 @@
             const prioridade = document.getElementById('filtro-prioridade').value;
             const status = document.getElementById('filtro-status').value;
             const setor = document.getElementById('filtro-setor')?.value || '';
+            const atendimento = document.getElementById('filtro-atendimento')?.value || '';
 
             let params = [];
             if (categoria) params.push(`categoria=${encodeURIComponent(categoria)}`);
             if (prioridade) params.push(`prioridade=${encodeURIComponent(prioridade)}`);
             if (setor) params.push(`setor=${encodeURIComponent(setor)}`);
+            if (atendimento) params.push(`atendimento=${encodeURIComponent(atendimento)}`);
             // "ativos" e "todos" sao filtros de tela, nao de consulta.
             if (status && status !== 'ativos' && status !== 'todos') {
                 params.push(`status=${encodeURIComponent(status)}`);
@@ -2704,6 +2600,8 @@
             document.getElementById('filtro-prioridade').value = '';
             const setorSelect = document.getElementById('filtro-setor');
             if (setorSelect) setorSelect.value = '';
+            const atSelect = document.getElementById('filtro-atendimento');
+            if (atSelect) atSelect.value = '';
             document.getElementById('filtro-status').value = 'ativos';
             aplicarFiltros();
         }
@@ -2953,76 +2851,11 @@
         let _chatId = null;
         let _chatTimer = null;
 
-        async function loadConversas() {
-            const box = document.getElementById('conv-list');
-            let data = { conversations: [], humanCount: 0 };
-            try {
-                const res = await fetch('/api/conversations');
-                data = await res.json();
-            } catch (err) {
-                console.error('Erro ao carregar conversas:', err);
-                box.innerHTML = '<p style="color:var(--text-muted)">Não foi possível carregar as conversas.</p>';
-                return;
-            }
-
-            atualizarBadgeHumano(data.humanCount);
-
-            const filtro = document.getElementById('filtro-conversa')?.value || '';
-            let lista = data.conversations;
-            if (filtro === 'human') lista = lista.filter(c => c.mode === 'human');
-            if (filtro === 'bot') lista = lista.filter(c => c.mode !== 'human');
-            if (filtro === 'abertos') lista = lista.filter(c => c.open > 0);
-
-            if (!lista.length) {
-                box.innerHTML = '<p style="color:var(--text-muted)">Nenhuma conversa neste filtro.</p>';
-                return;
-            }
-
-            box.innerHTML = lista.map(c => {
-                const tone = urgencyTone(c.worst);
-                const modo = c.mode === 'human'
-                    ? '<span class="conv-mode human"><i class="ri-user-voice-line"></i> Você atende</span>'
-                    : '<span class="conv-mode bot"><i class="ri-robot-2-line"></i> ChatBob</span>';
-                return `<div class="conv-card" style="--tone:${tone}" data-conversation="${escHtml(c.conversationId)}">
-                    <div class="conv-top">
-                        <span class="conv-who"><i class="ri-user-3-line"></i> Participante ${escHtml(c.participant)}</span>
-                        ${modo}
-                    </div>
-                    <div class="conv-msg">${escHtml(c.lastMessage || 'Sem mensagens')}</div>
-                    <div class="conv-foot">
-                        <span><i class="ri-map-pin-line"></i> ${escHtml(c.region || 'Sem setor')}</span>
-                        <span>${c.open} em aberto · ${escHtml(formatarTempo(c.lastAt))}</span>
-                    </div>
-                </div>`;
-            }).join('');
-
-            wireDrill(box, 'data-conversation', openChat);
-        }
-
-        function atualizarBadgeHumano(total) {
-            const badge = document.getElementById('nav-badge-human');
-            if (!badge) return;
-            badge.innerText = total || 0;
-            badge.classList.toggle('hidden', !total);
-        }
-
         function closeChat() {
             document.getElementById('chat-overlay').classList.add('hidden');
             clearInterval(_chatTimer);
             _chatTimer = null;
             _chatId = null;
-        }
-
-        // Abre por conversa ou a partir de um chamado do dashboard.
-        async function openChat(conversationId) {
-            _chatId = conversationId;
-            renderChat({ messages: [], mode: 'bot', carregando: true });
-            document.getElementById('chat-overlay').classList.remove('hidden');
-            await refreshChat();
-
-            clearInterval(_chatTimer);
-            // A pessoa pode responder enquanto o painel está aberto.
-            _chatTimer = setInterval(refreshChat, 7000);
         }
 
         async function openChatByFeedback(feedbackId) {
@@ -3153,7 +2986,6 @@
                 return;
             }
             await refreshChat();
-            loadConversas();
         }
 
         async function enviarMensagem() {
@@ -3726,8 +3558,6 @@
         loadTopInsights();
         popularFiltrosCategorias(); // Popular dropdown de categorias
         popularFiltroSetores();
-        // O badge de atendimento humano precisa aparecer em qualquer aba.
-        loadConversas();
         setInterval(() => { loadData(); loadTopInsights(); }, 5000);
 
         // ========== SISTEMA DE ALERTAS CRÍTICOS ==========
@@ -3827,10 +3657,8 @@
             const regionsVisible = !document.getElementById('view-regions').classList.contains('hidden');
             const categoriesVisible = !document.getElementById('view-categories').classList.contains('hidden');
             const mapaVisible = !document.getElementById('view-mapa').classList.contains('hidden');
-            const conversasVisible = !document.getElementById('view-conversas').classList.contains('hidden');
 
             if (mapaVisible) loadMapa();
-            if (conversasVisible) loadConversas();
             if (dashboardVisible) {
                 console.log('[AUTO-REFRESH] Atualizando dashboard...');
                 loadData();

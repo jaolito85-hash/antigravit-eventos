@@ -61,21 +61,24 @@ fica sem resposta por causa disso.
 | Cumprimento junto com conteúdo, como "bom dia, faltou cerveja" | A IA marca como `relato`. Abre chamado normalmente. |
 | Qualquer mensagem, com a conversa assumida por um operador | Registra o chamado normalmente e **não envia nada**. Quem responde é a pessoa, pelo painel. O limite de mensagens também não se aplica. |
 
-## Chamados e Atendimento são coisas diferentes
+## Chamados: uma tela só
 
-As duas telas mostram as mesmas mensagens por ângulos diferentes, e confundir
-isso atrasa a operação:
+Existiu uma aba Atendimento separada, com uma linha por pessoa. Foi removida:
+era uma segunda lista das mesmas mensagens e confundia mais do que ajudava.
 
-- **Chamados** é a fila de trabalho: uma linha por mensagem recebida, com o
-  número do chamado, a mensagem completa, as atualizações que a pessoa mandou
-  depois e a resposta que saiu, com o estado de entrega. É onde a equipe
-  resolve e fecha item por item, da maior urgência para a menor.
-- **Atendimento** é a caixa de pessoas: uma linha por participante, com a
-  conversa dela de ponta a ponta. A mesma pessoa pode ter vários chamados. É
-  onde se assume ou devolve o atendimento.
+Tudo vive em **Chamados**, a fila de trabalho. Uma linha por mensagem
+recebida, com o número do chamado, a mensagem completa, as atualizações que a
+pessoa mandou depois e a resposta que saiu, com o estado de entrega. A equipe
+resolve item por item, da maior urgência para a menor.
 
-Os dois lados se cruzam: o chamado tem botão para abrir a conversa de quem
-enviou, e a conversa mostra tudo o que aquela pessoa já mandou.
+O que a aba resolvia de verdade virou duas coisas dentro dessa tela:
+
+- O filtro **Só em atendimento humano**, para achar quem está na mão da equipe.
+- O selo **equipe atende** no cartão, para ninguém responder por cima de uma
+  conversa que outra pessoa já assumiu.
+
+O botão **Conversar com quem enviou**, dentro do chamado, abre a conversa
+completa daquela pessoa e é por ali que se assume ou devolve o atendimento.
 
 **Estado de entrega da resposta.** O chamado mostra o que aconteceu com o
 texto enviado: na fila, enviada, entregue, lida, falhou ou não entregue. É por
@@ -83,8 +86,8 @@ aí que se descobre que o token da Meta venceu, sem precisar abrir log.
 
 ## Atendimento humano (handon e handoff)
 
-Todo chamado tem o botão **Conversar**, tanto no dashboard quanto no telão, e a
-aba **Atendimento** lista as conversas. O telão não é tela de leitura: pin, KPI,
+Todo chamado tem o botão **Conversar**, tanto no dashboard quanto no telão. O
+telão não é tela de leitura: pin, KPI,
 macrozona, fluxo ao vivo e o próprio alerta crítico abrem o chamado ou a conversa,
 e o status pode ser trocado dali. Em qualquer um desses caminhos o operador pode:
 

@@ -63,8 +63,8 @@ Siga as 3 camadas do `AGENTE.md`:
   e vê a classificação, sem gravar nem enviar mensagem
 - Base de perguntas e respostas configurável: o conteúdo é cadastrado pela
   produção e a IA só escolhe o jeito de dizer
-- Atendimento humano: o operador assume a conversa pelo painel, fala direto com o
-  participante e devolve ao bot quando terminar
+- Atendimento humano: pelo botão de conversar dentro do chamado, o operador assume,
+  fala direto com o participante e devolve ao bot quando terminar
 - Relatório pós-evento com resumo executivo e desempenho por setor
 - Autenticação por sessão (ADMIN_USER / ADMIN_PASS)
 
