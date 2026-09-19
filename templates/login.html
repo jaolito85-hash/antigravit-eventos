@@ -12,7 +12,7 @@
             --bg-body: #0a0a0f;
             --bg-card: #13131f;
             --border: #1e1e2e;
-            --accent: #ff6b2c;
+            --accent: #2979ff;
             --text-main: #ffffff;
             --text-muted: #8b949e;
             --error: #ff5252;
@@ -142,21 +142,14 @@
         }
 
         .logo-emoji {
-            display: inline-grid;
-            place-items: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
-            box-shadow: 0 0 22px rgba(255, 107, 44, 0.4);
-            font-size: 1.25rem;
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            object-fit: contain;
         }
 
         .logo-accent {
-            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--accent);
         }
     </style>
 </head>
@@ -166,7 +159,7 @@
         <div class="login-card">
             <div class="logo-area">
                 <div class="logo-title">
-                    <span class="logo-emoji">🌴</span>
+                    <img src="/static/logo.png" class="logo-emoji" alt="ChatBob">
                     <span>Chat<span class="logo-accent">Bob</span></span>
                 </div>
                 <div class="logo-subtitle">Sala de Controle · Tropicadelia 2026</div>

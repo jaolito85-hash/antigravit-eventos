@@ -13,9 +13,9 @@
         :root {
             --bg-body: #050507;
             --bg-card: #111217;
-            --accent: #ff6b2c;
-            --accent-glow: rgba(255, 107, 44, 0.15);
-            --accent-light: #ff9566;
+            --accent: #2979ff;
+            --accent-glow: rgba(41, 121, 255, 0.15);
+            --accent-light: #5c9aff;
             --green: #00e676;
             --text-main: #ffffff;
             --text-muted: #8b949e;
@@ -62,7 +62,7 @@
             align-items: center;
             gap: 8px;
             background: var(--accent-glow);
-            border: 1px solid rgba(255, 107, 44, 0.25);
+            border: 1px solid rgba(41, 121, 255, 0.25);
             padding: 5px 14px;
             border-radius: 30px;
             font-size: 0.7rem;
@@ -181,7 +181,7 @@
 
         .generate-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(255, 107, 44, 0.3);
+            box-shadow: 0 8px 24px rgba(41, 121, 255, 0.3);
         }
 
         /* ===== RIGHT: PREVIEW ===== */
@@ -310,7 +310,7 @@
         .download-btn.primary {
             background: var(--accent);
             color: white;
-            box-shadow: 0 4px 16px rgba(255, 107, 44, 0.25);
+            box-shadow: 0 4px 16px rgba(41, 121, 255, 0.25);
         }
 
         .download-btn.secondary {
@@ -394,21 +394,15 @@
         }
 
         .brand-emoji {
-            display: inline-grid;
-            place-items: center;
-            width: 30px;
-            height: 30px;
-            border-radius: 9px;
-            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
-            font-size: 0.95rem;
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            object-fit: contain;
             flex-shrink: 0;
         }
 
         .brand-grad {
-            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--accent);
         }
     </style>
 </head>
@@ -468,7 +462,7 @@
             <div class="field">
                 <label>Cor do tema</label>
                 <div class="color-row">
-                    <div class="color-option active" style="background: #ff6b2c;" data-color="#ff6b2c"
+                    <div class="color-option active" style="background: #2979ff;" data-color="#2979ff"
                         onclick="selectColor(this)"></div>
                     <div class="color-option" style="background: #00e676;" data-color="#00e676"
                         onclick="selectColor(this)"></div>
@@ -509,7 +503,7 @@
                     Aponte a câmera do celular para o QR Code
                 </div>
                 <div class="qr-powered">
-                    <span class="brand-emoji">🌴</span>
+                    <img src="/static/logo.png" class="brand-emoji" alt="ChatBob">
                     <span>Chat<span class="brand-grad">Bob</span></span>
                 </div>
             </div>
@@ -536,7 +530,7 @@
     </div>
 
     <script>
-        let selectedColor = '#ff6b2c';
+        let selectedColor = '#2979ff';
         let qrDataUrl = null;
 
         function selectColor(el) {

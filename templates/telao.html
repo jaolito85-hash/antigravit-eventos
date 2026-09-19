@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatBob • Telão da Sala de Controle</title>
-    <meta name="theme-color" content="#ff6b2c">
+    <meta name="theme-color" content="#2979ff">
     <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Oxanium:wght@500;600;700;800&display=swap"
         rel="stylesheet">
@@ -18,13 +18,12 @@
             --text: #ffffff;
             --muted: #8b94a8;
             --dim: #5a6274;
-            --orange: #ff6b2c;
+            --accent: #2979ff;
             --purple: #a855f7;
             --green: #22c55e;
             --amber: #f59e0b;
             --red: #ef4444;
             --blue: #3b82f6;
-            --tropical: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,15 +37,15 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Brilho tropical difuso atras de tudo */
+        /* Brilho difuso da cor da marca atras de tudo */
         body::before {
             content: '';
             position: fixed;
             inset: -20%;
             background:
-                radial-gradient(ellipse 50% 45% at 18% 12%, rgba(255, 107, 44, 0.16), transparent 70%),
-                radial-gradient(ellipse 45% 40% at 85% 85%, rgba(168, 85, 247, 0.14), transparent 70%),
-                radial-gradient(ellipse 40% 35% at 70% 10%, rgba(244, 63, 94, 0.10), transparent 70%);
+                radial-gradient(ellipse 50% 45% at 18% 12%, rgba(41, 121, 255, 0.13), transparent 70%),
+                radial-gradient(ellipse 45% 40% at 85% 85%, rgba(41, 121, 255, 0.09), transparent 70%),
+                radial-gradient(ellipse 40% 35% at 70% 10%, rgba(59, 130, 246, 0.07), transparent 70%);
             pointer-events: none;
             z-index: 0;
             animation: ambient 24s ease-in-out infinite alternate;
@@ -88,14 +87,10 @@
         .brand { display: flex; align-items: center; gap: 14px; }
 
         .brand-mark {
-            width: 46px;
-            height: 46px;
-            border-radius: 13px;
-            background: var(--tropical);
-            display: grid;
-            place-items: center;
-            font-size: 1.5rem;
-            box-shadow: 0 0 28px rgba(255, 107, 44, 0.45);
+            width: 44px;
+            height: 44px;
+            border-radius: 11px;
+            object-fit: contain;
             flex-shrink: 0;
         }
 
@@ -108,10 +103,7 @@
         }
 
         .brand-text h1 span {
-            background: var(--tropical);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--accent);
         }
 
         .brand-text p {
@@ -149,9 +141,9 @@
         .chip.button { cursor: pointer; transition: 0.2s; }
         .chip.button:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.3); }
         .chip.on {
-            color: var(--orange);
-            border-color: rgba(255, 107, 44, 0.45);
-            background: rgba(255, 107, 44, 0.12);
+            color: var(--accent);
+            border-color: rgba(41, 121, 255, 0.45);
+            background: rgba(41, 121, 255, 0.12);
         }
 
         .dot-live {
@@ -390,8 +382,8 @@
             position: absolute;
             inset: 0;
             background-image:
-                linear-gradient(rgba(255, 107, 44, 0.055) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 107, 44, 0.055) 1px, transparent 1px);
+                linear-gradient(rgba(41, 121, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(41, 121, 255, 0.05) 1px, transparent 1px);
             background-size: 7.14% 8%;
             pointer-events: none;
         }
@@ -400,7 +392,7 @@
             position: absolute;
             left: 0; right: 0;
             height: 180px;
-            background: linear-gradient(180deg, transparent, rgba(255, 107, 44, 0.09), transparent);
+            background: linear-gradient(180deg, transparent, rgba(41, 121, 255, 0.09), transparent);
             animation: scan 7s linear infinite;
             pointer-events: none;
         }
@@ -925,7 +917,7 @@
         .act.talk:hover { background: rgba(37, 211, 102, 0.28); }
 
         .act.primary {
-            background: var(--orange);
+            background: var(--accent);
             color: #fff;
         }
 
@@ -964,7 +956,7 @@
         .kpi.tappable:hover,
         .zone-card.tappable:hover,
         .feed-item.tappable:hover {
-            border-color: var(--orange);
+            border-color: var(--accent);
             transform: translateY(-2px);
         }
 
@@ -1030,15 +1022,15 @@
 
         .talk-bubble.bot {
             align-self: flex-end;
-            background: rgba(59, 130, 246, 0.15);
-            border: 1px solid rgba(59, 130, 246, 0.35);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
             border-bottom-right-radius: 5px;
         }
 
         .talk-bubble.operator {
             align-self: flex-end;
-            background: rgba(255, 107, 44, 0.17);
-            border: 1px solid rgba(255, 107, 44, 0.45);
+            background: rgba(41, 121, 255, 0.17);
+            border: 1px solid rgba(41, 121, 255, 0.48);
             border-bottom-right-radius: 5px;
         }
 
@@ -1080,11 +1072,11 @@
             line-height: 1.45;
         }
 
-        .talk-input:focus { border-color: var(--orange); }
+        .talk-input:focus { border-color: var(--accent); }
         .talk-input:disabled { opacity: 0.5; }
 
         .talk-send {
-            background: var(--orange);
+            background: var(--accent);
             color: #fff;
             border: none;
             width: 50px;
@@ -1110,7 +1102,7 @@
         <!-- ================= TOPBAR ================= -->
         <header class="topbar">
             <div class="brand">
-                <div class="brand-mark">🌴</div>
+                <img src="/static/logo.png" class="brand-mark" alt="ChatBob">
                 <div class="brand-text">
                     <h1>Chat<span>Bob</span> · Sala de Controle</h1>
                     <p>Tropicadelia 2026 · Parque Ney Braga</p>
@@ -1130,7 +1122,7 @@
         <section class="kpis">
             <div class="kpi tappable" title="Ver todas as mensagens"
                 onclick="openListSheet('Todas as mensagens', 'Evento inteiro', '')"
-                style="--accent: var(--orange)">
+                style="--accent: var(--accent)">
                 <i class="ri-arrow-right-up-line tap-hint"></i>
                 <div class="kpi-label"><i class="ri-chat-poll-line"></i> Mensagens</div>
                 <div class="kpi-value" id="kpi-total">0</div>
@@ -1172,10 +1164,10 @@
             <!-- MAPA -->
             <div class="panel">
                 <div class="panel-head">
-                    <div class="panel-title"><i class="ri-map-2-line" style="color: var(--orange)"></i> Gêmeo Digital ·
+                    <div class="panel-title"><i class="ri-map-2-line" style="color: var(--accent)"></i> Gêmeo Digital ·
                         Planta Ao Vivo</div>
                     <div class="panel-note" id="map-note">Carregando setores...</div>
-                    <div class="panel-note" style="color:var(--orange)">
+                    <div class="panel-note" style="color:var(--accent)">
                         <i class="ri-cursor-line"></i> clique em qualquer ponto</div>
                 </div>
                 <div class="map-wrap">

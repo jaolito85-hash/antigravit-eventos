@@ -8,7 +8,7 @@
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#ff6b2c">
+    <meta name="theme-color" content="#2979ff">
     <meta name="description" content="ChatBob: escuta ativa e inteligência operacional em tempo real para a Tropicadelia 2026">
 
     <!-- Icons -->
@@ -30,10 +30,9 @@
             --bg-sidebar: #0b0c10;
             --bg-card: #111217;
             --bg-hover: #1c1e26;
-            --accent-primary: #ff6b2c;
+            --accent-primary: #2979ff;
             --accent-purple: #a855f7;
             --accent-green: #22c55e;
-            --tropical-gradient: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
             --text-main: #ffffff;
             --text-muted: #8b949e;
             --border: #23252e;
@@ -93,22 +92,15 @@
         }
 
         .brand-mark {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            background: var(--tropical-gradient);
-            display: grid;
-            place-items: center;
-            font-size: 1.1rem;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            object-fit: contain;
             flex-shrink: 0;
-            box-shadow: 0 0 18px rgba(255, 107, 44, 0.35);
         }
 
         .brand-accent {
-            background: var(--tropical-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--accent-primary);
         }
 
         .mobile-header .logo {
@@ -741,7 +733,7 @@
         }
 
         .export-btn:hover {
-            background: #f43f5e;
+            background: #1f63d6;
         }
 
         .whatsapp-contact-btn {
@@ -852,15 +844,15 @@
         }
 
         .conv-mode.human {
-            background: rgba(255, 107, 44, 0.16);
-            color: #ff8a55;
-            border: 1px solid rgba(255, 107, 44, 0.5);
+            background: rgba(41, 121, 255, 0.18);
+            color: #8ab4ff;
+            border: 1px solid rgba(41, 121, 255, 0.55);
         }
 
         .conv-mode.bot {
-            background: rgba(59, 130, 246, 0.12);
-            color: #7aa7f7;
-            border: 1px solid rgba(59, 130, 246, 0.35);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
         }
 
         .conv-msg {
@@ -997,17 +989,19 @@
             border-bottom-left-radius: 4px;
         }
 
+        /* Resposta automática é neutra; o que a equipe escreve leva a cor
+           da marca, porque é a voz humana da operação. */
         .bubble.out-bot {
             align-self: flex-end;
-            background: rgba(59, 130, 246, 0.14);
-            border: 1px solid rgba(59, 130, 246, 0.32);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
             border-bottom-right-radius: 4px;
         }
 
         .bubble.out-operator {
             align-self: flex-end;
-            background: rgba(255, 107, 44, 0.16);
-            border: 1px solid rgba(255, 107, 44, 0.42);
+            background: rgba(41, 121, 255, 0.16);
+            border: 1px solid rgba(41, 121, 255, 0.45);
             border-bottom-right-radius: 4px;
         }
 
@@ -1112,8 +1106,8 @@
             position: absolute;
             inset: 0;
             background-image:
-                linear-gradient(rgba(255, 107, 44, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 107, 44, 0.05) 1px, transparent 1px);
+                linear-gradient(rgba(41, 121, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(41, 121, 255, 0.05) 1px, transparent 1px);
             background-size: 7.14% 8%;
             pointer-events: none;
         }
@@ -1755,7 +1749,7 @@
 <body>
     <!-- Mobile Header -->
     <div class="mobile-header">
-        <div class="logo"><span class="brand-mark">🌴</span> Chat<span class="brand-accent">Bob</span></div>
+        <div class="logo"><img src="/static/logo.png" class="brand-mark" alt="ChatBob"> Chat<span class="brand-accent">Bob</span></div>
         <button class="burger-btn" onclick="toggleMobileMenu()">
             <i class="ri-menu-line" id="burger-icon"></i>
         </button>
@@ -1765,7 +1759,7 @@
     <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
     <div class="sidebar">
         <div class="logo">
-            <span class="brand-mark">🌴</span>
+            <img src="/static/logo.png" class="brand-mark" alt="ChatBob">
             <div>
                 Chat<span class="brand-accent">Bob</span>
                 <small>Tropicadelia 2026</small>
@@ -1779,7 +1773,7 @@
             <span class="nav-badge hidden" id="nav-badge-open">0</span>
         </div>
         <div class="nav-item" onclick="nav('conversas', this)"><i class="ri-customer-service-2-line"></i> Atendimento
-            <span class="nav-badge hidden" id="nav-badge-human" style="background:#ff6b2c">0</span>
+            <span class="nav-badge hidden" id="nav-badge-human" style="background:var(--accent-primary)">0</span>
         </div>
 
         <div class="nav-label">ANÁLISE</div>
@@ -1846,7 +1840,7 @@
         <!-- ROW 1: Timeline + Sentimentos -->
         <div class="dash-row">
             <div class="chart-box">
-                <div class="chart-header"><i class="ri-line-chart-line" style="color:#ff6b2c"></i> Feedbacks por Hora
+                <div class="chart-header"><i class="ri-line-chart-line" style="color:#2979ff"></i> Feedbacks por Hora
                 </div>
                 <div class="chart-container-bar">
                     <canvas id="timelineChart"></canvas>
@@ -1935,7 +1929,7 @@
 
                 <div class="zone-card">
                     <div class="chart-header" style="margin-bottom:12px"><i class="ri-compass-3-line"
-                            style="color:#ff6b2c"></i> Macrozonas</div>
+                            style="color:#2979ff"></i> Macrozonas</div>
                     <div id="map-zones">
                         <p style="color:var(--text-muted); font-size:0.82rem">Carregando...</p>
                     </div>
@@ -3234,8 +3228,8 @@
             if (currentChartTimeline) currentChartTimeline.destroy();
             const ctxTimeline = document.getElementById('timelineChart').getContext('2d');
             const gradient = ctxTimeline.createLinearGradient(0, 0, 0, 200);
-            gradient.addColorStop(0, 'rgba(255, 107, 44, 0.55)');
-            gradient.addColorStop(1, 'rgba(255, 107, 44, 0.04)');
+            gradient.addColorStop(0, 'rgba(41, 121, 255, 0.55)');
+            gradient.addColorStop(1, 'rgba(41, 121, 255, 0.04)');
 
             currentChartTimeline = new Chart(ctxTimeline, {
                 type: 'line',
@@ -3244,11 +3238,11 @@
                     datasets: [{
                         label: 'Feedbacks',
                         data: timelineData,
-                        borderColor: '#ff6b2c',
+                        borderColor: '#2979ff',
                         backgroundColor: gradient,
                         fill: true,
                         tension: 0.4,
-                        pointBackgroundColor: '#ff6b2c',
+                        pointBackgroundColor: '#2979ff',
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
                         pointRadius: 5,

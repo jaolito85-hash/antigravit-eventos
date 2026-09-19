@@ -14,9 +14,9 @@
             --bg-body: #050507;
             --bg-card: #111217;
             --bg-card-alt: #0d0e13;
-            --accent: #ff6b2c;
-            --accent-glow: rgba(255, 107, 44, 0.15);
-            --accent-light: #ff9566;
+            --accent: #2979ff;
+            --accent-glow: rgba(41, 121, 255, 0.15);
+            --accent-light: #5c9aff;
             --green: #00e676;
             --green-glow: rgba(0, 230, 118, 0.1);
             --red: #ff5252;
@@ -95,7 +95,7 @@
 
         .nav-back:hover {
             color: var(--accent);
-            border-color: rgba(255, 107, 44, 0.3);
+            border-color: rgba(41, 121, 255, 0.3);
             background: var(--accent-glow);
         }
 
@@ -143,8 +143,8 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(255, 107, 44, 0.1);
-            border: 1px solid rgba(255, 107, 44, 0.25);
+            background: rgba(41, 121, 255, 0.1);
+            border: 1px solid rgba(41, 121, 255, 0.25);
             padding: 6px 16px;
             border-radius: 30px;
             font-size: 0.75rem;
@@ -222,7 +222,7 @@
 
         .score-card:hover {
             transform: translateY(-2px);
-            border-color: rgba(255, 107, 44, 0.3);
+            border-color: rgba(41, 121, 255, 0.3);
         }
 
         .score-card .glow {
@@ -287,8 +287,8 @@
 
         /* ===== AI INSIGHT CARD ===== */
         .ai-insight {
-            background: linear-gradient(135deg, rgba(255, 107, 44, 0.08) 0%, rgba(179, 136, 255, 0.05) 100%);
-            border: 1px solid rgba(255, 107, 44, 0.2);
+            background: linear-gradient(135deg, rgba(41, 121, 255, 0.08) 0%, rgba(179, 136, 255, 0.05) 100%);
+            border: 1px solid rgba(41, 121, 255, 0.2);
             border-radius: 16px;
             padding: 32px;
             position: relative;
@@ -302,7 +302,7 @@
             right: -60px;
             width: 200px;
             height: 200px;
-            background: radial-gradient(circle, rgba(255, 107, 44, 0.08) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(41, 121, 255, 0.08) 0%, transparent 70%);
             border-radius: 50%;
         }
 
@@ -407,7 +407,7 @@
         }
 
         .feedback-item:hover {
-            border-color: rgba(255, 107, 44, 0.3);
+            border-color: rgba(41, 121, 255, 0.3);
         }
 
         .feedback-icon {
@@ -485,14 +485,14 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 8px 32px rgba(255, 107, 44, 0.3);
+            box-shadow: 0 8px 32px rgba(41, 121, 255, 0.3);
             z-index: 100;
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .print-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(255, 107, 44, 0.4);
+            box-shadow: 0 12px 40px rgba(41, 121, 255, 0.4);
         }
 
         @media print {
@@ -535,7 +535,7 @@
             height: 36px;
             border-radius: 50%;
             background: var(--accent-glow);
-            border: 1px solid rgba(255, 107, 44, 0.3);
+            border: 1px solid rgba(41, 121, 255, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -625,21 +625,15 @@
         }
 
         .brand-emoji {
-            display: inline-grid;
-            place-items: center;
-            width: 30px;
-            height: 30px;
-            border-radius: 9px;
-            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
-            font-size: 0.95rem;
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            object-fit: contain;
             flex-shrink: 0;
         }
 
         .brand-grad {
-            background: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--accent);
         }
 
         /* ===== MACROZONAS E SETORES DA PLANTA ===== */
@@ -765,7 +759,7 @@
     <!-- TOP NAV -->
     <nav class="top-nav">
         <a href="/" class="nav-brand">
-            <span class="brand-emoji">🌴</span>
+            <img src="/static/logo.png" class="brand-emoji" alt="ChatBob">
             <span>Chat<span class="brand-grad">Bob</span></span>
         </a>
         <a href="/" class="nav-back">
@@ -1074,7 +1068,7 @@
             // SENTIMENT CHART
             const sentLabels = ['Positivo', 'Neutro', 'Urgente', 'Crítico'];
             const sentValues = [sentiment.Positivo || 0, sentiment.Neutro || 0, sentiment.Urgente || 0, sentiment.Critico || 0];
-            const sentColors = ['#00e676', '#ff9566', '#ffab40', '#ff5252'];
+            const sentColors = ['#00e676', '#5c9aff', '#ffab40', '#ff5252'];
 
             new Chart(document.getElementById('sentimentChart'), {
                 type: 'doughnut',
@@ -1104,7 +1098,7 @@
             // CATEGORY CHART
             const catLabels = Object.keys(categories);
             const catValues = Object.values(categories);
-            const catColors = ['#ff6b2c', '#b388ff', '#00e676', '#ffab40', '#ff5252', '#ff9566', '#ff80ab'];
+            const catColors = ['#2979ff', '#b388ff', '#00e676', '#ffab40', '#ff5252', '#5c9aff', '#ff80ab'];
 
             new Chart(document.getElementById('categoryChart'), {
                 type: 'bar',
@@ -1140,13 +1134,13 @@
                     labels: timeLabels,
                     datasets: [{
                         data: timeValues,
-                        borderColor: '#ff6b2c',
-                        backgroundColor: 'rgba(255, 107, 44, 0.1)',
+                        borderColor: '#2979ff',
+                        backgroundColor: 'rgba(41, 121, 255, 0.1)',
                         fill: true,
                         borderWidth: 2.5,
                         tension: 0.4,
                         pointRadius: 4,
-                        pointBackgroundColor: '#ff6b2c',
+                        pointBackgroundColor: '#2979ff',
                         pointBorderWidth: 0
                     }]
                 },
@@ -1176,7 +1170,7 @@
             const regLabels = Object.keys(regions);
             const regValues = Object.values(regions);
             const regBreakdown = document.getElementById('regionsBreakdown');
-            const regColors = ['#ff6b2c', '#00e676', '#ffab40', '#b388ff', '#ff5252', '#ff9566', '#ff80ab', '#00bcd4', '#ffd740'];
+            const regColors = ['#2979ff', '#00e676', '#ffab40', '#b388ff', '#ff5252', '#5c9aff', '#ff80ab', '#00bcd4', '#ffd740'];
             regBreakdown.innerHTML = '<div style="padding: 8px 0;">' + regLabels.map((reg, i) => {
                 const pct = stats.total > 0 ? Math.round(regValues[i] / stats.total * 100) : 0;
                 return `<div class="stat-row">
