@@ -994,6 +994,287 @@
             }
         }
 
+        /* ===== PAINEL DE DETALHE (DRILL-DOWN) ===== */
+        .drill-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 94%;
+            max-width: 720px;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideIn 0.22s ease-out;
+        }
+
+        .drill-head {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .drill-title-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+        }
+
+        .drill-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            line-height: 1.3;
+        }
+
+        .drill-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .drill-sub .tag {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2px 9px;
+            font-weight: 600;
+            font-size: 0.72rem;
+        }
+
+        .drill-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 4px;
+        }
+
+        .drill-close:hover {
+            color: #fff;
+        }
+
+        /* Faixa de numeros: o operador ve o tamanho do problema antes de ler */
+        .drill-stats {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .drill-stat {
+            border: 1px solid var(--tone);
+            background: color-mix(in srgb, var(--tone) 12%, transparent);
+            border-radius: 10px;
+            padding: 7px 12px;
+            min-width: 84px;
+        }
+
+        .drill-stat-value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--tone);
+            line-height: 1;
+        }
+
+        .drill-stat-label {
+            font-size: 0.64rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .drill-body {
+            padding: 14px 24px 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .drill-section-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin: 6px 0 12px;
+        }
+
+        .drill-item {
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--tone);
+            border-radius: 11px;
+            padding: 13px 15px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .drill-item-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .drill-item-tag {
+            font-size: 0.64rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--tone);
+            border: 1px solid var(--tone);
+            background: color-mix(in srgb, var(--tone) 14%, transparent);
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .drill-item-time {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .drill-item-msg {
+            font-size: 0.92rem;
+            line-height: 1.55;
+            color: #e5e7eb;
+            white-space: pre-line;
+        }
+
+        .drill-item-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 11px;
+            padding-top: 11px;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .drill-item-where {
+            font-size: 0.73rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Linhas de setor dentro do detalhe de macrozona */
+        .drill-sector-row {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: 0.15s;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .drill-sector-row:hover {
+            border-color: var(--accent-primary);
+            transform: translateX(2px);
+        }
+
+        .drill-sector-name {
+            flex: 1;
+            font-size: 0.87rem;
+            font-weight: 600;
+            color: #e5e7eb;
+        }
+
+        .drill-sector-zone {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .drill-count-pill {
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 20px;
+            flex-shrink: 0;
+        }
+
+        .drill-foot {
+            padding: 14px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .drill-btn {
+            background: var(--accent-primary);
+            color: #fff;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-size: 0.83rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .drill-btn.ghost {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        .drill-btn.ghost:hover {
+            color: #fff;
+            border-color: var(--accent-primary);
+        }
+
+        .drill-empty {
+            text-align: center;
+            padding: 34px 16px;
+            color: var(--text-muted);
+            font-size: 0.87rem;
+            line-height: 1.6;
+        }
+
+        .drill-empty i {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        /* Tudo que abre detalhe precisa parecer clicavel */
+        .clickable-row {
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .clickable-row:hover {
+            background: var(--bg-hover);
+        }
+
+        .stat-card.clickable-row:hover {
+            border-color: var(--accent-primary);
+        }
+
         /* ===== MOBILE BURGER MENU ===== */
         .mobile-header {
             display: none;
@@ -1267,12 +1548,12 @@
                 <div class="stat-value" id="kpi-today">0</div>
                 <div class="stat-sub">Novos registros</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card clickable-row" id="kpi-region-card" title="Ver os chamados desta região">
                 <div class="stat-label">Região Mais Ativa <i class="ri-map-pin-2-line text-red"></i></div>
                 <div class="stat-value" id="kpi-region" style="font-size: 1.4rem">--</div>
                 <div class="stat-sub" id="kpi-region-count">0 feedbacks</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card clickable-row" id="kpi-cat-card" title="Ver os chamados desta categoria">
                 <div class="stat-label">Principal Categoria <i class="ri-price-tag-3-line" style="color:#f59e0b"></i>
                 </div>
                 <div class="stat-value" id="kpi-cat" style="font-size: 1.4rem">--</div>
@@ -1423,8 +1704,12 @@
                 <option value="Positivo">Positivo</option>
                 <option value="Neutro">Neutro</option>
             </select>
+            <select id="filtro-setor" class="filter-select" onchange="aplicarFiltros()">
+                <option value="">Todos os Setores</option>
+            </select>
             <select id="filtro-status" class="filter-select" onchange="aplicarFiltros()">
                 <option value="ativos" selected>Cards Ativos</option>
+                <option value="todos">Todos os Status</option>
                 <option value="aberto">Aberto</option>
                 <option value="em_andamento">Em Andamento</option>
                 <option value="resolvido">Resolvido</option>
@@ -1548,6 +1833,20 @@
             const topCat = Object.keys(catCount).length ? Object.keys(catCount).reduce((a, b) => catCount[a] > catCount[b] ? a : b) : "N/A";
             document.getElementById('kpi-cat').innerText = topCat;
             document.getElementById('kpi-cat-count').innerText = (catCount[topCat] || 0) + " feedbacks";
+
+            // Os dois KPIs viram atalho para a lista que eles resumem.
+            const regionCard = document.getElementById('kpi-region-card');
+            if (regionCard) {
+                regionCard.onclick = topReg && topReg !== 'Nenhuma'
+                    ? () => openRegionDetail(topReg)
+                    : null;
+            }
+            const catCard = document.getElementById('kpi-cat-card');
+            if (catCard) {
+                catCard.onclick = topCat && topCat !== 'N/A'
+                    ? () => openCategoryDetail(topCat)
+                    : null;
+            }
 
             renderCharts(events, config.categories);
 
@@ -1817,11 +2116,16 @@
             const categoria = document.getElementById('filtro-categoria').value;
             const prioridade = document.getElementById('filtro-prioridade').value;
             const status = document.getElementById('filtro-status').value;
+            const setor = document.getElementById('filtro-setor')?.value || '';
 
             let params = [];
             if (categoria) params.push(`categoria=${encodeURIComponent(categoria)}`);
             if (prioridade) params.push(`prioridade=${encodeURIComponent(prioridade)}`);
-            if (status && status !== 'ativos') params.push(`status=${encodeURIComponent(status)}`);
+            if (setor) params.push(`setor=${encodeURIComponent(setor)}`);
+            // "ativos" e "todos" sao filtros de tela, nao de consulta.
+            if (status && status !== 'ativos' && status !== 'todos') {
+                params.push(`status=${encodeURIComponent(status)}`);
+            }
 
             const url = '/api/events' + (params.length ? '?' + params.join('&') : '');
             loadFeedbacks(url);
@@ -1830,8 +2134,28 @@
         function limparFiltros() {
             document.getElementById('filtro-categoria').value = '';
             document.getElementById('filtro-prioridade').value = '';
+            const setorSelect = document.getElementById('filtro-setor');
+            if (setorSelect) setorSelect.value = '';
             document.getElementById('filtro-status').value = 'ativos';
             aplicarFiltros();
+        }
+
+        async function popularFiltroSetores() {
+            const select = document.getElementById('filtro-setor');
+            if (!select) return;
+            try {
+                const res = await fetch('/api/sectors');
+                const data = await res.json();
+                const sectors = (data.sectors || [])
+                    .slice()
+                    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+                select.innerHTML = '<option value="">Todos os Setores</option>' +
+                    sectors.map(s =>
+                        `<option value="${escHtml(s.code)}">${escHtml(s.name)}${s.open ? ' (' + s.open + ')' : ''}</option>`
+                    ).join('');
+            } catch (err) {
+                console.error('Erro ao carregar setores no filtro:', err);
+            }
         }
 
         async function popularFiltrosCategorias() {
@@ -1905,11 +2229,12 @@
             rGrid.innerHTML = '';
             config.regions.forEach(r => {
                 rGrid.innerHTML += `
-                    <div class="manage-card">
+                    <div class="manage-card clickable-row" data-drill-region="${escHtml(r.name)}"
+                        title="Ver os chamados desta região">
                         <h3>${escHtml(r.name)} <i class="ri-map-pin-line"></i></h3>
                         <h2>${r.count}</h2>
                         <p>Feedbacks recebidos</p>
-                        <div class="btn-delete" onclick="delItem('regions', '${r.name}')">Excluir</div>
+                        <div class="btn-delete" onclick="event.stopPropagation(); delItem('regions', '${r.name}')">Excluir</div>
                     </div>
                 `;
             });
@@ -1919,14 +2244,20 @@
             cGrid.innerHTML = '';
             config.categories.forEach(c => {
                 cGrid.innerHTML += `
-                    <div class="manage-card" style="border-left: 4px solid ${c.color}">
+                    <div class="manage-card clickable-row" style="border-left: 4px solid ${c.color}"
+                        data-drill-category="${escHtml(c.name)}"
+                        title="Ver os chamados desta categoria">
                         <h3>${escHtml(c.name)} <i class="ri-price-tag-3-fill" style="color:${c.color}"></i></h3>
                         <h2>${c.count}</h2>
                         <p>Feedbacks recebidos</p>
-                        <div class="btn-delete" onclick="delItem('categories', '${c.name}')">Excluir</div>
+                        <div class="btn-delete" onclick="event.stopPropagation(); delItem('categories', '${c.name}')">Excluir</div>
                     </div>
                 `;
             });
+
+            // Os cards so viram atalho depois de existirem no DOM.
+            wireDrill(rGrid, 'data-drill-region', openRegionDetail);
+            wireDrill(cGrid, 'data-drill-category', openCategoryDetail);
         }
 
         // ===== MAPA AO VIVO =====
@@ -1949,12 +2280,16 @@
             return String(name || '').split('•')[0].trim();
         }
 
+        // O painel de detalhe precisa dos setores ja carregados.
+        let _sectorsCache = [];
+
         async function loadMapa() {
             let sectors = [];
             try {
                 const res = await fetch('/api/sectors');
                 const data = await res.json();
                 sectors = data.sectors || [];
+                _sectorsCache = sectors;
             } catch (err) {
                 console.error('Erro ao carregar setores:', err);
                 return;
@@ -1976,7 +2311,8 @@
                     pin.style.left = s.coord.x + '%';
                     pin.style.top = s.coord.y + '%';
                     pin.style.setProperty('--pin', color);
-                    pin.title = s.name + ': ' + s.open + ' em aberto';
+                    pin.title = s.name + ': ' + s.open + ' em aberto. Clique para ver os chamados.';
+                    pin.onclick = () => openSectorDetail(s.code);
                     pin.innerHTML =
                         (s.open > 0 ? '<div class="pin-ring"></div>' : '') +
                         '<div class="pin-core"></div>' +
@@ -1995,11 +2331,13 @@
             alertBox.innerHTML = hotSectors.length
                 ? hotSectors.map(s => {
                     const color = pinTone(s.worst);
-                    return '<div class="zone-row">' +
+                    return '<div class="zone-row clickable-row" title="Ver os chamados deste setor" ' +
+                        'onclick="openSectorDetail(\'' + s.code + '\')">' +
                         '<span class="zone-name"><span class="priority-dot" style="background:' + color + '"></span>' +
                         escHtml(s.name) + '</span>' +
                         '<span class="zone-pill" style="background:' + color + '20; color:' + color +
                         '; border:1px solid ' + color + '">' + s.open + '</span>' +
+                        '<i class="ri-arrow-right-s-line" style="color:var(--text-muted)"></i>' +
                         '</div>';
                 }).join('')
                 : '<p style="color:#22c55e; font-size:0.82rem"><i class="ri-shield-check-line"></i> Nenhum setor em alerta.</p>';
@@ -2022,11 +2360,13 @@
                 ? zoneNames.map(name => {
                     const z = zones[name];
                     const color = pinTone(z.worst);
-                    return '<div class="zone-row">' +
+                    return '<div class="zone-row clickable-row" title="Ver os setores desta zona" ' +
+                        'onclick="openZoneDetail(\'' + name.replace(/'/g, "") + '\')">' +
                         '<span class="zone-name">' + escHtml(name) + '</span>' +
                         '<span style="color:var(--text-muted); font-size:0.75rem">' + z.total + ' msg</span>' +
                         '<span class="zone-pill" style="background:' + color + '20; color:' + color +
                         '; border:1px solid ' + color + '">' + z.open + '</span>' +
+                        '<i class="ri-arrow-right-s-line" style="color:var(--text-muted)"></i>' +
                         '</div>';
                 }).join('')
                 : '<p style="color:var(--text-muted); font-size:0.82rem">Sem setores cadastrados.</p>';
@@ -2037,6 +2377,284 @@
             document.getElementById('map-coverage-sub').innerText =
                 sectors.length ? 'de ' + sectors.length + ' setores com movimento' : 'setores cadastrados';
         }
+
+
+        // ===================== PAINEL DE DETALHE =====================
+        // O mapa sozinho so diz que algo esta vermelho. Aqui o operador
+        // chega na mensagem, no numero e na acao, sem sair da tela.
+        let _drillContext = null;
+
+        function closeDrill() {
+            document.getElementById('drill-overlay').classList.add('hidden');
+            _drillContext = null;
+        }
+
+        function statusMeta(status) {
+            return {
+                'aberto': { color: '#EF4444', label: 'Aberto', icon: 'ri-error-warning-line' },
+                'em_andamento': { color: '#F59E0B', label: 'Em Andamento', icon: 'ri-loader-4-line' },
+                'resolvido': { color: '#10B981', label: 'Resolvido', icon: 'ri-checkbox-circle-line' }
+            }[status || 'aberto'] || { color: '#EF4444', label: 'Aberto', icon: 'ri-error-warning-line' };
+        }
+
+        function urgencyTone(urgency) {
+            const u = (urgency || '').toLowerCase();
+            if (u.includes('crit') || u.includes('crít')) return '#ef4444';
+            if (u.includes('urge')) return '#f59e0b';
+            if (u.includes('posi')) return '#10b981';
+            return '#3b82f6';
+        }
+
+        function drillShell(title, subtitleHtml, statsHtml, bodyHtml, footHtml) {
+            document.getElementById('drill-box').innerHTML = `
+                <div class="drill-head">
+                    <div class="drill-title-row">
+                        <div>
+                            <div class="drill-title">${title}</div>
+                            <div class="drill-sub">${subtitleHtml}</div>
+                        </div>
+                        <button class="drill-close" onclick="closeDrill()">&times;</button>
+                    </div>
+                    ${statsHtml}
+                </div>
+                <div class="drill-body">${bodyHtml}</div>
+                ${footHtml}
+            `;
+            document.getElementById('drill-overlay').classList.remove('hidden');
+        }
+
+        function drillStats(events) {
+            const byUrgency = { 'Critico': 0, 'Urgente': 0, 'Neutro': 0, 'Positivo': 0 };
+            let abertos = 0;
+            events.forEach(e => {
+                const u = (e.urgency || 'Neutro');
+                const key = u.replace('Crítico', 'Critico');
+                if (key in byUrgency) byUrgency[key]++;
+                if ((e.status || 'aberto') !== 'resolvido') abertos++;
+            });
+
+            const chips = [
+                { label: 'Em aberto', value: abertos, tone: abertos ? '#f59e0b' : '#64748b' },
+                { label: 'Crítico', value: byUrgency['Critico'], tone: '#ef4444' },
+                { label: 'Urgente', value: byUrgency['Urgente'], tone: '#f59e0b' },
+                { label: 'Elogios', value: byUrgency['Positivo'], tone: '#22c55e' },
+                { label: 'Dúvidas', value: byUrgency['Neutro'], tone: '#3b82f6' }
+            ];
+
+            return '<div class="drill-stats">' + chips.map(c =>
+                `<div class="drill-stat" style="--tone:${c.tone}">
+                    <div class="drill-stat-value">${c.value}</div>
+                    <div class="drill-stat-label">${c.label}</div>
+                </div>`
+            ).join('') + '</div>';
+        }
+
+        function drillFeedbackList(events) {
+            if (!events.length) {
+                return `<div class="drill-empty"><i class="ri-inbox-line"></i>
+                    Nenhum chamado aqui ainda.<br>Quando alguém escanear o QR deste ponto, a mensagem aparece nesta lista.</div>`;
+            }
+
+            // Mais grave e mais recente primeiro: e a ordem em que se resolve.
+            const rank = { 'Critico': 3, 'Crítico': 3, 'Urgente': 2, 'Neutro': 1, 'Positivo': 0 };
+            const ordered = [...events].sort((a, b) => {
+                const aberto = (x) => (x.status || 'aberto') !== 'resolvido' ? 1 : 0;
+                return aberto(b) - aberto(a)
+                    || (rank[b.urgency] || 0) - (rank[a.urgency] || 0)
+                    || (b.id || 0) - (a.id || 0);
+            });
+
+            return `<div class="drill-section-label">${ordered.length} chamado${ordered.length === 1 ? '' : 's'}, do mais grave para o menos</div>` +
+                ordered.map(e => {
+                    const tone = urgencyTone(e.urgency);
+                    const sc = statusMeta(e.status);
+                    // Elogio e duvida nao entram no fluxo de resolucao da equipe.
+                    const u = (e.urgency || '').toLowerCase();
+                    const acionavel = u.includes('crit') || u.includes('crít') || u.includes('urge');
+                    const thread = parseThread(e.message);
+                    const extra = thread.length > 1
+                        ? `<div class="update-badge"><i class="ri-chat-3-line"></i> ${thread.length - 1} atualização${thread.length === 2 ? '' : 'ões'}</div>`
+                        : '';
+                    return `<div class="drill-item" style="--tone:${tone}">
+                        <div class="drill-item-top">
+                            <span class="drill-item-tag">${escHtml(e.urgency || 'Neutro')}</span>
+                            <span class="drill-item-time"><i class="ri-time-line"></i> ${escHtml(formatarTempo(e.timestamp))}</span>
+                        </div>
+                        <div class="drill-item-msg">${escHtml(thread[0].text)}</div>
+                        ${extra}
+                        <div class="drill-item-foot">
+                            <span class="drill-item-where"><i class="ri-price-tag-3-line"></i> ${escHtml(e.category || 'Geral')}</span>
+                            ${acionavel
+                                ? `<select class="filter-select" style="min-width:150px; padding:5px 9px; font-size:0.78rem; border-color:${sc.color}; color:${sc.color}"
+                                onchange="drillChangeStatus(${e.id}, this.value)">
+                                <option value="aberto" ${(e.status || 'aberto') === 'aberto' ? 'selected' : ''}>Aberto</option>
+                                <option value="em_andamento" ${e.status === 'em_andamento' ? 'selected' : ''}>Em Andamento</option>
+                                <option value="resolvido" ${e.status === 'resolvido' ? 'selected' : ''}>Resolvido</option>
+                            </select>`
+                                : `<span class="drill-item-time"><i class="ri-checkbox-blank-circle-line" style="color:${tone}"></i> sem ação necessária</span>`}
+                        </div>
+                    </div>`;
+                }).join('');
+        }
+
+        async function drillChangeStatus(id, status) {
+            await updateStatus(id, status);
+            // Reabre o mesmo painel para o operador ver o efeito na hora.
+            if (_drillContext) openDrill(_drillContext);
+            loadMapa();
+        }
+
+        async function openDrill(ctx) {
+            _drillContext = ctx;
+            drillShell(escHtml(ctx.title), ctx.subtitle || '', '',
+                '<div class="drill-empty"><i class="ri-loader-4-line"></i>Carregando chamados...</div>', '');
+
+            let events = [];
+            try {
+                const res = await fetch(ctx.url);
+                events = await res.json();
+            } catch (err) {
+                console.error('Erro ao abrir detalhe:', err);
+            }
+
+            const foot = `<div class="drill-foot">
+                <span style="font-size:0.75rem; color:var(--text-muted)">${escHtml(ctx.hint || 'Troque o status direto na lista')}</span>
+                <div style="display:flex; gap:8px">
+                    ${ctx.feedbacksFilter ? `<button class="drill-btn" onclick='drillGoToFeedbacks(${JSON.stringify(ctx.feedbacksFilter)})'>
+                        <i class="ri-chat-3-line"></i> Ver na aba Feedbacks</button>` : ''}
+                    <button class="drill-btn ghost" onclick="closeDrill()">Fechar</button>
+                </div>
+            </div>`;
+
+            drillShell(escHtml(ctx.title), ctx.subtitle || '', drillStats(events),
+                drillFeedbackList(events), foot);
+        }
+
+        // Liga o clique depois do innerHTML: nada de aspas dentro de atributo.
+        function wireDrill(root, attr, handler) {
+            root.querySelectorAll('[' + attr + ']').forEach(el => {
+                const value = el.getAttribute(attr);
+                el.onclick = (ev) => {
+                    ev.stopPropagation();
+                    handler(value);
+                };
+            });
+        }
+
+        function drillGoToFeedbacks(filter) {
+            closeDrill();
+            nav('feedbacks', document.querySelector('.nav-item[onclick*="feedbacks"]'));
+            if (filter.categoria) document.getElementById('filtro-categoria').value = filter.categoria;
+            if (filter.prioridade) document.getElementById('filtro-prioridade').value = filter.prioridade;
+            const setorSelect = document.getElementById('filtro-setor');
+            if (setorSelect) setorSelect.value = filter.setor || '';
+            document.getElementById('filtro-status').value = 'todos';
+            aplicarFiltros();
+        }
+
+        // ---------- Aberturas especificas ----------
+        function openSectorDetail(code) {
+            const sector = (_sectorsCache || []).find(s => s.code === code);
+            if (!sector) return;
+
+            const team = sector.team ? String(sector.team).replace(/_/g, ' ') : null;
+            const subtitle = [
+                sector.zone ? `<span class="tag"><i class="ri-compass-3-line"></i> Zona ${escHtml(sector.zone)}</span>` : '',
+                team ? `<span class="tag"><i class="ri-team-line"></i> ${escHtml(team)}</span>` : '',
+                `<span class="tag"><i class="ri-qr-code-line"></i> ${escHtml(sector.code)}</span>`,
+                sector.lastAt ? `<span class="tag"><i class="ri-time-line"></i> último há ${escHtml(formatarTempo(sector.lastAt))}</span>` : ''
+            ].filter(Boolean).join('');
+
+            openDrill({
+                title: sector.name,
+                subtitle: subtitle,
+                url: '/api/events?setor=' + encodeURIComponent(code),
+                hint: sector.cta ? 'Convite do QR: ' + sector.cta : 'Troque o status direto na lista',
+                feedbacksFilter: { setor: code }
+            });
+        }
+
+        function openCategoryDetail(name) {
+            openDrill({
+                title: name,
+                subtitle: '<span class="tag"><i class="ri-price-tag-3-line"></i> Categoria</span>',
+                url: '/api/events?categoria=' + encodeURIComponent(name),
+                feedbacksFilter: { categoria: name }
+            });
+        }
+
+        function openRegionDetail(name) {
+            openDrill({
+                title: name,
+                subtitle: '<span class="tag"><i class="ri-map-pin-line"></i> Região</span>',
+                url: '/api/events?regiao=' + encodeURIComponent(name)
+            });
+        }
+
+        function openTopicDetail(topic, kind) {
+            openDrill({
+                title: topic,
+                subtitle: `<span class="tag"><i class="ri-hashtag"></i> ${kind === 'problema' ? 'Ponto de atenção' : 'Elogio'} mais citado</span>`,
+                url: '/api/events?topico=' + encodeURIComponent(topic)
+            });
+        }
+
+        function openUrgencyDetail(urgency, label) {
+            openDrill({
+                title: label,
+                subtitle: '<span class="tag"><i class="ri-alarm-warning-line"></i> Por prioridade</span>',
+                url: '/api/events?prioridade=' + encodeURIComponent(urgency),
+                feedbacksFilter: { prioridade: urgency }
+            });
+        }
+
+        // Macrozona: lista os setores dela, cada um abrindo o proprio detalhe.
+        function openZoneDetail(zone) {
+            const sectors = (_sectorsCache || [])
+                .filter(s => (s.zone || 'Sem zona') === zone)
+                .sort((a, b) => (PIN_RANK[b.worst] || 0) - (PIN_RANK[a.worst] || 0) || b.total - a.total);
+
+            const totals = sectors.reduce((acc, s) => {
+                acc.total += s.total;
+                acc.open += s.open;
+                return acc;
+            }, { total: 0, open: 0 });
+
+            const rows = sectors.length
+                ? sectors.map(s => {
+                    const color = pinTone(s.worst);
+                    return `<div class="drill-sector-row" onclick="openSectorDetail('${escHtml(s.code)}')">
+                        <span class="priority-dot" style="background:${color}; width:10px; height:10px"></span>
+                        <div style="flex:1">
+                            <div class="drill-sector-name">${escHtml(s.name)}</div>
+                            <div class="drill-sector-zone">${s.total} mensagem${s.total === 1 ? '' : 's'} no total</div>
+                        </div>
+                        <span class="drill-count-pill" style="background:${color}20; color:${color}; border:1px solid ${color}">
+                            ${s.open} aberto${s.open === 1 ? '' : 's'}
+                        </span>
+                        <i class="ri-arrow-right-s-line" style="color:var(--text-muted)"></i>
+                    </div>`;
+                }).join('')
+                : '<div class="drill-empty"><i class="ri-map-2-line"></i>Nenhum setor nesta zona.</div>';
+
+            drillShell(
+                'Zona ' + escHtml(zone),
+                `<span class="tag"><i class="ri-router-line"></i> ${sectors.length} setores</span>
+                 <span class="tag"><i class="ri-chat-poll-line"></i> ${totals.total} mensagens</span>
+                 <span class="tag"><i class="ri-alarm-warning-line"></i> ${totals.open} em aberto</span>`,
+                '',
+                '<div class="drill-section-label">Clique no setor para ver os chamados</div>' + rows,
+                `<div class="drill-foot">
+                    <span style="font-size:0.75rem; color:var(--text-muted)">Ordenado pelo pior chamado aberto</span>
+                    <button class="drill-btn ghost" onclick="closeDrill()">Fechar</button>
+                </div>`
+            );
+            _drillContext = null;
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeDrill();
+        });
 
         // Charts
         let currentChartTimeline = null;
@@ -2141,7 +2759,9 @@
                 const pct = ((count / total) * 100).toFixed(0);
                 const cfg = sentimentColors[name];
                 return `
-                    <div style="margin-bottom: 16px;">
+                    <div class="clickable-row" data-drill-urgency="${escHtml(name)}"
+                        title="Ver os chamados com esta prioridade"
+                        style="margin-bottom: 16px; border-radius:6px; padding:4px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem;">
                             <span style="color: ${cfg.color}; font-weight: 600;">${name}</span>
                             <span style="color: #9ca3af;">${count} (${pct}%)</span>
@@ -2152,6 +2772,8 @@
                     </div>
                 `;
             }).join('');
+
+            wireDrill(sentimentContainer, 'data-drill-urgency', (u) => openUrgencyDetail(u, u));
 
             // ===== 3. DONUT COM LEGENDA =====
             const catCount = {};
@@ -2251,7 +2873,9 @@
 
                 if (data.compliments.length > 0) {
                     compContainer.innerHTML = data.compliments.map((item, index) => `
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #23252e; padding-bottom:8px;">
+                        <div class="clickable-row" data-drill-topic="${escHtml(item.topic)}"
+                            title="Ver as mensagens deste tema"
+                            style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #23252e; padding-bottom:8px; border-radius:6px;">
                             <span style="font-weight:500">
                                 <span style="background:#22c55e20; color:#22c55e; padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:8px">#${index + 1}</span>
                                 ${escHtml(item.topic)}
@@ -2259,6 +2883,7 @@
                             <span style="color:#22c55e; font-weight:bold">${item.count} <small style="opacity:0.6; font-weight:normal">menções</small></span>
                         </div>
                     `).join('');
+                    wireDrill(compContainer, 'data-drill-topic', (t) => openTopicDetail(t, 'elogio'));
                 } else {
                     compContainer.innerHTML = '<p style="color:var(--text-muted)">Sem elogios registrados ainda.</p>';
                 }
@@ -2269,7 +2894,9 @@
 
                 if (data.problems.length > 0) {
                     probContainer.innerHTML = data.problems.map((item, index) => `
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #23252e; padding-bottom:8px;">
+                        <div class="clickable-row" data-drill-topic="${escHtml(item.topic)}"
+                            title="Ver as mensagens deste tema"
+                            style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #23252e; padding-bottom:8px; border-radius:6px;">
                             <span style="font-weight:500">
                                 <span style="background:#ef444420; color:#ef4444; padding:2px 6px; border-radius:4px; font-size:0.8rem; margin-right:8px">#${index + 1}</span>
                                 ${escHtml(item.topic)}
@@ -2277,6 +2904,7 @@
                             <span style="color:#ef4444; font-weight:bold">${item.count} <small style="opacity:0.6; font-weight:normal">reclamações</small></span>
                         </div>
                     `).join('');
+                    wireDrill(probContainer, 'data-drill-topic', (t) => openTopicDetail(t, 'problema'));
                 } else {
                     probContainer.innerHTML = '<p style="color:var(--text-muted)">Sem problemas críticos ainda.</p>';
                 }
@@ -2287,6 +2915,7 @@
         loadData();
         loadTopInsights();
         popularFiltrosCategorias(); // Popular dropdown de categorias
+        popularFiltroSetores();
         setInterval(() => { loadData(); loadTopInsights(); }, 5000);
 
         // ========== SISTEMA DE ALERTAS CRÍTICOS ==========
@@ -2406,6 +3035,13 @@
         // Close thread modal on Esc
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeThreadModal(); });
     </script>
+
+    <!-- Painel de Detalhe (drill-down) -->
+    <div id="drill-overlay" class="modal-overlay hidden" onclick="if(event.target===this) closeDrill()">
+        <div class="drill-box" id="drill-box">
+            <!-- Preenchido por openDrill() -->
+        </div>
+    </div>
 
     <!-- Thread Timeline Modal -->
     <div id="thread-modal-overlay" class="modal-overlay hidden" onclick="if(event.target===this) closeThreadModal()">

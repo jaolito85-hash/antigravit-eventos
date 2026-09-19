@@ -728,6 +728,168 @@
 
         .takeover-hint { font-size: 0.72rem; color: #fca5a5; margin-top: 20px; font-weight: 600; }
 
+        /* ===================== DETALHE DO SETOR ===================== */
+        .sheet {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: none;
+            place-items: center;
+            background: rgba(4, 4, 10, 0.72);
+            backdrop-filter: blur(7px);
+        }
+
+        .sheet.show { display: grid; }
+
+        .sheet-box {
+            width: min(820px, 90vw);
+            max-height: 86vh;
+            background: linear-gradient(170deg, #12141d, #0b0c12);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+            animation: sheetIn 0.22s ease-out;
+        }
+
+        @keyframes sheetIn {
+            from { opacity: 0; transform: translateY(14px) scale(0.99); }
+            to { opacity: 1; transform: none; }
+        }
+
+        .sheet-head {
+            padding: 22px 26px 18px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .sheet-title {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+        }
+
+        .sheet-tags {
+            display: flex;
+            gap: 9px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .sheet-tag {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 3px 11px;
+        }
+
+        .sheet-nums {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .sheet-num {
+            border: 1px solid var(--tone);
+            background: color-mix(in srgb, var(--tone) 13%, transparent);
+            border-radius: 12px;
+            padding: 9px 15px;
+            min-width: 96px;
+        }
+
+        .sheet-num b {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--tone);
+            display: block;
+            line-height: 1;
+        }
+
+        .sheet-num span {
+            font-size: 0.64rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--muted);
+            font-weight: 700;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .sheet-body {
+            padding: 16px 26px 22px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .sheet-item {
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--tone);
+            border-radius: 13px;
+            padding: 14px 17px;
+            margin-bottom: 11px;
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .sheet-item-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .sheet-item-tag {
+            font-size: 0.66rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--tone);
+            border: 1px solid var(--tone);
+            border-radius: 20px;
+            padding: 2px 9px;
+        }
+
+        .sheet-item-msg {
+            font-size: 1.02rem;
+            line-height: 1.5;
+            color: #e8ebf2;
+        }
+
+        .sheet-item-foot {
+            font-size: 0.72rem;
+            color: var(--dim);
+            font-weight: 600;
+            margin-top: 9px;
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .sheet-foot {
+            padding: 15px 26px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .pin, .rank-item { cursor: pointer; }
+
+        .rank-item:hover {
+            border-color: var(--tone);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
         /* Tela menor: empilha a coluna lateral */
         @media (max-width: 1280px) {
             .content { grid-template-columns: 1fr 320px; }
@@ -850,6 +1012,11 @@
         </section>
     </div>
 
+    <!-- ================= DETALHE DO SETOR ================= -->
+    <div class="sheet" id="sheet" onclick="if(event.target===this) closeSheet()">
+        <div class="sheet-box" id="sheet-box"></div>
+    </div>
+
     <!-- ================= ALERTA CRÍTICO ================= -->
     <div class="takeover" id="takeover" onclick="hideTakeover()">
         <div class="takeover-box">
@@ -873,6 +1040,7 @@
         };
         const RANK = { 'Critico': 3, 'Crítico': 3, 'Urgente': 2, 'Neutro': 1, 'Positivo': 0, 'ok': -1 };
 
+        let SECTORS = [];
         let soundOn = false;
         let audioCtx = null;
         let lastSeenId = null;
@@ -970,6 +1138,88 @@
             clearTimeout(takeoverTimer);
         }
 
+        // ===== Detalhe do setor: o pin precisa contar o que esta acontecendo =====
+        function closeSheet() {
+            document.getElementById('sheet').classList.remove('show');
+        }
+
+        async function openSheet(code) {
+            const sector = SECTORS.find(s => s.code === code);
+            if (!sector) return;
+
+            const box = document.getElementById('sheet-box');
+            const team = sector.team ? String(sector.team).replace(/_/g, ' ') : null;
+            const tags = [
+                sector.zone ? 'Zona ' + esc(sector.zone) : null,
+                team ? esc(team) : null,
+                esc(sector.code),
+                sector.lastAt ? 'último ' + esc(relTime(sector.lastAt)) : null,
+            ].filter(Boolean).map(t => '<span class="sheet-tag">' + t + '</span>').join('');
+
+            box.innerHTML =
+                '<div class="sheet-head"><div class="sheet-title">' + esc(sector.name) + '</div>' +
+                '<div class="sheet-tags">' + tags + '</div></div>' +
+                '<div class="sheet-body"><div class="empty"><i class="ri-loader-4-line"></i>Carregando chamados...</div></div>';
+            document.getElementById('sheet').classList.add('show');
+
+            let events = [];
+            try {
+                const res = await fetch('/api/events?setor=' + encodeURIComponent(code));
+                events = await res.json();
+            } catch (err) {
+                console.error('Falha ao carregar o setor:', err);
+            }
+
+            const abertos = events.filter(e => (e.status || 'aberto') !== 'resolvido');
+            const conta = (u) => events.filter(e => (e.urgency || '') === u).length;
+            const nums = [
+                { label: 'Em aberto', value: abertos.length, tone: abertos.length ? TONES['Urgente'] : TONES['ok'] },
+                { label: 'Crítico', value: conta('Critico'), tone: TONES['Critico'] },
+                { label: 'Urgente', value: conta('Urgente'), tone: TONES['Urgente'] },
+                { label: 'Elogios', value: conta('Positivo'), tone: TONES['Positivo'] },
+                { label: 'Dúvidas', value: conta('Neutro'), tone: TONES['Neutro'] },
+            ];
+
+            const rank = { 'Critico': 3, 'Crítico': 3, 'Urgente': 2, 'Neutro': 1, 'Positivo': 0 };
+            const ordered = [...events].sort((a, b) => {
+                const aberto = (x) => (x.status || 'aberto') !== 'resolvido' ? 1 : 0;
+                return aberto(b) - aberto(a)
+                    || (rank[b.urgency] || 0) - (rank[a.urgency] || 0)
+                    || (b.id || 0) - (a.id || 0);
+            });
+
+            const statusLabel = {
+                'aberto': 'Aberto', 'em_andamento': 'Em andamento', 'resolvido': 'Resolvido',
+            };
+
+            const lista = ordered.length
+                ? ordered.map(e => {
+                    const color = tone(e.urgency);
+                    return '<div class="sheet-item" style="--tone:' + color + '">' +
+                        '<div class="sheet-item-top">' +
+                        '<span class="sheet-item-tag">' + esc(e.urgency || 'Neutro') + '</span>' +
+                        '<span class="feed-time">' + esc(relTime(e.timestamp)) + '</span>' +
+                        '</div>' +
+                        '<div class="sheet-item-msg">' + esc(e.message) + '</div>' +
+                        '<div class="sheet-item-foot">' +
+                        '<span><i class="ri-price-tag-3-line"></i> ' + esc(e.category || 'Geral') + '</span>' +
+                        '<span><i class="ri-flag-line"></i> ' + esc(statusLabel[e.status || 'aberto'] || 'Aberto') + '</span>' +
+                        '</div></div>';
+                }).join('')
+                : '<div class="empty"><i class="ri-inbox-line"></i>Nenhum chamado neste ponto ainda.</div>';
+
+            box.innerHTML =
+                '<div class="sheet-head"><div class="sheet-title">' + esc(sector.name) + '</div>' +
+                '<div class="sheet-tags">' + tags + '</div>' +
+                '<div class="sheet-nums">' + nums.map(n =>
+                    '<div class="sheet-num" style="--tone:' + n.tone + '"><b>' + n.value + '</b><span>' + n.label + '</span></div>'
+                ).join('') + '</div></div>' +
+                '<div class="sheet-body">' + lista + '</div>' +
+                '<div class="sheet-foot">' +
+                '<span class="panel-note">' + esc(sector.cta || 'Escaneie o QR deste ponto para relatar algo') + '</span>' +
+                '<span class="chip button" onclick="closeSheet()">Fechar</span></div>';
+        }
+
         // ===== Carga principal =====
         async function loadAll() {
             try {
@@ -979,6 +1229,7 @@
                 ]);
                 const sectorsData = await sectorsRes.json();
                 const feedbacks = await eventsRes.json();
+                SECTORS = sectorsData.sectors || [];
 
                 renderKpis(feedbacks, sectorsData.sectors || []);
                 renderMap(sectorsData.sectors || []);
@@ -1053,6 +1304,8 @@
                     ? '<div class="pin-count" style="color:' + color + '">' + sector.open + '</div>'
                     : '';
 
+                pin.title = sector.name + ': ' + sector.open + ' em aberto. Clique para ver.';
+                pin.onclick = () => openSheet(sector.code);
                 pin.innerHTML = ring +
                     '<div class="pin-core"></div>' +
                     '<div class="pin-label">' + esc(shortName(sector.name)) + '</div>' +
@@ -1143,7 +1396,8 @@
 
             box.innerHTML = hot.map((s, i) => {
                 const color = tone(s.worst);
-                return '<div class="rank-item" style="--tone:' + color + '">' +
+                return '<div class="rank-item" style="--tone:' + color + '" ' +
+                    'title="Ver os chamados deste setor" onclick="openSheet(\'' + s.code + '\')">' +
                     '<span class="rank-pos">#' + (i + 1) + '</span>' +
                     '<span class="rank-name">' + esc(s.name) + '</span>' +
                     '<span class="rank-count">' + s.open + '</span>' +
@@ -1182,7 +1436,7 @@
         }
 
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') hideTakeover();
+            if (e.key === 'Escape') { hideTakeover(); closeSheet(); }
             if (e.key.toLowerCase() === 'f') goFullscreen();
             if (e.key.toLowerCase() === 's') toggleSound();
         });

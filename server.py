@@ -987,12 +987,19 @@ def aggregate_sectors(feedbacks):
             "zone": metadata.get("zone"),
             "coord": metadata.get("coord"),
             "team": metadata.get("team"),
+            "cta": metadata.get("cta"),
             "total": len(matched),
             "open": len(open_items),
             "counts": dict(counts),
             "openCounts": dict(open_counts),
             "worst": worst,
+            "statusCounts": dict(Counter(
+                f.get("status") or "aberto" for f in matched
+            )),
             "lastAt": last_ts,
+            # O painel de detalhe cruza estes ids com /api/events, em vez
+            # de repetir no JavaScript a regra de casamento por setor.
+            "feedbackIds": [f.get("id") for f in matched if f.get("id") is not None],
         })
 
     return result
@@ -1159,6 +1166,17 @@ def get_events():
     regiao = request.args.get('regiao')
     prioridade = request.args.get('prioridade')
     status_filter = request.args.get('status')
+    setor = request.args.get('setor')
+    topico = request.args.get('topico')
+
+    if setor:
+        # Usa a mesma agregacao do mapa para o filtro nao divergir do pin.
+        alvo = next(
+            (s for s in aggregate_sectors(feedbacks) if s["code"] == setor),
+            None,
+        )
+        permitidos = set(alvo["feedbackIds"]) if alvo else set()
+        feedbacks = [f for f in feedbacks if f.get('id') in permitidos]
     
     if categoria:
         feedbacks = [f for f in feedbacks if f.get('category') == categoria]
@@ -1168,6 +1186,8 @@ def get_events():
         feedbacks = [f for f in feedbacks if f.get('urgency') == prioridade]
     if status_filter:
         feedbacks = [f for f in feedbacks if f.get('status', 'aberto') == status_filter]
+    if topico:
+        feedbacks = [f for f in feedbacks if f.get('topic') == topico]
     
     return jsonify([public_feedback(feedback) for feedback in feedbacks])
 
