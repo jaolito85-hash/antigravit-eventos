@@ -890,6 +890,213 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
+        /* ===== ACAO DENTRO DO PAINEL ===== */
+        .sheet-item-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .act {
+            border: none;
+            border-radius: 9px;
+            padding: 9px 14px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+            transition: 0.15s;
+        }
+
+        .act.talk {
+            background: rgba(37, 211, 102, 0.16);
+            color: #4ade80;
+            border: 1px solid rgba(37, 211, 102, 0.45);
+        }
+
+        .act.talk:hover { background: rgba(37, 211, 102, 0.28); }
+
+        .act.primary {
+            background: var(--orange);
+            color: #fff;
+        }
+
+        .act.ghost {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+        }
+
+        .act.ghost:hover { color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+
+        .act:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Seletor de status grande, para ser usado de longe */
+        .status-pick {
+            background: #0b0d14;
+            border: 1px solid var(--tone);
+            color: var(--tone);
+            border-radius: 9px;
+            padding: 9px 12px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            min-width: 165px;
+        }
+
+        /* Tudo que abre algo precisa parecer clicavel no telao */
+        .kpi.tappable,
+        .zone-card.tappable,
+        .feed-item.tappable {
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .kpi.tappable:hover,
+        .zone-card.tappable:hover,
+        .feed-item.tappable:hover {
+            border-color: var(--orange);
+            transform: translateY(-2px);
+        }
+
+        .tap-hint {
+            position: absolute;
+            right: 12px;
+            top: 11px;
+            font-size: 0.9rem;
+            color: var(--dim);
+            opacity: 0.6;
+        }
+
+        .feed-item { position: relative; }
+
+        /* ===== CHAT NO TELAO ===== */
+        .chat-sheet-box {
+            width: min(760px, 90vw);
+            height: 84vh;
+            background: linear-gradient(170deg, #12141d, #0b0c12);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+            animation: sheetIn 0.22s ease-out;
+        }
+
+        .talk-stream {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #07080c;
+        }
+
+        .talk-bubble {
+            max-width: 76%;
+            padding: 12px 16px;
+            border-radius: 15px;
+            font-size: 1rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .talk-bubble small {
+            display: block;
+            font-size: 0.68rem;
+            margin-top: 7px;
+            opacity: 0.65;
+            font-weight: 600;
+        }
+
+        .talk-bubble.in {
+            align-self: flex-start;
+            background: #1b1e27;
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 5px;
+        }
+
+        .talk-bubble.bot {
+            align-self: flex-end;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-bottom-right-radius: 5px;
+        }
+
+        .talk-bubble.operator {
+            align-self: flex-end;
+            background: rgba(255, 107, 44, 0.17);
+            border: 1px solid rgba(255, 107, 44, 0.45);
+            border-bottom-right-radius: 5px;
+        }
+
+        .talk-compose {
+            border-top: 1px solid var(--border);
+            padding: 15px 20px;
+            flex-shrink: 0;
+        }
+
+        .talk-warn {
+            font-size: 0.82rem;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 10px;
+            padding: 10px 13px;
+            margin-bottom: 12px;
+            line-height: 1.45;
+        }
+
+        .talk-row {
+            display: flex;
+            gap: 11px;
+            align-items: flex-end;
+        }
+
+        .talk-input {
+            flex: 1;
+            background: #07080c;
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 11px;
+            padding: 13px 15px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: none;
+            min-height: 50px;
+            max-height: 140px;
+            line-height: 1.45;
+        }
+
+        .talk-input:focus { border-color: var(--orange); }
+        .talk-input:disabled { opacity: 0.5; }
+
+        .talk-send {
+            background: var(--orange);
+            color: #fff;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 11px;
+            cursor: pointer;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .talk-send:disabled { opacity: 0.45; cursor: not-allowed; }
+
         /* Tela menor: empilha a coluna lateral */
         @media (max-width: 1280px) {
             .content { grid-template-columns: 1fr 320px; }
@@ -921,7 +1128,10 @@
 
         <!-- ================= KPIs ================= -->
         <section class="kpis">
-            <div class="kpi" style="--accent: var(--orange)">
+            <div class="kpi tappable" title="Ver todas as mensagens"
+                onclick="openListSheet('Todas as mensagens', 'Evento inteiro', '')"
+                style="--accent: var(--orange)">
+                <i class="ri-arrow-right-up-line tap-hint"></i>
                 <div class="kpi-label"><i class="ri-chat-poll-line"></i> Mensagens</div>
                 <div class="kpi-value" id="kpi-total">0</div>
                 <div class="kpi-sub" id="kpi-total-sub">aguardando</div>
@@ -931,17 +1141,26 @@
                 <div class="kpi-value" id="kpi-people">0</div>
                 <div class="kpi-sub">vozes únicas no festival</div>
             </div>
-            <div class="kpi" style="--accent: var(--green)">
+            <div class="kpi tappable" title="Ver os elogios"
+                onclick="openListSheet('Elogios do público', 'Prioridade Positivo', '?prioridade=Positivo')"
+                style="--accent: var(--green)">
+                <i class="ri-arrow-right-up-line tap-hint"></i>
                 <div class="kpi-label"><i class="ri-emotion-happy-line"></i> Satisfação</div>
                 <div class="kpi-value" id="kpi-sat">--</div>
                 <div class="kpi-sub" id="kpi-sat-sub">elogios sobre o total</div>
             </div>
-            <div class="kpi" id="kpi-open-card" style="--accent: var(--red)">
+            <div class="kpi tappable" id="kpi-open-card" title="Ver os chamados críticos"
+                onclick="openListSheet('Chamados críticos', 'Prioridade Crítico', '?prioridade=Critico')"
+                style="--accent: var(--red)">
+                <i class="ri-arrow-right-up-line tap-hint"></i>
                 <div class="kpi-label"><i class="ri-alarm-warning-line"></i> Em aberto</div>
                 <div class="kpi-value" id="kpi-open">0</div>
                 <div class="kpi-sub" id="kpi-open-sub">críticos e urgentes</div>
             </div>
-            <div class="kpi" style="--accent: var(--blue)">
+            <div class="kpi tappable" title="Ver as dúvidas do público"
+                onclick="openListSheet('Dúvidas do público', 'Prioridade Neutro', '?prioridade=Neutro')"
+                style="--accent: var(--blue)">
+                <i class="ri-arrow-right-up-line tap-hint"></i>
                 <div class="kpi-label"><i class="ri-router-line"></i> Setores</div>
                 <div class="kpi-value" id="kpi-sectors">0</div>
                 <div class="kpi-sub" id="kpi-sectors-sub">pontos de escuta ativos</div>
@@ -956,6 +1175,8 @@
                     <div class="panel-title"><i class="ri-map-2-line" style="color: var(--orange)"></i> Gêmeo Digital ·
                         Planta Ao Vivo</div>
                     <div class="panel-note" id="map-note">Carregando setores...</div>
+                    <div class="panel-note" style="color:var(--orange)">
+                        <i class="ri-cursor-line"></i> clique em qualquer ponto</div>
                 </div>
                 <div class="map-wrap">
                     <div class="map-frame" id="map-frame">
@@ -1017,6 +1238,11 @@
         <div class="sheet-box" id="sheet-box"></div>
     </div>
 
+    <!-- ================= CONVERSA COM O PARTICIPANTE ================= -->
+    <div class="sheet" id="talk" onclick="if(event.target===this) closeTalk()">
+        <div class="chat-sheet-box" id="talk-box"></div>
+    </div>
+
     <!-- ================= ALERTA CRÍTICO ================= -->
     <div class="takeover" id="takeover" onclick="hideTakeover()">
         <div class="takeover-box">
@@ -1024,7 +1250,7 @@
             <div class="takeover-kicker">ALERTA CRÍTICO</div>
             <div class="takeover-msg" id="takeover-msg"></div>
             <div class="takeover-meta" id="takeover-meta"></div>
-            <div class="takeover-hint">Clique ou pressione ESC para dispensar</div>
+            <div class="takeover-hint">Clique para falar com quem enviou · ESC dispensa</div>
         </div>
     </div>
 
@@ -1127,6 +1353,16 @@
                 '<span><i class="ri-map-pin-2-fill"></i> ' + esc(where) + '</span>' +
                 '<span><i class="ri-price-tag-3-fill"></i> ' + esc(feedback.category || 'Geral') + '</span>' +
                 '<span><i class="ri-time-fill"></i> ' + esc(relTime(feedback.timestamp)) + '</span>';
+            // O alarme tambem e um atalho: clicar abre a conversa da pessoa.
+            const box = document.querySelector('.takeover-box');
+            if (box) {
+                box.style.cursor = 'pointer';
+                box.onclick = (ev) => {
+                    ev.stopPropagation();
+                    hideTakeover();
+                    if (feedback.id) openTalkByFeedback(feedback.id);
+                };
+            }
             document.getElementById('takeover').classList.add('show');
             siren();
             clearTimeout(takeoverTimer);
@@ -1138,16 +1374,138 @@
             clearTimeout(takeoverTimer);
         }
 
-        // ===== Detalhe do setor: o pin precisa contar o que esta acontecendo =====
+        // ============ PAINEL OPERAVEL ============
+        // Quem esta no telao precisa entender e agir: ler o chamado, trocar o
+        // status e falar com a pessoa. Nada aqui e so leitura.
+        let _sheetReload = null;
+
         function closeSheet() {
             document.getElementById('sheet').classList.remove('show');
+            _sheetReload = null;
         }
 
+        function sheetShell(title, tagsHtml, numsHtml, bodyHtml, footHtml) {
+            document.getElementById('sheet-box').innerHTML =
+                '<div class="sheet-head">' +
+                '<div class="sheet-title">' + title + '</div>' +
+                '<div class="sheet-tags">' + tagsHtml + '</div>' +
+                numsHtml + '</div>' +
+                '<div class="sheet-body">' + bodyHtml + '</div>' +
+                (footHtml || '');
+            document.getElementById('sheet').classList.add('show');
+        }
+
+        function sheetNums(events) {
+            const abertos = events.filter(e => (e.status || 'aberto') !== 'resolvido').length;
+            const conta = (u) => events.filter(e => (e.urgency || '') === u).length;
+            const nums = [
+                { label: 'Em aberto', value: abertos, tone: abertos ? TONES['Urgente'] : TONES['ok'] },
+                { label: 'Crítico', value: conta('Critico'), tone: TONES['Critico'] },
+                { label: 'Urgente', value: conta('Urgente'), tone: TONES['Urgente'] },
+                { label: 'Elogios', value: conta('Positivo'), tone: TONES['Positivo'] },
+                { label: 'Dúvidas', value: conta('Neutro'), tone: TONES['Neutro'] },
+            ];
+            return '<div class="sheet-nums">' + nums.map(n =>
+                '<div class="sheet-num" style="--tone:' + n.tone + '"><b>' + n.value +
+                '</b><span>' + n.label + '</span></div>'
+            ).join('') + '</div>';
+        }
+
+        const STATUS_LABEL = {
+            'aberto': 'Aberto', 'em_andamento': 'Em andamento', 'resolvido': 'Resolvido',
+        };
+        const STATUS_TONE = {
+            'aberto': '#ef4444', 'em_andamento': '#f59e0b', 'resolvido': '#22c55e',
+        };
+        const URGENCY_ORDER = {
+            'Critico': 3, 'Crítico': 3, 'Urgente': 2, 'Neutro': 1, 'Positivo': 0,
+        };
+
+        function sheetItems(events, opts) {
+            if (!events.length) {
+                return '<div class="empty"><i class="ri-inbox-line"></i>' +
+                    'Nenhum chamado aqui ainda.<br>Quando alguém escanear o QR deste ponto, aparece nesta lista.</div>';
+            }
+
+            const ordered = [...events].sort((a, b) => {
+                const aberto = (x) => (x.status || 'aberto') !== 'resolvido' ? 1 : 0;
+                return aberto(b) - aberto(a)
+                    || (URGENCY_ORDER[b.urgency] || 0) - (URGENCY_ORDER[a.urgency] || 0)
+                    || (b.id || 0) - (a.id || 0);
+            });
+
+            const cabecalho = '<div class="panel-note" style="margin-bottom:12px">' +
+                ordered.length + ' chamado' + (ordered.length === 1 ? '' : 's') +
+                ', do mais grave para o menos. Clique para conversar ou troque o status.</div>';
+
+            return cabecalho + ordered.map(e => {
+                const color = tone(e.urgency);
+                const status = e.status || 'aberto';
+                const stone = STATUS_TONE[status];
+                const acionavel = ['Critico', 'Crítico', 'Urgente'].includes(e.urgency);
+                const onde = (opts && opts.showRegion && e.region && e.region !== 'N/A')
+                    ? '<span><i class="ri-map-pin-line"></i> ' + esc(e.region) + '</span>'
+                    : '';
+
+                return '<div class="sheet-item" style="--tone:' + color + '">' +
+                    '<div class="sheet-item-top">' +
+                    '<span class="sheet-item-tag">' + esc(e.urgency || 'Neutro') + '</span>' +
+                    '<span class="feed-time">' + esc(relTime(e.timestamp)) + '</span>' +
+                    '</div>' +
+                    '<div class="sheet-item-msg">' + esc(e.message) + '</div>' +
+                    '<div class="sheet-item-foot">' +
+                    '<span><i class="ri-price-tag-3-line"></i> ' + esc(e.category || 'Geral') + '</span>' +
+                    onde + '</div>' +
+                    '<div class="sheet-item-actions">' +
+                    '<button class="act talk" onclick="openTalkByFeedback(' + e.id + ')">' +
+                    '<i class="ri-whatsapp-line"></i> Conversar com quem enviou</button>' +
+                    (acionavel
+                        ? '<select class="status-pick" style="--tone:' + stone + '" ' +
+                          'onchange="sheetSetStatus(' + e.id + ', this.value)">' +
+                          ['aberto', 'em_andamento', 'resolvido'].map(v =>
+                              '<option value="' + v + '"' + (v === status ? ' selected' : '') + '>' +
+                              STATUS_LABEL[v] + '</option>'
+                          ).join('') + '</select>'
+                        : '<span class="feed-time"><i class="ri-checkbox-blank-circle-line" ' +
+                          'style="color:' + color + '"></i> sem ação necessária</span>') +
+                    '</div></div>';
+            }).join('');
+        }
+
+        async function sheetSetStatus(id, status) {
+            try {
+                const res = await fetch('/api/feedback/' + id + '/status', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                if (!res.ok) {
+                    alert('Não foi possível trocar o status.');
+                    return;
+                }
+            } catch (err) {
+                console.error('Erro ao trocar status:', err);
+                return;
+            }
+            if (_sheetReload) await _sheetReload();
+            loadAll();
+        }
+
+        async function fetchEvents(query) {
+            try {
+                const res = await fetch('/api/events' + (query || ''));
+                return await res.json();
+            } catch (err) {
+                console.error('Erro ao carregar chamados:', err);
+                return [];
+            }
+        }
+
+        // ---------- Detalhe de um setor ----------
         async function openSheet(code) {
             const sector = SECTORS.find(s => s.code === code);
             if (!sector) return;
 
-            const box = document.getElementById('sheet-box');
             const team = sector.team ? String(sector.team).replace(/_/g, ' ') : null;
             const tags = [
                 sector.zone ? 'Zona ' + esc(sector.zone) : null,
@@ -1156,69 +1514,226 @@
                 sector.lastAt ? 'último ' + esc(relTime(sector.lastAt)) : null,
             ].filter(Boolean).map(t => '<span class="sheet-tag">' + t + '</span>').join('');
 
-            box.innerHTML =
-                '<div class="sheet-head"><div class="sheet-title">' + esc(sector.name) + '</div>' +
-                '<div class="sheet-tags">' + tags + '</div></div>' +
-                '<div class="sheet-body"><div class="empty"><i class="ri-loader-4-line"></i>Carregando chamados...</div></div>';
-            document.getElementById('sheet').classList.add('show');
+            const foot = '<div class="sheet-foot">' +
+                '<span class="panel-note">' + esc(sector.cta || 'Ponto de escuta do festival') + '</span>' +
+                '<button class="act ghost" onclick="closeSheet()">Fechar</button></div>';
 
-            let events = [];
+            sheetShell(esc(sector.name), tags, '',
+                '<div class="empty"><i class="ri-loader-4-line"></i>Carregando chamados...</div>', foot);
+
+            _sheetReload = async () => {
+                const events = await fetchEvents('?setor=' + encodeURIComponent(code));
+                sheetShell(esc(sector.name), tags, sheetNums(events), sheetItems(events), foot);
+            };
+            await _sheetReload();
+        }
+
+        // ---------- Lista por prioridade, categoria ou tema ----------
+        async function openListSheet(title, tagText, query, opts) {
+            const tags = '<span class="sheet-tag">' + esc(tagText) + '</span>';
+            const foot = '<div class="sheet-foot">' +
+                '<span class="panel-note">Troque o status ou fale com o participante</span>' +
+                '<button class="act ghost" onclick="closeSheet()">Fechar</button></div>';
+
+            sheetShell(esc(title), tags, '',
+                '<div class="empty"><i class="ri-loader-4-line"></i>Carregando...</div>', foot);
+
+            _sheetReload = async () => {
+                const events = await fetchEvents(query);
+                sheetShell(esc(title), tags, sheetNums(events),
+                    sheetItems(events, opts || { showRegion: true }), foot);
+            };
+            await _sheetReload();
+        }
+
+        // ---------- Macrozona: lista os setores ----------
+        function openZoneSheet(zone) {
+            const sectors = SECTORS
+                .filter(s => (s.zone || 'Sem zona') === zone)
+                .sort((a, b) => (RANK[b.worst] ?? -1) - (RANK[a.worst] ?? -1) || b.total - a.total);
+
+            const totals = sectors.reduce((acc, s) => {
+                acc.total += s.total;
+                acc.open += s.open;
+                return acc;
+            }, { total: 0, open: 0 });
+
+            const rows = sectors.length
+                ? sectors.map(s => {
+                    const color = tone(s.worst === 'ok' ? 'ok' : s.worst);
+                    return '<div class="rank-item" style="--tone:' + color + '" ' +
+                        'onclick="openSheet(\'' + s.code + '\')">' +
+                        '<span class="rank-pos"><i class="ri-circle-fill" style="color:' + color + '"></i></span>' +
+                        '<span class="rank-name">' + esc(s.name) + '</span>' +
+                        '<span class="rank-count">' + s.open + '</span>' +
+                        '<i class="ri-arrow-right-s-line" style="color:var(--dim)"></i></div>';
+                }).join('')
+                : '<div class="empty"><i class="ri-map-2-line"></i>Nenhum setor nesta zona.</div>';
+
+            const tags = '<span class="sheet-tag">' + sectors.length + ' setores</span>' +
+                '<span class="sheet-tag">' + totals.total + ' mensagens</span>' +
+                '<span class="sheet-tag">' + totals.open + ' em aberto</span>';
+
+            sheetShell('Zona ' + esc(zone), tags, '',
+                '<div class="panel-note" style="margin-bottom:12px">Clique no setor para ver os chamados</div>' + rows,
+                '<div class="sheet-foot"><span class="panel-note">Ordenado pelo pior chamado aberto</span>' +
+                '<button class="act ghost" onclick="closeSheet()">Fechar</button></div>');
+            _sheetReload = null;
+        }
+
+        // ============ CONVERSA COM O PARTICIPANTE ============
+        let _talkId = null;
+        let _talkTimer = null;
+
+        function closeTalk() {
+            document.getElementById('talk').classList.remove('show');
+            clearInterval(_talkTimer);
+            _talkTimer = null;
+            _talkId = null;
+        }
+
+        async function openTalkByFeedback(feedbackId) {
             try {
-                const res = await fetch('/api/events?setor=' + encodeURIComponent(code));
-                events = await res.json();
+                const res = await fetch('/api/conversations/by-feedback/' + feedbackId);
+                if (!res.ok) {
+                    alert('Não foi possível abrir a conversa deste chamado.');
+                    return;
+                }
+                const data = await res.json();
+                _talkId = data.conversationId;
+                document.getElementById('talk').classList.add('show');
+                renderTalk(data);
+                clearInterval(_talkTimer);
+                _talkTimer = setInterval(refreshTalk, 7000);
             } catch (err) {
-                console.error('Falha ao carregar o setor:', err);
+                console.error('Erro ao abrir conversa:', err);
+            }
+        }
+
+        async function refreshTalk() {
+            if (!_talkId) return;
+            try {
+                const res = await fetch('/api/conversations/' + encodeURIComponent(_talkId));
+                if (res.ok) renderTalk(await res.json());
+            } catch (err) {
+                console.error('Erro ao atualizar conversa:', err);
+            }
+        }
+
+        function renderTalk(data) {
+            const humano = data.mode === 'human';
+            const semContato = data.hasContact === false;
+            const podeEscrever = humano && !semContato;
+            const anterior = document.getElementById('talk-input')?.value || '';
+
+            const bolhas = (data.messages || []).map(m => {
+                if (m.direction === 'in') {
+                    return '<div class="talk-bubble in">' +
+                        esc(m.content || '[' + (m.type || 'mídia') + ']') +
+                        '<small>Participante · ' + esc(relTime(m.at)) + '</small></div>';
+                }
+                const operador = m.origin === 'operator';
+                return '<div class="talk-bubble ' + (operador ? 'operator' : 'bot') + '">' +
+                    esc(m.content) + '<small>' + (operador ? 'Equipe' : 'ChatBob') +
+                    ' · ' + esc(relTime(m.at)) + '</small></div>';
+            }).join('');
+
+            let aviso = '';
+            if (!humano) {
+                aviso = '<div class="talk-warn"><i class="ri-robot-2-line"></i> O ChatBob responde esta ' +
+                    'conversa automaticamente. Assuma o atendimento para escrever você mesmo.</div>';
+            } else if (semContato) {
+                aviso = '<div class="talk-warn"><i class="ri-error-warning-line"></i> Esta conversa não tem ' +
+                    'mensagem recebida pelo WhatsApp, então não existe número para responder.</div>';
+            } else if (data.canReply === false) {
+                aviso = '<div class="talk-warn"><i class="ri-time-line"></i> Passaram mais de 24 horas desde ' +
+                    'a última mensagem. A Meta não entrega texto livre fora dessa janela.</div>';
             }
 
-            const abertos = events.filter(e => (e.status || 'aberto') !== 'resolvido');
-            const conta = (u) => events.filter(e => (e.urgency || '') === u).length;
-            const nums = [
-                { label: 'Em aberto', value: abertos.length, tone: abertos.length ? TONES['Urgente'] : TONES['ok'] },
-                { label: 'Crítico', value: conta('Critico'), tone: TONES['Critico'] },
-                { label: 'Urgente', value: conta('Urgente'), tone: TONES['Urgente'] },
-                { label: 'Elogios', value: conta('Positivo'), tone: TONES['Positivo'] },
-                { label: 'Dúvidas', value: conta('Neutro'), tone: TONES['Neutro'] },
-            ];
+            document.getElementById('talk-box').innerHTML =
+                '<div class="sheet-head" style="display:flex; align-items:center; justify-content:space-between; gap:14px">' +
+                '<div><div class="sheet-title" style="font-size:1.25rem">' +
+                '<i class="ri-whatsapp-line" style="color:#25D366"></i> Participante ' +
+                esc(data.participant || '') + '</div>' +
+                '<div class="panel-note" style="margin-top:6px">' +
+                (humano ? 'Você assumiu esta conversa. O bot está calado.' : 'Respondida pelo ChatBob.') +
+                '</div></div>' +
+                '<div style="display:flex; gap:10px; align-items:center">' +
+                (humano
+                    ? '<button class="act ghost" onclick="switchTalkMode(\'bot\')">' +
+                      '<i class="ri-robot-2-line"></i> Devolver ao ChatBob</button>'
+                    : '<button class="act primary" onclick="switchTalkMode(\'human\')">' +
+                      '<i class="ri-user-voice-line"></i> Assumir atendimento</button>') +
+                '<button class="act ghost" onclick="closeTalk()">&times;</button>' +
+                '</div></div>' +
+                '<div class="talk-stream" id="talk-stream">' +
+                (bolhas || '<p class="panel-note" style="margin:auto">Nenhuma mensagem nesta conversa.</p>') +
+                '</div>' +
+                '<div class="talk-compose">' + aviso +
+                '<div class="talk-row">' +
+                '<textarea class="talk-input" id="talk-input" rows="1" ' +
+                'placeholder="' + (podeEscrever ? 'Escreva para o participante...' :
+                    (humano ? 'Sem número para responder' : 'Assuma o atendimento para responder')) + '" ' +
+                (podeEscrever ? '' : 'disabled') +
+                ' onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault(); sendTalk();}">' +
+                esc(anterior) + '</textarea>' +
+                '<button class="talk-send" onclick="sendTalk()" ' + (podeEscrever ? '' : 'disabled') +
+                '><i class="ri-send-plane-fill"></i></button></div>' +
+                '<div class="panel-note" style="margin-top:9px">Enter envia. A mensagem sai pelo número ' +
+                'oficial do festival.</div></div>';
 
-            const rank = { 'Critico': 3, 'Crítico': 3, 'Urgente': 2, 'Neutro': 1, 'Positivo': 0 };
-            const ordered = [...events].sort((a, b) => {
-                const aberto = (x) => (x.status || 'aberto') !== 'resolvido' ? 1 : 0;
-                return aberto(b) - aberto(a)
-                    || (rank[b.urgency] || 0) - (rank[a.urgency] || 0)
-                    || (b.id || 0) - (a.id || 0);
-            });
-
-            const statusLabel = {
-                'aberto': 'Aberto', 'em_andamento': 'Em andamento', 'resolvido': 'Resolvido',
-            };
-
-            const lista = ordered.length
-                ? ordered.map(e => {
-                    const color = tone(e.urgency);
-                    return '<div class="sheet-item" style="--tone:' + color + '">' +
-                        '<div class="sheet-item-top">' +
-                        '<span class="sheet-item-tag">' + esc(e.urgency || 'Neutro') + '</span>' +
-                        '<span class="feed-time">' + esc(relTime(e.timestamp)) + '</span>' +
-                        '</div>' +
-                        '<div class="sheet-item-msg">' + esc(e.message) + '</div>' +
-                        '<div class="sheet-item-foot">' +
-                        '<span><i class="ri-price-tag-3-line"></i> ' + esc(e.category || 'Geral') + '</span>' +
-                        '<span><i class="ri-flag-line"></i> ' + esc(statusLabel[e.status || 'aberto'] || 'Aberto') + '</span>' +
-                        '</div></div>';
-                }).join('')
-                : '<div class="empty"><i class="ri-inbox-line"></i>Nenhum chamado neste ponto ainda.</div>';
-
-            box.innerHTML =
-                '<div class="sheet-head"><div class="sheet-title">' + esc(sector.name) + '</div>' +
-                '<div class="sheet-tags">' + tags + '</div>' +
-                '<div class="sheet-nums">' + nums.map(n =>
-                    '<div class="sheet-num" style="--tone:' + n.tone + '"><b>' + n.value + '</b><span>' + n.label + '</span></div>'
-                ).join('') + '</div></div>' +
-                '<div class="sheet-body">' + lista + '</div>' +
-                '<div class="sheet-foot">' +
-                '<span class="panel-note">' + esc(sector.cta || 'Escaneie o QR deste ponto para relatar algo') + '</span>' +
-                '<span class="chip button" onclick="closeSheet()">Fechar</span></div>';
+            const stream = document.getElementById('talk-stream');
+            if (stream) stream.scrollTop = stream.scrollHeight;
         }
+
+        async function switchTalkMode(mode) {
+            if (!_talkId) return;
+            try {
+                const res = await fetch('/api/conversations/' + encodeURIComponent(_talkId) + '/mode', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode })
+                });
+                if (!res.ok) {
+                    const erro = await res.json().catch(() => ({}));
+                    alert(erro.error || 'Não foi possível trocar o atendimento.');
+                    return;
+                }
+            } catch (err) {
+                console.error('Erro ao trocar atendimento:', err);
+                return;
+            }
+            await refreshTalk();
+        }
+
+        async function sendTalk() {
+            const input = document.getElementById('talk-input');
+            if (!input || !_talkId) return;
+            const content = input.value.trim();
+            if (!content) return;
+
+            input.disabled = true;
+            try {
+                const res = await fetch('/api/conversations/' + encodeURIComponent(_talkId) + '/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                if (!res.ok) {
+                    const erro = await res.json().catch(() => ({}));
+                    alert(erro.error || 'Não foi possível enviar.');
+                    input.disabled = false;
+                    return;
+                }
+                input.value = '';
+            } catch (err) {
+                console.error('Erro ao enviar:', err);
+                input.disabled = false;
+                return;
+            }
+            await refreshTalk();
+        }
+
 
         // ===== Carga principal =====
         async function loadAll() {
@@ -1342,7 +1857,10 @@
                 const z = zones[name];
                 const color = tone(z.worst === 'ok' ? 'ok' : z.worst);
                 const width = Math.round(z.total / busiest * 100);
-                return '<div class="zone-card" style="--tone:' + color + '">' +
+                // O nome da zona vai em atributo de dados: nome com apóstrofo
+                // quebraria um onclick montado como string.
+                return '<div class="zone-card tappable" style="--tone:' + color + '" ' +
+                    'title="Ver os setores desta zona" data-zone="' + esc(name) + '">' +
                     '<div class="zone-top">' +
                     '<span class="zone-name">' + esc(name) + '</span>' +
                     '<span class="zone-open">' + z.open + '</span>' +
@@ -1351,6 +1869,10 @@
                     '<div class="zone-foot">' + z.total + ' msg · ' + z.sectors + ' setores</div>' +
                     '</div>';
             }).join('');
+
+            strip.querySelectorAll('[data-zone]').forEach(card => {
+                card.onclick = () => openZoneSheet(card.getAttribute('data-zone'));
+            });
         }
 
         function renderFeed(feedbacks) {
@@ -1370,7 +1892,9 @@
             box.innerHTML = recent.map(f => {
                 const color = tone(f.urgency);
                 const where = f.region && f.region !== 'N/A' ? f.region : (f.category || 'Geral');
-                return '<div class="feed-item" style="--tone:' + color + '">' +
+                return '<div class="feed-item tappable" style="--tone:' + color + '" ' +
+                    'title="Conversar com quem enviou" onclick="openTalkByFeedback(' + f.id + ')">' +
+                    '<i class="ri-whatsapp-line tap-hint" style="color:#25D366"></i>' +
                     '<div class="feed-top">' +
                     '<span class="feed-tag">' + esc(f.urgency || 'Neutro') + '</span>' +
                     '<span class="feed-time">' + esc(relTime(f.timestamp)) + '</span>' +
@@ -1436,7 +1960,7 @@
         }
 
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') { hideTakeover(); closeSheet(); }
+            if (e.key === 'Escape') { hideTakeover(); closeSheet(); closeTalk(); }
             if (e.key.toLowerCase() === 'f') goFullscreen();
             if (e.key.toLowerCase() === 's') toggleSound();
         });

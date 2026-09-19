@@ -144,7 +144,17 @@ Atenção ao limite: o rate limit corta a partir de 4 mensagens do mesmo número
 
 1. **Telão** (`/telao`, tecla `F` para tela cheia). Deixe rodando no projetor.
    É a peça de impacto: a planta aérea do Ney Braga com os pins pulsando, os
-   cinco KPIs, o pulso da IA e as macrozonas.
+   cinco KPIs, o pulso da IA e as macrozonas. **Tudo ali é clicável e opera
+   de verdade**, não é um cartaz:
+   * Pin ou linha de "Setores em Alerta" abre os chamados daquele ponto, com
+     os números e as mensagens.
+   * Dentro do chamado você troca o status e clica em "Conversar com quem
+     enviou" para falar com a pessoa na hora.
+   * Os KPIs abrem a lista que resumem: críticos, elogios e dúvidas.
+   * Cada macrozona abre seus setores, e cada mensagem do "Fluxo Ao Vivo"
+     abre direto a conversa de quem escreveu.
+   * O alerta crítico em tela cheia também é atalho: clicar nele abre a
+     conversa de quem mandou o alerta.
 2. **Alerta crítico ao vivo**: mande do celular "tem uma briga perto do palco".
    Em segundos o telão é tomado por um alerta vermelho em tela cheia com a
    mensagem e o setor. Esse é o momento que vende o produto.

@@ -62,8 +62,10 @@ fica sem resposta por causa disso.
 
 ## Atendimento humano (handon e handoff)
 
-Todo chamado no painel tem o botão **Conversar**, e a aba **Atendimento** lista
-as conversas. Ali o operador pode:
+Todo chamado tem o botão **Conversar**, tanto no dashboard quanto no telão, e a
+aba **Atendimento** lista as conversas. O telão não é tela de leitura: pin, KPI,
+macrozona, fluxo ao vivo e o próprio alerta crítico abrem o chamado ou a conversa,
+e o status pode ser trocado dali. Em qualquer um desses caminhos o operador pode:
 
 - **Assumir atendimento (handon):** a conversa passa para o modo `human`. O
   participante recebe um aviso de que a equipe entrou, e o ChatBob para de
