@@ -4,12 +4,45 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
 import requests
+
+logger = logging.getLogger(__name__)
+
+# A Meta encerra cada versão da Graph API dois anos depois do lançamento. A
+# v20.0, que este projeto usava, expira em 24/09/2026, dois dias antes do
+# Tropicadelia. Por isso a versão tem piso no código: variável esquecida no
+# Coolify não pode derrubar o envio no meio do evento.
+DEFAULT_GRAPH_API_VERSION = "v26.0"
+MIN_GRAPH_API_MAJOR = 21
+
+
+def graph_api_version() -> str:
+    """Versão da Graph API a usar, ignorando valor vencido ou ilegível."""
+
+    configurada = (os.getenv("META_GRAPH_API_VERSION") or "").strip()
+    try:
+        maior = int(configurada.removeprefix("v").split(".")[0])
+    except (AttributeError, IndexError, ValueError):
+        if configurada:
+            logger.warning(
+                "META_GRAPH_API_VERSION ilegível, usando %s", DEFAULT_GRAPH_API_VERSION
+            )
+        return DEFAULT_GRAPH_API_VERSION
+    if maior < MIN_GRAPH_API_MAJOR:
+        logger.warning(
+            "META_GRAPH_API_VERSION %s está vencida ou perto do fim, usando %s",
+            configurada,
+            DEFAULT_GRAPH_API_VERSION,
+        )
+        return DEFAULT_GRAPH_API_VERSION
+    return configurada
 
 
 class MetaAPIError(RuntimeError):

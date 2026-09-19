@@ -13,7 +13,12 @@ from datetime import datetime, timezone
 from collections import Counter, defaultdict
 from typing import Any
 from event_store import EventStore
-from meta_whatsapp import parse_webhook, verify_webhook_signature
+from meta_whatsapp import (
+    MetaWhatsAppClient,
+    graph_api_version,
+    parse_webhook,
+    verify_webhook_signature,
+)
 
 # Load environment variables
 load_dotenv()
@@ -2110,12 +2115,34 @@ def update_feedback_status(feedback_id):
     else:
         return jsonify({"error": "Feedback não encontrado"}), 404
 
+def _meta_channel_check() -> str:
+    """Pergunta à Meta se token e número estão de pé, sem enviar mensagem.
+
+    É o teste que separa problema de credencial de problema de destinatário,
+    porque é uma leitura do próprio número e não depende de janela nem de
+    lista de destinatários.
+    """
+
+    try:
+        cliente = MetaWhatsAppClient(
+            access_token=os.getenv("META_ACCESS_TOKEN", ""),
+            phone_number_id=os.getenv("META_PHONE_NUMBER_ID", ""),
+            graph_api_version=graph_api_version(),
+        )
+    except ValueError:
+        return "configuração incompleta: falta token, ID do número ou versão"
+    return cliente.check_credentials()
+
+
 @app.route("/api/debug")
 @login_required
 def debug_env():
     """Endpoint para verificar variáveis de ambiente no Coolify"""
     return jsonify({
         "status": "online",
+        "started_at": PROCESS_STARTED_AT,
+        "graph_api_version": graph_api_version(),
+        "meta_channel": _meta_channel_check(),
         "env_check": {
             "SUPABASE_URL": "OK" if os.getenv("SUPABASE_URL") else "MISSING",
             "SUPABASE_SERVICE_ROLE_KEY": "OK" if os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "MISSING",

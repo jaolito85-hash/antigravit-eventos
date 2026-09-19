@@ -9,7 +9,7 @@ import time
 from typing import Any
 
 from event_store import EventStore
-from meta_whatsapp import MetaWhatsAppClient, download_media
+from meta_whatsapp import MetaWhatsAppClient, download_media, graph_api_version
 # O comportamento do bot vive no server para o simulador do painel usar
 # exatamente a mesma decisao que o WhatsApp recebe.
 from server import (
@@ -53,7 +53,7 @@ def _transcribe_inbox_audio(message: dict[str, Any]) -> str | None:
     audio = download_media(
         str(media_id),
         os.getenv("META_ACCESS_TOKEN", ""),
-        os.getenv("META_GRAPH_API_VERSION", ""),
+        graph_api_version(),
     )
     if not audio:
         return None
@@ -194,7 +194,7 @@ def run() -> None:
     client = MetaWhatsAppClient(
         access_token=os.getenv("META_ACCESS_TOKEN", ""),
         phone_number_id=os.getenv("META_PHONE_NUMBER_ID", ""),
-        graph_api_version=os.getenv("META_GRAPH_API_VERSION", ""),
+        graph_api_version=graph_api_version(),
     )
     poll_interval = max(0.5, float(os.getenv("WORKER_POLL_INTERVAL", "1")))
     if not store.healthcheck():

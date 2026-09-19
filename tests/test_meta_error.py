@@ -1,9 +1,15 @@
 """Garante que a falha de envio chega ao painel sem vazar dado pessoal."""
 
 import unittest
+from unittest import mock
 
 from event_store import _linha_de_erro
-from meta_whatsapp import MetaAPIError, describe_api_error
+from meta_whatsapp import (
+    DEFAULT_GRAPH_API_VERSION,
+    MetaAPIError,
+    describe_api_error,
+    graph_api_version,
+)
 
 
 class RespostaFalsa:
@@ -65,6 +71,32 @@ class LinhaDeErroTest(unittest.TestCase):
         linha = _linha_de_erro(RuntimeError("falhou ao falar com 554499998888"))
         self.assertEqual("RuntimeError: envio falhou", linha)
         self.assertNotIn("554499998888", linha)
+
+
+class VersaoDaGraphApiTest(unittest.TestCase):
+    def _com(self, valor):
+        return mock.patch.dict("os.environ", {"META_GRAPH_API_VERSION": valor})
+
+    def test_versao_vencida_e_trocada_pela_padrao(self):
+        # A v20.0 expira em 24/09/2026, dois dias antes do Tropicadelia.
+        with self._com("v20.0"):
+            self.assertEqual(DEFAULT_GRAPH_API_VERSION, graph_api_version())
+
+    def test_versao_atual_e_respeitada(self):
+        with self._com("v26.0"):
+            self.assertEqual("v26.0", graph_api_version())
+
+    def test_versao_no_piso_e_respeitada(self):
+        with self._com("v21.0"):
+            self.assertEqual("v21.0", graph_api_version())
+
+    def test_variavel_vazia_cai_na_padrao(self):
+        with self._com(""):
+            self.assertEqual(DEFAULT_GRAPH_API_VERSION, graph_api_version())
+
+    def test_variavel_ilegivel_cai_na_padrao(self):
+        with self._com("versao-errada"):
+            self.assertEqual(DEFAULT_GRAPH_API_VERSION, graph_api_version())
 
 
 if __name__ == "__main__":
