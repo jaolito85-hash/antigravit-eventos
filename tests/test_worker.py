@@ -1,4 +1,4 @@
-"""Testes do processamento desacoplado do webhook."""
+"""Testes do worker da API oficial da Meta."""
 
 import unittest
 from unittest import mock
@@ -44,6 +44,8 @@ class FakeStore:
 
 
 def _message(**overrides):
+    """Mensagem de entrada padrão com os campos que o worker consome."""
+
     base = {
         "id": "inbox-id",
         "sender": "5543999999999",
@@ -51,6 +53,7 @@ def _message(**overrides):
         "channel_account_id": "phone-id",
         "message_type": "text",
         "content": "#SETOR:PALCO\nBanheiro está sujo",
+        "media_id": None,
         "attempts": 0,
     }
     base.update(overrides)
@@ -59,24 +62,54 @@ def _message(**overrides):
 
 class WorkerTests(unittest.TestCase):
     def setUp(self):
-        # IA desligada nos testes: o pipeline precisa funcionar 100% offline.
-        patches = [
-            mock.patch.object(worker, "classificar_sentimento_ia", lambda _t: None),
-            mock.patch.object(worker, "classificar_com_ia", lambda _t: None),
-            mock.patch.object(
-                worker, "generate_ai_response", lambda *_a, **_k: None
-            ),
-        ]
-        for p in patches:
-            p.start()
-            self.addCleanup(p.stop)
+        # Nenhum teste toca a rede: a resposta criativa e o enriquecimento de
+        # categoria ficam desligados, então sobra o texto determinístico.
+        for target in ("generate_ai_response", "classificar_com_ia"):
+            patcher = mock.patch.object(worker, target, lambda *a, **k: None)
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def test_extract_sector_marker(self):
         code, content = _extract_sector("#SETOR:PALCO\nBanheiro sujo")
         self.assertEqual(code, "PALCO")
         self.assertEqual(content, "Banheiro sujo")
 
-    def test_processes_text_without_calling_ai(self):
+    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    def test_falta_de_estoque_vai_para_a_ia(self, mock_ia):
+        store = FakeStore()
+
+        process_inbox(store, _message(content="Falta cerveja no bar do camarote"))
+
+        self.assertIsNone(store.failed)
+        self.assertEqual(store.finished, "processed")
+        mock_ia.assert_called_once_with("Falta cerveja no bar do camarote")
+        self.assertEqual(store.feedback["urgency"], "Urgente")
+        self.assertEqual(store.feedback["category"], "Alimentação & Bebidas")
+        self.assertIn("destacamos", store.response[1])
+
+    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    def test_frase_incomum_ainda_passa_pela_ia(self, mock_ia):
+        store = FakeStore()
+        content = "no camarote ninguem consegue mais beber o que pediu"
+
+        process_inbox(store, _message(content=content))
+
+        mock_ia.assert_called_once_with(content)
+        self.assertEqual(store.feedback["urgency"], "Urgente")
+
+    @mock.patch("server.classificar_sentimento_ia", return_value=None)
+    def test_palavras_chave_assumem_quando_a_ia_cai(self, _mock_ia):
+        """Com a OpenAI fora do ar, um relato de falta não pode virar Neutro."""
+
+        store = FakeStore()
+
+        process_inbox(store, _message(content="Falta cerveja no bar do camarote"))
+
+        self.assertEqual(store.finished, "processed")
+        self.assertEqual(store.feedback["urgency"], "Urgente")
+
+    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    def test_processa_texto_com_setor(self, _mock_ia):
         store = FakeStore()
 
         process_inbox(store, _message())
@@ -87,7 +120,7 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.feedback["urgency"], "Urgente")
         self.assertEqual(store.response[2], 42)
 
-    def test_rejects_media_without_id_with_guidance(self):
+    def test_audio_sem_media_id_pede_texto(self):
         store = FakeStore()
 
         process_inbox(store, _message(message_type="audio", content=None))
@@ -96,8 +129,10 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.finished, "ignored")
         self.assertIn("texto", store.response[1])
 
-    def test_audio_with_media_id_is_transcribed(self):
+    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    def test_audio_com_media_id_e_transcrito(self, _mock_ia):
         store = FakeStore()
+
         with mock.patch.object(
             worker, "_transcribe_inbox_audio", lambda _m: "fila enorme no bar"
         ):
@@ -110,7 +145,7 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.feedback["urgency"], "Urgente")
         self.assertIn("áudio", store.response[1])
 
-    def test_greeting_receives_welcome_without_creating_card(self):
+    def test_saudacao_recebe_boas_vindas_sem_criar_card(self):
         store = FakeStore()
 
         process_inbox(store, _message(content="Oi!"))
@@ -120,7 +155,7 @@ class WorkerTests(unittest.TestCase):
         self.assertIn("ChatBob", store.response[1])
         self.assertIn("Tropicadelia", store.response[1])
 
-    def test_empty_qr_scan_replies_with_sector_cta(self):
+    def test_scan_de_qr_sem_texto_responde_o_convite_do_setor(self):
         store = FakeStore()
 
         process_inbox(store, _message(content="#SETOR:PALCO\n"))
@@ -130,7 +165,7 @@ class WorkerTests(unittest.TestCase):
         self.assertIn("Palco Tropical", store.response[1])
         self.assertIn("som", store.response[1])
 
-    def test_video_still_asks_for_text_or_audio(self):
+    def test_video_pede_texto_ou_audio(self):
         store = FakeStore()
 
         process_inbox(store, _message(message_type="video", content=None))

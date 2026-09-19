@@ -15,8 +15,7 @@ from server import (
     classificar_categoria,
     classificar_com_ia,
     classificar_regiao,
-    classificar_sentimento,
-    classificar_sentimento_ia,
+    classificar_urgencia,
     generate_ai_response,
     is_emoji_only,
     transcribe_audio,
@@ -146,13 +145,8 @@ def _transcribe_inbox_audio(message: dict[str, Any]) -> str | None:
 def _classify(content: str, sector: dict[str, Any] | None) -> tuple[str, str, str]:
     """Classifica urgência, categoria e região com IA e fallback determinístico."""
 
-    urgency = None
-    try:
-        urgency = classificar_sentimento_ia(content)
-    except Exception as exc:  # noqa: BLE001 - IA fora do ar não pode travar a fila
-        logger.error("IA de sentimento indisponível | erro=%s", type(exc).__name__)
-    if not urgency:
-        urgency = classificar_sentimento(content)
+    # classificar_urgencia ja tenta a IA e cai em palavras-chave se ela falhar.
+    urgency = classificar_urgencia(content)
 
     category = classificar_categoria(content)
     region = str(sector["name"]) if sector else classificar_regiao(content)
