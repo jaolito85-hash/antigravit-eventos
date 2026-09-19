@@ -161,8 +161,11 @@ Atenção ao limite: o rate limit corta a partir de 4 mensagens do mesmo número
    Ligue o som antes no chip "Som off" do topo, ou tecla `S`.
 3. **Mapa ao Vivo** no dashboard, para mostrar o ranking de setores em alerta e
    a cobertura por zona.
-4. **Feedbacks**, para mostrar o card, a classificação por IA e a troca de
-   status (aberto, em andamento, resolvido).
+4. **Chamados**, a fila de trabalho. Cada cartão traz o número, a mensagem
+   completa, as atualizações e **a resposta que o ChatBob enviou**, com o
+   estado de entrega. É aqui que se mostra a troca inteira e a mudança de
+   status. Não confunda com **Atendimento**, que é uma linha por pessoa: a
+   mesma pessoa pode ter três chamados.
 5. **Relatório** (`/relatorio`), o entregável pós-evento: resumo executivo
    escrito pela IA, aprovação por macrozona e a tabela de desempenho por setor,
    que mostra exatamente qual ponto da planta funcionou e qual deu trabalho.

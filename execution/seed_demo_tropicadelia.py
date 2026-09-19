@@ -60,6 +60,37 @@ FIXTURES: list[tuple[str, str, str, str, str]] = [
     ("BAR-CELEIRO-P2", "Vocês aceitam pix no bar ou só ficha?", "Neutro", "Alimentação & Bebidas", "aberto"),
 ]
 
+# Respostas de exemplo, no tom que a IA usa, para a tela do chamado mostrar
+# a troca completa. Variam por indice para nao parecerem copiadas.
+RESPOSTAS_DEMO = {
+    "Critico": [
+        "🚨 Recebemos seu alerta e ele foi marcado como prioridade máxima. "
+        "Se houver risco imediato, procure agora a segurança ou equipe médica mais próxima.",
+    ],
+    "Urgente": [
+        "Putz, que perrengue! 😤 Já tô passando pra equipe resolver isso AGORA. "
+        "Segura aí que eles estão indo!",
+        "Eita, valeu por avisar! 🙏 Já acionei a galera responsável, "
+        "deve resolver em poucos minutos.",
+        "Ihhh, isso não pode mesmo! 😠 Time acionado, "
+        "obrigado por me contar em vez de guardar pra você.",
+    ],
+    "Positivo": [
+        "AAAAA que bom ouvir isso!! 🔥 Tô preso nos bastidores morrendo de inveja, "
+        "aproveita muito por mim!",
+        "Uhuuul, é isso!! 🎶 Que delícia saber que tá curtindo, "
+        "manda mais quando quiser!",
+        "Caraca, obrigado!! 😍 Vou mostrar isso pra equipe que montou tudo, "
+        "eles vão amar saber.",
+    ],
+    "Neutro": [
+        "Boa pergunta! 😎 Já anotei aqui e a equipe te responde rapidinho. "
+        "Qualquer coisa me chama de novo!",
+        "Show, anotei! 👍 Se precisar de mais alguma coisa, "
+        "é só mandar mensagem aqui.",
+    ],
+}
+
 SENTIMENT_BY_URGENCY = {
     "Positivo": "Positivo",
     "Critico": "Negativo",
@@ -167,8 +198,35 @@ def seed() -> None:
     if faltando:
         print(f"Aviso: setores não encontrados e ignorados: {', '.join(sorted(set(faltando)))}")
 
-    client.table("feedbacks").insert(rows).execute()
-    print(f"OK: {len(rows)} feedbacks de demonstração inseridos no evento '{EVENT_SLUG}'.")
+    inseridos = client.table("feedbacks").insert(rows).execute().data or []
+    print(f"OK: {len(inseridos)} feedbacks de demonstração inseridos no evento '{EVENT_SLUG}'.")
+
+    # Cada chamado ganha a resposta que o bot teria enviado, para a tela do
+    # chamado mostrar a troca completa. O destinatário é fictício de propósito:
+    # nada aqui pode sair para um telefone de verdade.
+    respostas = []
+    for i, feedback in enumerate(inseridos):
+        urgencia = feedback.get("urgency", "Neutro")
+        opcoes = RESPOSTAS_DEMO.get(urgencia) or RESPOSTAS_DEMO["Neutro"]
+        respostas.append({
+            "event_id": event_id,
+            "feedback_id": feedback["id"],
+            "provider": "meta",
+            "channel_account_id": "demo",
+            "recipient": f"demo-{i:03d}",
+            "message_type": "text",
+            "content": opcoes[i % len(opcoes)],
+            "origin": "bot",
+            "idempotency_key": f"demo:{feedback['id']}:reply",
+            "delivery_status": "delivered",
+            "sent_at": feedback.get("timestamp"),
+            "delivered_at": feedback.get("timestamp"),
+        })
+
+    if respostas:
+        client.table("outbound_messages").insert(respostas).execute()
+        print(f"OK: {len(respostas)} respostas do bot gravadas para a demonstração.")
+
     print("Abra /telao para ver a planta acesa. Para limpar depois: --clear")
 
 
@@ -177,6 +235,16 @@ def clear() -> None:
 
     client = _client()
     event_id = _event_id(client)
+    # As respostas saem primeiro: apagar o feedback antes deixaria a linha da
+    # caixa de saída órfã, porque a chave estrangeira só anula o vínculo.
+    saida = (
+        client.table("outbound_messages")
+        .delete()
+        .eq("event_id", event_id)
+        .like("idempotency_key", "demo:%")
+        .execute()
+    )
+
     response = (
         client.table("feedbacks")
         .delete()
@@ -186,6 +254,7 @@ def clear() -> None:
         .execute()
     )
     print(f"OK: {len(response.data or [])} feedbacks de demonstração removidos.")
+    print(f"OK: {len(saida.data or [])} respostas de demonstração removidas.")
 
 
 def status() -> None:

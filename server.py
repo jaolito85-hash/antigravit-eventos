@@ -1464,6 +1464,41 @@ def get_ai_pulse():
     
     return jsonify(result)
 
+# --- CHAMADO COMPLETO ---
+
+@app.route("/api/feedback/<int:feedback_id>")
+@login_required
+def feedback_detail(feedback_id):
+    """Chamado com a mensagem inteira e o que o bot respondeu.
+
+    A lista do painel mostra o essencial; aqui vem o texto completo, as
+    atualizações que a pessoa mandou depois e a resposta enviada, com o
+    estado de entrega. É o que o operador precisa para entender o caso.
+    """
+
+    try:
+        feedback = EVENT_STORE.feedback_by_id(feedback_id)
+    except Exception as e:
+        logger.error("Falha ao carregar chamado: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+
+    if not feedback:
+        return jsonify({"error": "not_found"}), 404
+
+    try:
+        replies = EVENT_STORE.replies_for_feedback(feedback_id)
+    except Exception as e:
+        logger.error("Falha ao carregar respostas: %s", type(e).__name__)
+        replies = []
+
+    return jsonify({
+        "feedback": public_feedback(feedback),
+        "replies": replies,
+        # O painel abre a conversa desta pessoa a partir daqui.
+        "hasConversation": bool(feedback.get("sender_hash")),
+    })
+
+
 # --- SIMULADOR E CONFIGURAÇÃO DO CHATBOB ---
 
 MAX_SIMULATE_LENGTH = 900

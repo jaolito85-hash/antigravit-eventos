@@ -795,6 +795,202 @@
             gap: 12px;
         }
 
+        /* ===== LISTA DE CHAMADOS ===== */
+        /* Uma linha por chamado, com a mensagem inteira. A conversa da pessoa
+           fica na aba Atendimento; aqui o foco e resolver o item. */
+        .ticket-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ticket {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--tone);
+            border-radius: 12px;
+            padding: 16px 18px;
+            transition: 0.15s;
+        }
+
+        .ticket:hover {
+            border-color: var(--accent-primary);
+            border-left-color: var(--tone);
+        }
+
+        .ticket-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 11px;
+        }
+
+        .ticket-id {
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .ticket-pill {
+            font-size: 0.66rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            border: 1px solid var(--tone);
+            color: var(--tone);
+            background: color-mix(in srgb, var(--tone) 13%, transparent);
+        }
+
+        .ticket-where {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .ticket-time {
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Mensagem inteira, sem corte: o operador precisa do texto completo. */
+        .ticket-msg {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #e5e7eb;
+            white-space: pre-line;
+            word-break: break-word;
+        }
+
+        .ticket-update {
+            border-left: 2px solid var(--border);
+            padding-left: 12px;
+            margin-top: 10px;
+            font-size: 0.89rem;
+            line-height: 1.55;
+            color: #c3cad6;
+            white-space: pre-line;
+        }
+
+        .ticket-update-label {
+            font-size: 0.66rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.9px;
+            color: #fbbf24;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Resposta enviada ao participante */
+        .ticket-reply {
+            margin-top: 13px;
+            padding: 11px 13px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--border);
+        }
+
+        .ticket-reply-label {
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.9px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 7px;
+        }
+
+        .ticket-reply-text {
+            font-size: 0.88rem;
+            line-height: 1.55;
+            color: #cbd2dd;
+            white-space: pre-line;
+        }
+
+        .ticket-reply-status {
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-top: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .ticket-pending {
+            margin-top: 13px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        .ticket-foot {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+            padding-top: 13px;
+            border-top: 1px solid var(--border);
+        }
+
+        .ticket-foot .btn-mini {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ticket-foot .btn-mini:hover {
+            color: #fff;
+            border-color: var(--accent-primary);
+        }
+
+        .ticket-foot .btn-mini.talk {
+            color: #4ade80;
+            border-color: rgba(37, 211, 102, 0.4);
+        }
+
+        /* Explicação de cada aba, para não parecerem a mesma lista */
+        .view-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: rgba(41, 121, 255, 0.07);
+            border: 1px solid rgba(41, 121, 255, 0.22);
+            border-radius: 10px;
+            padding: 11px 14px;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+
+        .view-note i {
+            color: var(--accent-primary);
+            font-size: 1rem;
+            margin-top: 1px;
+        }
+
         /* ===== ATENDIMENTO: LISTA E CHAT ===== */
         .conv-list {
             display: grid;
@@ -1769,7 +1965,7 @@
         <div class="nav-label">OPERAÇÃO</div>
         <div class="nav-item active" onclick="nav('dashboard', this)"><i class="ri-layout-grid-fill"></i> Painel</div>
         <div class="nav-item" onclick="nav('mapa', this)"><i class="ri-map-2-line"></i> Mapa ao Vivo</div>
-        <div class="nav-item" onclick="nav('feedbacks', this)"><i class="ri-chat-3-line"></i> Feedbacks
+        <div class="nav-item" onclick="nav('feedbacks', this)"><i class="ri-task-line"></i> Chamados
             <span class="nav-badge hidden" id="nav-badge-open">0</span>
         </div>
         <div class="nav-item" onclick="nav('conversas', this)"><i class="ri-customer-service-2-line"></i> Atendimento
@@ -1953,7 +2149,7 @@
         <div class="page-header">
             <div class="page-title">
                 <h1>Atendimento</h1>
-                <p>Assuma a conversa para falar você mesmo com o participante</p>
+                <p>Uma linha por pessoa, com a conversa dela de ponta a ponta</p>
             </div>
             <div class="filters-bar" style="margin:0">
                 <select id="filtro-conversa" class="filter-select" onchange="loadConversas()">
@@ -1964,6 +2160,13 @@
                 </select>
             </div>
         </div>
+        <div class="view-note">
+            <i class="ri-user-voice-line"></i>
+            <span>Esta é a <strong>caixa de pessoas</strong>: cada cartão é um participante e sua
+                conversa. A mesma pessoa pode ter vários chamados. Para trabalhar chamado por chamado,
+                use a aba <strong>Chamados</strong>.</span>
+        </div>
+
         <div class="conv-list" id="conv-list">
             <p style="color:var(--text-muted)">Carregando conversas...</p>
         </div>
@@ -1973,8 +2176,8 @@
     <div class="main hidden" id="view-feedbacks">
         <div class="page-header">
             <div class="page-title">
-                <h1>Feedbacks</h1>
-                <p>Gerencie e analise as opiniões recebidas</p>
+                <h1>Chamados</h1>
+                <p>Um item por mensagem recebida, para a equipe resolver e fechar</p>
             </div>
             <div class="export-dropdown">
                 <button class="export-btn" onclick="toggleExportMenu('feedbacks')">
@@ -2016,8 +2219,15 @@
             <span class="filter-count" id="filter-count">Carregando...</span>
         </div>
 
-        <div class="feed-list" id="feed-list-container">
-            <!-- Cards injected via JS -->
+        <div class="view-note">
+            <i class="ri-information-line"></i>
+            <span>Esta é a <strong>fila de trabalho</strong>: cada cartão é um chamado, com a mensagem
+                completa e a resposta que o ChatBob enviou. Para ver a conversa inteira de uma pessoa,
+                use a aba <strong>Atendimento</strong>.</span>
+        </div>
+
+        <div class="ticket-list" id="feed-list-container">
+            <!-- Chamados injetados via JS -->
         </div>
     </div>
 
@@ -2231,6 +2441,52 @@
         let totalFeedbacks = 0;
         let _allEventsCache = [];
 
+        // Respostas do bot por chamado, para nao pedir o mesmo id duas vezes.
+        const _repliesCache = {};
+
+        async function fetchReplies(id) {
+            if (_repliesCache[id] !== undefined) return _repliesCache[id];
+            try {
+                const res = await fetch('/api/feedback/' + id);
+                if (!res.ok) return (_repliesCache[id] = []);
+                const data = await res.json();
+                return (_repliesCache[id] = data.replies || []);
+            } catch (err) {
+                console.error('Erro ao carregar resposta do chamado:', err);
+                return [];
+            }
+        }
+
+        const ENTREGA = {
+            'queued': { label: 'na fila para enviar', color: '#8b949e', icon: 'ri-time-line' },
+            'sending': { label: 'enviando', color: '#8b949e', icon: 'ri-loader-4-line' },
+            'sent': { label: 'enviada', color: '#3b82f6', icon: 'ri-check-line' },
+            'delivered': { label: 'entregue no WhatsApp', color: '#22c55e', icon: 'ri-check-double-line' },
+            'read': { label: 'lida pelo participante', color: '#22c55e', icon: 'ri-check-double-line' },
+            'failed': { label: 'falhou, vai tentar de novo', color: '#f59e0b', icon: 'ri-error-warning-line' },
+            'cancelled': { label: 'não entregue', color: '#ef4444', icon: 'ri-close-circle-line' }
+        };
+
+        function blocoResposta(replies) {
+            if (!replies.length) {
+                return `<div class="ticket-pending"><i class="ri-hourglass-line"></i>
+                    O ChatBob ainda não respondeu este chamado.</div>`;
+            }
+            return replies.map(r => {
+                const e = ENTREGA[r.status] || ENTREGA['queued'];
+                const quem = r.origin === 'operator'
+                    ? '<i class="ri-user-voice-line"></i> A equipe respondeu'
+                    : '<i class="ri-robot-2-line"></i> O ChatBob respondeu';
+                return `<div class="ticket-reply">
+                    <div class="ticket-reply-label">${quem}</div>
+                    <div class="ticket-reply-text">${escHtml(r.content)}</div>
+                    <div class="ticket-reply-status" style="color:${e.color}">
+                        <i class="${e.icon}"></i> ${e.label}${r.at ? ' · ' + escHtml(formatarTempo(r.at)) : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
         async function loadFeedbacks(filterUrl = '/api/events') {
             const res = await fetch(filterUrl);
             let events = await res.json();
@@ -2240,73 +2496,87 @@
             }
             _allEventsCache = events;
             const container = document.getElementById('feed-list-container');
-            container.innerHTML = '';
 
             const countEl = document.getElementById('filter-count');
             if (filterUrl === '/api/events') {
                 totalFeedbacks = events.length;
-                countEl.innerText = `${events.length} feedbacks`;
+                countEl.innerText = `${events.length} chamado${events.length === 1 ? '' : 's'}`;
             } else {
-                countEl.innerText = `Mostrando ${events.length} de ${totalFeedbacks} feedbacks`;
+                countEl.innerText = `Mostrando ${events.length} de ${totalFeedbacks} chamados`;
             }
 
             if (events.length === 0) {
-                container.innerHTML = '<p style="color:var(--text-muted)">Nenhum feedback encontrado com esses filtros.</p>';
+                container.innerHTML = '<p style="color:var(--text-muted)">Nenhum chamado com esses filtros.</p>';
                 return;
             }
 
-            events.forEach(e => {
-                let urgencyColor = '#3b82f6';
-                const u = (e.urgency || '').toLowerCase();
-                if (u.includes('crit') || u.includes('crít')) urgencyColor = '#ef4444';
-                else if (u.includes('urge')) urgencyColor = '#f59e0b';
-                else if (u.includes('aten')) urgencyColor = '#fcd34d';
-                else if (u.includes('posi')) urgencyColor = '#10b981';
+            // Mais grave e mais recente primeiro: e a ordem de trabalho.
+            const rank = { 'Critico': 3, 'Crítico': 3, 'Urgente': 2, 'Neutro': 1, 'Positivo': 0 };
+            const ordenados = [...events].sort((a, b) => {
+                const aberto = (x) => (x.status || 'aberto') !== 'resolvido' ? 1 : 0;
+                return aberto(b) - aberto(a)
+                    || (rank[b.urgency] || 0) - (rank[a.urgency] || 0)
+                    || (b.id || 0) - (a.id || 0);
+            });
 
-                const status = e.status || 'aberto';
-                const statusConfig = {
-                    'aberto': { color: '#EF4444', label: 'Aberto', icon: 'ri-error-warning-line' },
-                    'em_andamento': { color: '#F59E0B', label: 'Em Andamento', icon: 'ri-loader-4-line' },
-                    'resolvido': { color: '#10B981', label: 'Resolvido', icon: 'ri-checkbox-circle-line' }
-                };
-                const sc = statusConfig[status] || statusConfig['aberto'];
-                const statusDropdownHtml = `
-                    <div class="status-dropdown" style="position:relative;">
-                        <button onclick="event.stopPropagation(); toggleStatusMenu(${e.id})" class="status-btn" style="background:${sc.color}20; color:${sc.color}; border:1px solid ${sc.color}; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.75rem; font-weight:600; display:flex; align-items:center; gap:4px;">
-                            <i class="${sc.icon}"></i> ${sc.label} <i class="ri-arrow-down-s-line"></i>
-                        </button>
-                        <div id="status-menu-${e.id}" class="status-menu hidden" style="position:absolute; right:0; top:100%; background:var(--bg-card); border:1px solid var(--border); border-radius:6px; padding:4px; z-index:100; min-width:140px; margin-top:4px;">
-                            <div onclick="event.stopPropagation(); updateStatus(${e.id}, 'aberto')" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#EF4444;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-error-warning-line"></i> Aberto</div>
-                            <div onclick="event.stopPropagation(); updateStatus(${e.id}, 'em_andamento')" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#F59E0B;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-loader-4-line"></i> Em Andamento</div>
-                            <div onclick="event.stopPropagation(); updateStatus(${e.id}, 'resolvido')" style="padding:8px 12px; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:6px; color:#10B981;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'"><i class="ri-checkbox-circle-line"></i> Resolvido</div>
-                        </div>
-                    </div>`;
-
-                // Parse thread
+            container.innerHTML = ordenados.map(e => {
+                const tone = urgencyTone(e.urgency);
+                const sc = statusMeta(e.status);
                 const thread = parseThread(e.message);
-                const updateCount = thread.length - 1;
-                const firstMsg = thread[0].text;
-                const updateBadge = updateCount > 0
-                    ? `<div class="update-badge"><i class="ri-chat-3-line"></i> ${updateCount} atualiza${updateCount === 1 ? 'ção' : 'ções'}</div>`
-                    : '';
+                const onde = e.region && e.region !== 'N/A' ? e.region : (e.category || 'Geral');
 
-                container.innerHTML += `
-                    <div class="feedback-card clickable" onclick="openThreadModal(${e.id})" data-id="${e.id}">
-                        <div class="fb-header">
-                            <span class="fb-tag" style="background:${urgencyColor}20; color:${urgencyColor}; border:1px solid ${urgencyColor}">${escHtml(e.category)}</span>
-                            <div class="fb-time" title="${e.timestamp}"><i class="ri-time-line"></i> ${formatarTempo(e.timestamp)}</div>
-                        </div>
-                        <div class="fb-msg">${escHtml(firstMsg)}</div>
-                        ${updateBadge}
-                        ${e.linked_from ? `<div class="linked-badge" onclick="event.stopPropagation(); showLinkedCards(${e.id}, '${(e.sender || e.remoteJid || '').replace(/'/g, "\\'")}')"><i class="ri-links-line"></i> Ver anteriores</div>` : ''}
-                        <div class="fb-footer" style="margin-top:10px;">
-                            <span><span class="priority-dot" style="background:${urgencyColor}"></span>${escHtml(e.urgency)}</span>
-                            ${statusDropdownHtml}
-                        </div>
+                // A mensagem original inteira, sem corte, e cada atualizacao
+                // que a pessoa mandou depois sobre o mesmo assunto.
+                const atualizacoes = thread.slice(1).map((item, i) => `
+                    <div class="ticket-update">
+                        <span class="ticket-update-label">Atualização ${i + 1}${item.time ? ' às ' + escHtml(item.time) : ''}</span>
+                        ${escHtml(item.text)}
+                    </div>`).join('');
+
+                return `<div class="ticket" style="--tone:${tone}" data-ticket="${e.id}">
+                    <div class="ticket-head">
+                        <span class="ticket-id">#${e.id}</span>
+                        <span class="ticket-pill" style="--tone:${tone}">${escHtml(e.urgency || 'Neutro')}</span>
+                        <span class="ticket-where"><i class="ri-map-pin-line"></i> ${escHtml(onde)}</span>
+                        <span class="ticket-where"><i class="ri-price-tag-3-line"></i> ${escHtml(e.category || 'Geral')}</span>
+                        <span class="ticket-time"><i class="ri-time-line"></i> ${escHtml(formatarTempo(e.timestamp))}</span>
                     </div>
-                `;
+
+                    <div class="ticket-msg">${escHtml(thread[0].text)}</div>
+                    ${atualizacoes}
+
+                    <div data-replies="${e.id}">
+                        <div class="ticket-pending"><i class="ri-loader-4-line"></i> Carregando a resposta enviada...</div>
+                    </div>
+
+                    <div class="ticket-foot">
+                        <select class="filter-select" style="min-width:160px; padding:6px 10px; font-size:0.8rem; border-color:${sc.color}; color:${sc.color}"
+                            onchange="mudarStatusChamado(${e.id}, this.value)">
+                            <option value="aberto" ${(e.status || 'aberto') === 'aberto' ? 'selected' : ''}>Aberto</option>
+                            <option value="em_andamento" ${e.status === 'em_andamento' ? 'selected' : ''}>Em Andamento</option>
+                            <option value="resolvido" ${e.status === 'resolvido' ? 'selected' : ''}>Resolvido</option>
+                        </select>
+                        <button class="btn-mini talk" onclick="openChatByFeedback(${e.id})">
+                            <i class="ri-whatsapp-line"></i> Conversar com quem enviou</button>
+                        <button class="btn-mini" onclick="openThreadModal(${e.id})">
+                            <i class="ri-history-line"></i> Histórico</button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // As respostas entram depois, uma requisicao por chamado visivel,
+            // para a lista aparecer na hora em vez de esperar tudo.
+            ordenados.forEach(async e => {
+                const replies = await fetchReplies(e.id);
+                const alvo = container.querySelector(`[data-replies="${e.id}"]`);
+                if (alvo) alvo.innerHTML = blocoResposta(replies);
             });
         }
+
+        async function mudarStatusChamado(id, status) {
+            await updateStatus(id, status);
+        }
+
 
         function showLinkedCards(currentId, senderJid) {
             const sameUser = _allEventsCache.filter(ev => {

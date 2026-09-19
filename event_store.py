@@ -340,6 +340,48 @@ class EventStore:
             .execute()
         )
 
+    def replies_for_feedback(self, feedback_id: int) -> list[dict[str, Any]]:
+        """O que já saiu para o participante por causa deste chamado.
+
+        O worker grava feedback_id ao enfileirar a resposta, então isso liga a
+        mensagem recebida ao texto exato que o bot devolveu, com o estado de
+        entrega que a Meta confirmou.
+        """
+
+        response = (
+            self._get_client()
+            .table("outbound_messages")
+            .select("content,origin,delivery_status,created_at,sent_at,delivered_at,read_at,last_error")
+            .eq("event_id", self.event_id())
+            .eq("feedback_id", feedback_id)
+            .order("created_at")
+            .execute()
+        )
+        return [
+            {
+                "content": row.get("content"),
+                "origin": row.get("origin") or "bot",
+                "status": row.get("delivery_status"),
+                "at": row.get("sent_at") or row.get("created_at"),
+                "error": row.get("last_error"),
+            }
+            for row in (response.data or [])
+        ]
+
+    def feedback_by_id(self, feedback_id: int) -> dict[str, Any] | None:
+        """Carrega um chamado do evento atual."""
+
+        response = (
+            self._get_client()
+            .table("feedbacks")
+            .select("*")
+            .eq("event_id", self.event_id())
+            .eq("id", feedback_id)
+            .limit(1)
+            .execute()
+        )
+        return response.data[0] if response.data else None
+
     # ------------------------------------------------------------------
     # Base de perguntas e respostas do bot
     # ------------------------------------------------------------------

@@ -60,6 +60,26 @@ fica sem resposta por causa disso.
 | Quarta mensagem do mesmo número em 10 min | Pede para aguardar. Limite compartilhado via banco, não memória. |
 | Qualquer mensagem, com a conversa assumida por um operador | Registra o chamado normalmente e **não envia nada**. Quem responde é a pessoa, pelo painel. O limite de mensagens também não se aplica. |
 
+## Chamados e Atendimento são coisas diferentes
+
+As duas telas mostram as mesmas mensagens por ângulos diferentes, e confundir
+isso atrasa a operação:
+
+- **Chamados** é a fila de trabalho: uma linha por mensagem recebida, com o
+  número do chamado, a mensagem completa, as atualizações que a pessoa mandou
+  depois e a resposta que saiu, com o estado de entrega. É onde a equipe
+  resolve e fecha item por item, da maior urgência para a menor.
+- **Atendimento** é a caixa de pessoas: uma linha por participante, com a
+  conversa dela de ponta a ponta. A mesma pessoa pode ter vários chamados. É
+  onde se assume ou devolve o atendimento.
+
+Os dois lados se cruzam: o chamado tem botão para abrir a conversa de quem
+enviou, e a conversa mostra tudo o que aquela pessoa já mandou.
+
+**Estado de entrega da resposta.** O chamado mostra o que aconteceu com o
+texto enviado: na fila, enviada, entregue, lida, falhou ou não entregue. É por
+aí que se descobre que o token da Meta venceu, sem precisar abrir log.
+
 ## Atendimento humano (handon e handoff)
 
 Todo chamado tem o botão **Conversar**, tanto no dashboard quanto no telão, e a
