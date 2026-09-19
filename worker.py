@@ -4,19 +4,22 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import signal
 import time
 from typing import Any
 
 from event_store import EventStore
 from meta_whatsapp import MetaWhatsAppClient, download_media
+# O comportamento do bot vive no server para o simulador do painel usar
+# exatamente a mesma decisao que o WhatsApp recebe.
 from server import (
-    classificar_categoria,
-    classificar_com_ia,
-    classificar_regiao,
-    classificar_urgencia,
-    generate_ai_response,
+    welcome_text,
+    _classify,
+    _compose_reply,
+    _extract_sector,
+    _is_greeting,
+    _sector_prompt,
+    _topic,
     is_emoji_only,
     transcribe_audio,
 )
@@ -31,32 +34,6 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("worker")
 
-SECTOR_PATTERN = re.compile(
-    r"^\s*#SETOR:([A-Z0-9][A-Z0-9_-]{0,49})\s*(?:\r?\n|\|)?\s*",
-    flags=re.IGNORECASE,
-)
-
-# Saudações puras não viram card no dashboard: recebem as boas-vindas do bot.
-GREETING_PATTERN = re.compile(
-    r"^\s*(?:oi+e?|ol[aá]+|opa+|eae+|e\s*a[ií]|salve|fala+|hey+|hi+|hello+|hola+|"
-    r"bom\s*dia|boa\s*tarde|boa\s*noite|good\s*(?:morning|evening|night)|"
-    r"come[çc]ar|start|menu|ajuda|help)"
-    r"[\s!.,?~^0-9]*$",
-    flags=re.IGNORECASE,
-)
-
-WELCOME_MESSAGE = (
-    "🌴🔥 Bem-vindo(a) ao *ChatBob*, o canal oficial da *Tropicadelia 2026*!\n\n"
-    "Eu levo sua voz direto para a sala de controle do festival. "
-    "Me manda *texto ou áudio* contando:\n"
-    "🚻 um problema (fila, banheiro, som, limpeza...)\n"
-    "🎶 um elogio para o show ou para a estrutura\n"
-    "🎒 algo que você perdeu ou encontrou\n\n"
-    "⚡ Sua mensagem chega *na hora* para a equipe certa.\n\n"
-    "🔒 *Dica de ouro:* o ChatBob é 100% gratuito e *NUNCA* pede Pix, "
-    "senha ou pagamento."
-)
-
 _running = True
 
 
@@ -65,61 +42,6 @@ def _stop(_signum: int, _frame: Any) -> None:
 
     global _running
     _running = False
-
-
-def _extract_sector(content: str) -> tuple[str | None, str]:
-    """Extrai o código do QR e devolve somente a mensagem do participante."""
-
-    match = SECTOR_PATTERN.match(content)
-    if not match:
-        return None, content.strip()
-    return match.group(1).upper(), content[match.end():].strip()
-
-
-def _is_greeting(content: str) -> bool:
-    """Detecta um cumprimento sem relato para responder com as boas-vindas."""
-
-    return len(content) <= 40 and bool(GREETING_PATTERN.match(content))
-
-
-def _sector_prompt(sector: dict[str, Any] | None) -> str:
-    """Convida a pessoa a relatar algo usando o CTA cadastrado do setor."""
-
-    if not sector:
-        return "Conte em poucas palavras (ou num áudio 🎤) o que aconteceu ou o que podemos melhorar."
-    metadata = sector.get("metadata") or {}
-    cta = metadata.get("cta") or "Conte o que está acontecendo por aí."
-    return f"📍 Você está em *{sector['name']}*!\n{cta}\nPode mandar texto ou áudio 🎤"
-
-
-def _topic(content: str, category: str, urgency: str) -> str:
-    """Gera um rótulo curto e determinístico para o dashboard."""
-
-    lowered = content.lower()
-    if "banheiro" in lowered:
-        return "Banheiro Sujo" if urgency == "Urgente" else "Banheiro"
-    if "fila" in lowered:
-        return "Fila"
-    if "show" in lowered or "palco" in lowered:
-        return "Show"
-    if "comida" in lowered or "bebida" in lowered:
-        return "Alimentação"
-    return category if category != "Experiência Geral" else content[:80]
-
-
-def _reply(urgency: str) -> str:
-    """Responde sem prometer uma ação humana que ainda não foi confirmada."""
-
-    if urgency == "Critico":
-        return (
-            "🚨 Recebemos seu alerta e ele foi marcado como prioridade máxima. "
-            "Se houver risco imediato, procure agora a segurança ou equipe médica mais próxima."
-        )
-    if urgency == "Urgente":
-        return "⚠️ Recebemos e destacamos sua mensagem para a equipe do evento. Obrigado por avisar!"
-    if urgency == "Positivo":
-        return "🎉 Que bom receber isso! Obrigado pelo feedback e aproveite o evento!"
-    return "✅ Mensagem recebida! Obrigado por ajudar a melhorar sua experiência no evento."
 
 
 def _transcribe_inbox_audio(message: dict[str, Any]) -> str | None:
@@ -140,51 +62,6 @@ def _transcribe_inbox_audio(message: dict[str, Any]) -> str | None:
     except Exception as exc:  # noqa: BLE001 - transcrição nunca pode derrubar o worker
         logger.error("Falha na transcrição | erro=%s", type(exc).__name__)
         return None
-
-
-def _classify(content: str, sector: dict[str, Any] | None) -> tuple[str, str, str]:
-    """Classifica urgência, categoria e região com IA e fallback determinístico."""
-
-    # classificar_urgencia ja tenta a IA e cai em palavras-chave se ela falhar.
-    urgency = classificar_urgencia(content)
-
-    category = classificar_categoria(content)
-    region = str(sector["name"]) if sector else classificar_regiao(content)
-
-    # Categoria ambígua: a IA tenta enriquecer sem substituir o setor do QR.
-    if category == "Experiência Geral":
-        try:
-            enriched = classificar_com_ia(content)
-        except Exception:  # noqa: BLE001
-            enriched = None
-        if enriched:
-            category = enriched.get("categoria") or category
-            if not sector and enriched.get("regiao") not in (None, "N/A"):
-                region = enriched["regiao"]
-
-    return urgency, category, region
-
-
-def _compose_reply(
-    content: str,
-    category: str,
-    urgency: str,
-    sector: dict[str, Any] | None,
-    transcribed: bool,
-) -> str:
-    """Monta a resposta: crítico é sempre o protocolo fixo, o resto ganha IA."""
-
-    prefix = "🎤 *Ouvi seu áudio!*\n\n" if transcribed else ""
-    if urgency == "Critico":
-        return prefix + _reply(urgency)
-    try:
-        sector_name = str(sector["name"]) if sector else None
-        reply = generate_ai_response(content, category, urgency, sector_name)
-        if reply:
-            return prefix + reply
-    except Exception as exc:  # noqa: BLE001 - resposta criativa é opcional
-        logger.error("IA de resposta indisponível | erro=%s", type(exc).__name__)
-    return prefix + _reply(urgency)
 
 
 def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
@@ -238,7 +115,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         sector = store.sector_by_code(sector_code)
 
         if _is_greeting(content):
-            welcome = WELCOME_MESSAGE
+            welcome = welcome_text()
             if sector:
                 welcome += f"\n\n{_sector_prompt(sector)}"
             if not atendimento_humano:

@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBob | Testar e Configurar</title>
+    <meta name="theme-color" content="#ff6b2c">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #050507;
+            --bg-card: #111217;
+            --bg-input: #0a0b10;
+            --border: #23252e;
+            --text-main: #ffffff;
+            --text-muted: #8b949e;
+            --text-dim: #5a6274;
+            --orange: #ff6b2c;
+            --green: #22c55e;
+            --amber: #f59e0b;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --purple: #a855f7;
+            --tropical: linear-gradient(100deg, #ff6b2c 0%, #f43f5e 55%, #a855f7 100%);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 26px 22px 40px;
+        }
+
+        .top {
+            max-width: 1240px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+        }
+
+        .brand-mark {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: var(--tropical);
+            display: grid;
+            place-items: center;
+            font-size: 1.3rem;
+            box-shadow: 0 0 22px rgba(255, 107, 44, 0.4);
+        }
+
+        .brand h1 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+
+        .brand p {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        .back {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px 14px;
+        }
+
+        .back:hover { color: #fff; border-color: var(--orange); }
+
+        .grid {
+            max-width: 1240px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .panel-head {
+            padding: 17px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .panel-sub {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            line-height: 1.45;
+        }
+
+        /* ================= SIMULADOR ================= */
+        .sim-stream {
+            height: 460px;
+            overflow-y: auto;
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #07080c;
+        }
+
+        .sim-empty {
+            margin: auto;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.86rem;
+            line-height: 1.7;
+            max-width: 330px;
+        }
+
+        .sim-empty i {
+            font-size: 2.2rem;
+            display: block;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .chip-row {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .chip-try {
+            background: rgba(255, 107, 44, 0.1);
+            border: 1px solid rgba(255, 107, 44, 0.35);
+            color: #ffa070;
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .chip-try:hover { background: rgba(255, 107, 44, 0.22); }
+
+        .msg {
+            max-width: 80%;
+            padding: 11px 15px;
+            border-radius: 15px;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .msg.me {
+            align-self: flex-end;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid var(--border);
+            border-bottom-right-radius: 5px;
+        }
+
+        .msg.bot {
+            align-self: flex-start;
+            background: rgba(37, 211, 102, 0.1);
+            border: 1px solid rgba(37, 211, 102, 0.3);
+            border-bottom-left-radius: 5px;
+        }
+
+        /* O que o bot decidiu, para o sócio ver o raciocínio */
+        .verdict {
+            align-self: flex-start;
+            max-width: 88%;
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px dashed var(--border);
+            border-radius: 11px;
+            padding: 11px 13px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+        }
+
+        .verdict-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .vtag {
+            font-size: 0.66rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid var(--tone);
+            color: var(--tone);
+            background: color-mix(in srgb, var(--tone) 13%, transparent);
+        }
+
+        .sim-compose {
+            padding: 14px 18px;
+            border-top: 1px solid var(--border);
+        }
+
+        .sim-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        select, input[type="text"], input[type="number"], textarea {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 9px;
+            padding: 11px 13px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        select:focus, input:focus, textarea:focus {
+            border-color: var(--orange);
+            outline: none;
+        }
+
+        textarea { resize: vertical; line-height: 1.5; }
+
+        .btn {
+            border: none;
+            border-radius: 9px;
+            padding: 11px 17px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+        }
+
+        .btn.primary { background: var(--orange); color: #fff; }
+        .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+        .btn.ghost:hover { color: #fff; border-color: var(--orange); }
+        .btn.danger { background: transparent; border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-send {
+            background: var(--orange);
+            color: #fff;
+            border: none;
+            width: 46px;
+            height: 46px;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+        }
+
+        .sim-opts {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 11px;
+            flex-wrap: wrap;
+        }
+
+        .sim-opts label {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .hint {
+            font-size: 0.73rem;
+            color: var(--text-dim);
+            margin-top: 9px;
+            line-height: 1.5;
+        }
+
+        /* ================= CONFIGURAÇÃO ================= */
+        .cfg-body { padding: 18px 20px; }
+
+        .field { margin-bottom: 15px; }
+
+        .field label {
+            display: block;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.9px;
+            color: var(--text-muted);
+            margin-bottom: 7px;
+        }
+
+        .field-hint {
+            font-size: 0.73rem;
+            color: var(--text-dim);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        .qa-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 420px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .qa {
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--orange);
+            border-radius: 11px;
+            padding: 13px 15px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .qa.off {
+            border-left-color: var(--text-dim);
+            opacity: 0.6;
+        }
+
+        .qa-q {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .qa-a {
+            font-size: 0.85rem;
+            color: #cbd2dd;
+            line-height: 1.5;
+        }
+
+        .qa-keys {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 9px;
+        }
+
+        .qa-key {
+            font-size: 0.68rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2px 8px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .qa-actions {
+            display: flex;
+            gap: 7px;
+            margin-top: 11px;
+            padding-top: 11px;
+            border-top: 1px solid var(--border);
+            align-items: center;
+        }
+
+        .qa-actions .btn { padding: 6px 12px; font-size: 0.78rem; }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            padding: 4px;
+            background: var(--bg-input);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            padding: 9px 14px;
+            border-radius: 7px;
+            font-size: 0.83rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .tab.on { background: var(--orange); color: #fff; }
+
+        .toast {
+            position: fixed;
+            bottom: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            border: 1px solid var(--green);
+            color: #86efac;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.86rem;
+            font-weight: 600;
+            z-index: 100;
+            display: none;
+        }
+
+        .toast.err { border-color: var(--red); color: #fca5a5; }
+        .toast.show { display: block; }
+
+        @media (max-width: 1000px) {
+            .grid { grid-template-columns: 1fr; }
+            .sim-stream { height: 380px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="top">
+        <div class="brand">
+            <div class="brand-mark">🌴</div>
+            <div>
+                <h1>ChatBob</h1>
+                <p>Converse com o bot e ensine as respostas oficiais do festival</p>
+            </div>
+        </div>
+        <a href="/" class="back"><i class="ri-arrow-left-line"></i> Voltar ao painel</a>
+    </div>
+
+    <div class="grid">
+        <!-- ================= SIMULADOR ================= -->
+        <div class="panel">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-title"><i class="ri-whatsapp-line" style="color:#25D366"></i> Converse com o
+                        ChatBob</div>
+                    <div class="panel-sub">Responde exatamente como responderia no WhatsApp. Nada é gravado e nenhuma
+                        mensagem é enviada para ninguém.</div>
+                </div>
+                <button class="btn ghost" onclick="limparConversa()"><i class="ri-eraser-line"></i> Limpar</button>
+            </div>
+
+            <div class="sim-stream" id="stream">
+                <div class="sim-empty" id="vazio">
+                    <i class="ri-chat-smile-3-line"></i>
+                    Escreva como se você fosse um frequentador do festival.<br>
+                    O bot responde e mostra o que ele entendeu da mensagem.
+                    <div class="chip-row">
+                        <button class="chip-try" onclick="tentar('oi')">oi</button>
+                        <button class="chip-try" onclick="tentar('que horas começa o festival?')">que horas
+                            começa?</button>
+                        <button class="chip-try" onclick="tentar('acabou o papel do banheiro e a fila está enorme')">falta
+                            papel no banheiro</button>
+                        <button class="chip-try" onclick="tentar('tem uma briga aqui perto do palco')">tem uma
+                            briga</button>
+                        <button class="chip-try" onclick="tentar('show incrível, melhor festival da minha vida!')">elogio
+                            ao show</button>
+                        <button class="chip-try" onclick="tentar('perdi minha carteira')">perdi minha
+                            carteira</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sim-compose">
+                <div class="sim-opts">
+                    <label for="setor">Simular QR do setor:</label>
+                    <select id="setor" style="flex:1; min-width:180px">
+                        <option value="">Nenhum (mensagem direta)</option>
+                    </select>
+                </div>
+                <div class="sim-row">
+                    <textarea id="msg" rows="1" placeholder="Escreva como um frequentador..."
+                        onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); enviar();}"></textarea>
+                    <button class="btn-send" onclick="enviar()" title="Enviar (Enter)"><i
+                            class="ri-send-plane-fill"></i></button>
+                </div>
+                <div class="hint">Enter envia, Shift e Enter pula linha. O bot usa a mesma classificação e as mesmas
+                    respostas do WhatsApp de verdade.</div>
+            </div>
+        </div>
+
+        <!-- ================= CONFIGURAÇÃO ================= -->
+        <div class="panel">
+            <div class="panel-head">
+                <div>
+                    <div class="panel-title"><i class="ri-settings-4-line" style="color:var(--orange)"></i> Configurar o
+                        ChatBob</div>
+                    <div class="panel-sub">O que você cadastra aqui o bot obedece. A resposta manda no conteúdo, e a IA
+                        só dá o jeito de falar.</div>
+                </div>
+            </div>
+
+            <div class="cfg-body">
+                <div class="tabs" style="margin-bottom:17px">
+                    <button class="tab on" id="tab-qa" onclick="verAba('qa')">Perguntas e respostas</button>
+                    <button class="tab" id="tab-tom" onclick="verAba('tom')">Jeito de falar</button>
+                </div>
+
+                <!-- Perguntas e respostas -->
+                <div id="aba-qa">
+                    <div class="field">
+                        <label for="q">Pergunta do público</label>
+                        <input type="text" id="q" maxlength="300" placeholder="Ex: Que horas abre o portão?">
+                    </div>
+                    <div class="field">
+                        <label for="a">Resposta oficial</label>
+                        <textarea id="a" rows="3" maxlength="1500"
+                            placeholder="Ex: Os portões abrem às 15h30 de sábado."></textarea>
+                        <div class="field-hint">O bot vai transmitir essa informação exatamente, mas com as palavras
+                            dele.</div>
+                    </div>
+                    <div class="field">
+                        <label for="k">Gatilhos, separados por vírgula</label>
+                        <input type="text" id="k" placeholder="que horas, horario, abre, portao">
+                        <div class="field-hint">Se a mensagem contiver um desses trechos, o bot usa esta resposta.
+                            Quanto mais jeitos de perguntar você listar, melhor.</div>
+                    </div>
+                    <div class="field">
+                        <label for="prio">Prioridade (0 a 100)</label>
+                        <input type="number" id="prio" min="0" max="100" value="50">
+                        <div class="field-hint">Usada para desempatar quando duas perguntas casam com a mensagem.</div>
+                    </div>
+                    <div style="display:flex; gap:9px; margin-bottom:20px">
+                        <button class="btn primary" onclick="salvarQA()" id="btn-salvar"><i class="ri-save-line"></i>
+                            Salvar pergunta</button>
+                        <button class="btn ghost hidden" onclick="cancelarEdicao()" id="btn-cancelar">Cancelar
+                            edição</button>
+                    </div>
+
+                    <div class="panel-title" style="font-size:0.85rem; margin-bottom:11px">
+                        <i class="ri-list-check-2"></i> Base atual (<span id="qa-count">0</span>)
+                    </div>
+                    <div class="qa-list" id="qa-list"></div>
+                </div>
+
+                <!-- Jeito de falar -->
+                <div id="aba-tom" class="hidden">
+                    <div class="field">
+                        <label for="persona">Instruções de tom para o bot</label>
+                        <textarea id="persona" rows="6" maxlength="2000"
+                            placeholder="Ex: Fale como um jovem de Londrina, use gírias do sul, nunca prometa reembolso, sempre cite o nome do setor quando souber."></textarea>
+                        <div class="field-hint">Vai junto em toda resposta gerada pela IA. Sirva para ajustar o jeito,
+                            não para colocar informação. Informação vai nas perguntas e respostas.</div>
+                    </div>
+                    <div class="field">
+                        <label for="welcome">Mensagem de boas-vindas</label>
+                        <textarea id="welcome" rows="7" maxlength="1500"></textarea>
+                        <div class="field-hint">É o que a pessoa recebe quando manda só "oi". Deixe em branco para usar
+                            a padrão. O WhatsApp usa *asterisco* para negrito.</div>
+                    </div>
+                    <div style="display:flex; gap:9px">
+                        <button class="btn primary" onclick="salvarTom()"><i class="ri-save-line"></i> Salvar
+                            ajustes</button>
+                        <button class="btn ghost" onclick="usarPadrao()">Usar boas-vindas padrão</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const TONES = {
+            'Critico': '#ef4444', 'Crítico': '#ef4444', 'Urgente': '#f59e0b',
+            'Neutro': '#3b82f6', 'Positivo': '#22c55e'
+        };
+
+        let editando = null;
+        let padraoWelcome = '';
+
+        // Texto do público e do bot vai para innerHTML: escapar sempre.
+        function esc(v) {
+            return String(v == null ? '' : v)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function aviso(texto, erro) {
+            const t = document.getElementById('toast');
+            t.textContent = texto;
+            t.className = 'toast show' + (erro ? ' err' : '');
+            setTimeout(() => { t.className = 'toast'; }, 3200);
+        }
+
+        function verAba(qual) {
+            document.getElementById('aba-qa').classList.toggle('hidden', qual !== 'qa');
+            document.getElementById('aba-tom').classList.toggle('hidden', qual !== 'tom');
+            document.getElementById('tab-qa').classList.toggle('on', qual === 'qa');
+            document.getElementById('tab-tom').classList.toggle('on', qual === 'tom');
+        }
+
+        // ================= SIMULADOR =================
+        function limparConversa() {
+            const stream = document.getElementById('stream');
+            stream.querySelectorAll('.msg, .verdict').forEach(el => el.remove());
+            document.getElementById('vazio').style.display = '';
+        }
+
+        function tentar(texto) {
+            document.getElementById('msg').value = texto;
+            enviar();
+        }
+
+        function bolha(classe, texto) {
+            const stream = document.getElementById('stream');
+            const div = document.createElement('div');
+            div.className = 'msg ' + classe;
+            div.textContent = texto;
+            stream.appendChild(div);
+            stream.scrollTop = stream.scrollHeight;
+            return div;
+        }
+
+        function veredito(data) {
+            const stream = document.getElementById('stream');
+            const div = document.createElement('div');
+            div.className = 'verdict';
+
+            const tags = [];
+            if (data.urgency) {
+                tags.push(`<span class="vtag" style="--tone:${TONES[data.urgency] || '#3b82f6'}">${esc(data.urgency)}</span>`);
+            }
+            if (data.category) {
+                tags.push(`<span class="vtag" style="--tone:#a855f7">${esc(data.category)}</span>`);
+            }
+            if (data.sector) {
+                tags.push(`<span class="vtag" style="--tone:#ff6b2c">${esc(data.sector)}</span>`);
+            }
+            tags.push(`<span class="vtag" style="--tone:${data.createsCard ? '#22c55e' : '#5a6274'}">${data.createsCard ? 'abre chamado' : 'sem chamado'}</span>`);
+
+            div.innerHTML = '<div class="verdict-tags">' + tags.join('') + '</div>' +
+                '<i class="ri-lightbulb-line"></i> ' + esc(data.explain || '');
+            stream.appendChild(div);
+            stream.scrollTop = stream.scrollHeight;
+        }
+
+        async function enviar() {
+            const input = document.getElementById('msg');
+            const content = input.value.trim();
+            if (!content) return;
+
+            document.getElementById('vazio').style.display = 'none';
+            bolha('me', content);
+            input.value = '';
+            const pensando = bolha('bot', 'digitando...');
+
+            try {
+                const res = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content,
+                        setor: document.getElementById('setor').value || null
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    pensando.textContent = data.error || 'Não foi possível simular.';
+                    return;
+                }
+                pensando.textContent = data.reply;
+                veredito(data);
+            } catch (err) {
+                console.error('Erro na simulação:', err);
+                pensando.textContent = 'Erro ao falar com o servidor.';
+            }
+        }
+
+        // ================= BASE DE PERGUNTAS =================
+        async function carregarBase() {
+            let entries = [];
+            try {
+                const res = await fetch('/api/bot/knowledge');
+                entries = (await res.json()).entries || [];
+            } catch (err) {
+                console.error('Erro ao carregar base:', err);
+            }
+
+            document.getElementById('qa-count').textContent = entries.length;
+            const box = document.getElementById('qa-list');
+
+            if (!entries.length) {
+                box.innerHTML = '<p style="color:var(--text-dim); font-size:0.85rem">Nenhuma pergunta cadastrada ainda.</p>';
+                return;
+            }
+
+            box.innerHTML = entries.map(e => `
+                <div class="qa ${e.active ? '' : 'off'}">
+                    <div class="qa-q">${esc(e.question)}</div>
+                    <div class="qa-a">${esc(e.answer)}</div>
+                    ${(e.keywords || []).length
+                    ? '<div class="qa-keys">' + e.keywords.map(k => `<span class="qa-key">${esc(k)}</span>`).join('') + '</div>'
+                    : ''}
+                    <div class="qa-actions">
+                        <button class="btn ghost" data-editar="${esc(e.id)}"><i class="ri-pencil-line"></i> Editar</button>
+                        <button class="btn ghost" data-alternar="${esc(e.id)}">
+                            <i class="ri-${e.active ? 'pause' : 'play'}-line"></i> ${e.active ? 'Desativar' : 'Ativar'}</button>
+                        <button class="btn danger" data-remover="${esc(e.id)}"><i class="ri-delete-bin-line"></i></button>
+                        <span style="margin-left:auto; font-size:0.72rem; color:var(--text-dim)">prioridade ${e.priority}</span>
+                    </div>
+                </div>`).join('');
+
+            // Handler ligado depois do innerHTML: nome com apóstrofo não quebra.
+            const porId = {};
+            entries.forEach(e => { porId[e.id] = e; });
+            box.querySelectorAll('[data-editar]').forEach(b => {
+                b.onclick = () => editar(porId[b.getAttribute('data-editar')]);
+            });
+            box.querySelectorAll('[data-alternar]').forEach(b => {
+                b.onclick = () => alternar(porId[b.getAttribute('data-alternar')]);
+            });
+            box.querySelectorAll('[data-remover]').forEach(b => {
+                b.onclick = () => remover(porId[b.getAttribute('data-remover')]);
+            });
+        }
+
+        function editar(entry) {
+            if (!entry) return;
+            editando = entry.id;
+            document.getElementById('q').value = entry.question;
+            document.getElementById('a').value = entry.answer;
+            document.getElementById('k').value = (entry.keywords || []).join(', ');
+            document.getElementById('prio').value = entry.priority;
+            document.getElementById('btn-salvar').innerHTML = '<i class="ri-save-line"></i> Salvar alteração';
+            document.getElementById('btn-cancelar').classList.remove('hidden');
+            verAba('qa');
+            document.getElementById('q').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function cancelarEdicao() {
+            editando = null;
+            ['q', 'a', 'k'].forEach(id => { document.getElementById(id).value = ''; });
+            document.getElementById('prio').value = 50;
+            document.getElementById('btn-salvar').innerHTML = '<i class="ri-save-line"></i> Salvar pergunta';
+            document.getElementById('btn-cancelar').classList.add('hidden');
+        }
+
+        async function salvarQA() {
+            const question = document.getElementById('q').value.trim();
+            const answer = document.getElementById('a').value.trim();
+            if (question.length < 3) { aviso('Escreva a pergunta.', true); return; }
+            if (!answer) { aviso('Escreva a resposta.', true); return; }
+
+            const body = {
+                id: editando,
+                question,
+                answer,
+                keywords: document.getElementById('k').value,
+                priority: Number(document.getElementById('prio').value || 50),
+                active: true
+            };
+
+            try {
+                const res = await fetch('/api/bot/knowledge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (!res.ok) { aviso(data.error || 'Não foi possível salvar.', true); return; }
+            } catch (err) {
+                aviso('Erro ao salvar.', true);
+                return;
+            }
+
+            aviso(editando ? 'Pergunta atualizada.' : 'Pergunta cadastrada.');
+            cancelarEdicao();
+            carregarBase();
+        }
+
+        async function alternar(entry) {
+            if (!entry) return;
+            try {
+                await fetch('/api/bot/knowledge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: entry.id, question: entry.question, answer: entry.answer,
+                        keywords: entry.keywords || [], priority: entry.priority,
+                        active: !entry.active
+                    })
+                });
+            } catch (err) {
+                aviso('Erro ao alterar.', true);
+                return;
+            }
+            aviso(entry.active ? 'Pergunta desativada.' : 'Pergunta ativada.');
+            carregarBase();
+        }
+
+        async function remover(entry) {
+            if (!entry) return;
+            if (!confirm('Remover esta pergunta da base do ChatBob?')) return;
+            try {
+                const res = await fetch('/api/bot/knowledge/' + encodeURIComponent(entry.id), { method: 'DELETE' });
+                if (!res.ok) { aviso('Não foi possível remover.', true); return; }
+            } catch (err) {
+                aviso('Erro ao remover.', true);
+                return;
+            }
+            aviso('Pergunta removida.');
+            carregarBase();
+        }
+
+        // ================= TOM DE VOZ =================
+        async function carregarTom() {
+            try {
+                const res = await fetch('/api/bot/settings');
+                const data = await res.json();
+                padraoWelcome = data.defaultWelcome || '';
+                document.getElementById('persona').value = data.persona || '';
+                document.getElementById('welcome').value = data.welcome || padraoWelcome;
+            } catch (err) {
+                console.error('Erro ao carregar ajustes:', err);
+            }
+        }
+
+        function usarPadrao() {
+            document.getElementById('welcome').value = padraoWelcome;
+        }
+
+        async function salvarTom() {
+            const welcome = document.getElementById('welcome').value.trim();
+            try {
+                const res = await fetch('/api/bot/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        persona: document.getElementById('persona').value.trim(),
+                        // Igual ao padrão significa "não personalizado".
+                        welcome: welcome === padraoWelcome ? '' : welcome
+                    })
+                });
+                if (!res.ok) { aviso('Não foi possível salvar.', true); return; }
+            } catch (err) {
+                aviso('Erro ao salvar.', true);
+                return;
+            }
+            aviso('Ajustes salvos. Valem para a próxima mensagem.');
+        }
+
+        // ================= SETORES NO SIMULADOR =================
+        async function carregarSetores() {
+            const select = document.getElementById('setor');
+            try {
+                const res = await fetch('/api/sectors');
+                const sectors = ((await res.json()).sectors || [])
+                    .slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+                select.innerHTML = '<option value="">Nenhum (mensagem direta)</option>' +
+                    sectors.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join('');
+            } catch (err) {
+                console.error('Erro ao carregar setores:', err);
+            }
+        }
+
+        carregarSetores();
+        carregarBase();
+        carregarTom();
+    </script>
+</body>
+
+</html>

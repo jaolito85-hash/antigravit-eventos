@@ -341,6 +341,131 @@ class EventStore:
         )
 
     # ------------------------------------------------------------------
+    # Base de perguntas e respostas do bot
+    # ------------------------------------------------------------------
+
+    # O worker consulta a base em toda mensagem. Sem cache seria uma ida ao
+    # banco por participante; com 30s o operador ainda ve o efeito na hora.
+    _KNOWLEDGE_TTL_SECONDS = 30
+
+    def knowledge(self, only_active: bool = True) -> list[dict[str, Any]]:
+        """Perguntas e respostas do evento, da maior para a menor prioridade."""
+
+        cache = getattr(self, "_knowledge_cache", None)
+        now = datetime.now(timezone.utc)
+        if (
+            only_active
+            and cache
+            and (now - cache["at"]).total_seconds() < self._KNOWLEDGE_TTL_SECONDS
+        ):
+            return cache["rows"]
+
+        query = (
+            self._get_client()
+            .table("bot_knowledge")
+            .select("id,question,answer,keywords,priority,active")
+            .eq("event_id", self.event_id())
+        )
+        if only_active:
+            query = query.eq("active", True)
+        try:
+            response = query.order("priority", desc=True).execute()
+        except Exception as exc:  # noqa: BLE001 - base indisponível não cala o bot
+            logger.error("Falha ao ler base do bot: %s", type(exc).__name__)
+            return cache["rows"] if cache else []
+
+        rows = list(response.data or [])
+        if only_active:
+            self._knowledge_cache = {"rows": rows, "at": now}
+        return rows
+
+    def save_knowledge(self, entry: dict[str, Any]) -> dict[str, Any]:
+        """Cria ou atualiza uma pergunta e resposta."""
+
+        row = {
+            "event_id": self.event_id(),
+            "question": str(entry.get("question") or "").strip()[:300],
+            "answer": str(entry.get("answer") or "").strip()[:1500],
+            "keywords": [
+                str(k).strip().lower()[:80]
+                for k in (entry.get("keywords") or [])
+                if str(k).strip()
+            ][:30],
+            "priority": max(0, min(100, int(entry.get("priority") or 0))),
+            "active": bool(entry.get("active", True)),
+        }
+        client = self._get_client()
+        if entry.get("id"):
+            response = (
+                client.table("bot_knowledge")
+                .update(row)
+                .eq("id", entry["id"])
+                .eq("event_id", row["event_id"])
+                .execute()
+            )
+        else:
+            response = client.table("bot_knowledge").insert(row).execute()
+        self._knowledge_cache = None
+        if not response.data:
+            raise RuntimeError("Supabase não retornou a pergunta salva")
+        return response.data[0]
+
+    def delete_knowledge(self, entry_id: str) -> bool:
+        """Remove uma pergunta da base."""
+
+        response = (
+            self._get_client()
+            .table("bot_knowledge")
+            .delete()
+            .eq("id", entry_id)
+            .eq("event_id", self.event_id())
+            .execute()
+        )
+        self._knowledge_cache = None
+        return bool(response.data)
+
+    def bot_settings(self) -> dict[str, Any]:
+        """Tom de voz e boas-vindas configurados, com cache curto."""
+
+        cache = getattr(self, "_settings_cache", None)
+        now = datetime.now(timezone.utc)
+        if cache and (now - cache["at"]).total_seconds() < self._KNOWLEDGE_TTL_SECONDS:
+            return cache["row"]
+        try:
+            response = (
+                self._get_client()
+                .table("bot_settings")
+                .select("persona,welcome")
+                .eq("event_id", self.event_id())
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Falha ao ler ajustes do bot: %s", type(exc).__name__)
+            return cache["row"] if cache else {}
+        row = (response.data or [{}])[0]
+        self._settings_cache = {"row": row, "at": now}
+        return row
+
+    def save_bot_settings(self, persona: str | None, welcome: str | None) -> dict[str, Any]:
+        """Grava tom de voz e boas-vindas, uma linha por evento."""
+
+        row = {
+            "event_id": self.event_id(),
+            "persona": (persona or "").strip()[:2000] or None,
+            "welcome": (welcome or "").strip()[:1500] or None,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        response = (
+            self._get_client()
+            .table("bot_settings")
+            .upsert(row, on_conflict="event_id")
+            .execute()
+        )
+        self._settings_cache = None
+        return (response.data or [row])[0]
+
+    # ------------------------------------------------------------------
     # Atendimento humano (handon / handoff)
     # ------------------------------------------------------------------
 

@@ -87,6 +87,33 @@ Dois limites que o painel avisa na tela:
   participante. Fora dessa janela o envio pode falhar até a pessoa escrever
   de novo.
 
+## Base de perguntas e respostas
+
+A tela `/chatbob` tem duas metades. Na esquerda, uma caixa de conversa onde a
+produção fala com o bot e vê o que ele entendeu, sem gravar nada e sem enviar
+mensagem para ninguém. Na direita, a configuração.
+
+**Como o bot usa a base.** O casamento é determinístico de propósito, para o
+operador conseguir prever a resposta. Em três níveis, do mais forte ao mais
+fraco:
+
+1. Um gatilho cadastrado aparece na mensagem (`que horas` em "que horas abre?").
+2. Todas as palavras de um gatilho de duas ou mais palavras aparecem soltas
+   (`como pago` em "como eu pago a cerveja").
+3. Metade das palavras da própria pergunta aparece na mensagem.
+
+Achada a resposta oficial, ela vai para a IA como informação obrigatória a
+transmitir, e a IA escolhe o jeito de dizer. Se a IA estiver fora, o texto
+cadastrado vai como está: melhor soar formal que deixar a pergunta sem a
+informação certa.
+
+**Elogio não consulta a base.** Sem isso, um "show incrível" voltaria com o
+horário do line-up. Crítico também não: ele tem protocolo fixo.
+
+O campo de tom de voz entra em toda resposta gerada pela IA e serve para o
+jeito de falar, não para informação. Informação vai nas perguntas e respostas,
+que é onde o operador controla o conteúdo.
+
 ## Níveis de urgência
 
 - **Critico**: emergência médica, violência, risco de vida. A resposta é sempre o
@@ -114,6 +141,8 @@ Dois limites que o painel avisa na tela:
 | Validar as migrações | `python scripts/validate_migrations.py` |
 | Conferir o schema no Supabase | `python scripts/verify_supabase_db.py` |
 | Gerar as placas dos setores | Tela `/qrcode` |
+| Testar o bot sem celular | Tela `/chatbob`, caixa de conversa |
+| Ensinar uma resposta ao bot | Tela `/chatbob`, perguntas e respostas |
 | Roteiro de ensaio e diagnóstico | `docs/ENSAIO_SABADO.md` |
 
 ## Histórico

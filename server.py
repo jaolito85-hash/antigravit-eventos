@@ -11,6 +11,7 @@ from flask import Flask, request, jsonify, render_template, session, redirect
 from dotenv import load_dotenv
 from datetime import datetime
 from collections import Counter, defaultdict
+from typing import Any
 from event_store import EventStore
 from meta_whatsapp import parse_webhook, verify_webhook_signature
 
@@ -533,7 +534,7 @@ Regras:
         return None
 
 # --- AI RESPONSE FUNCTION ---
-def generate_ai_response(text, category, urgency, sector_name=None):
+def generate_ai_response(text, category, urgency, sector_name=None, official_answer=None):
     """Generates a fun response using AI, like a friend who works at the event"""
     api_key = os.getenv("OPENAI_API_KEY")
 
@@ -581,11 +582,31 @@ Spanish input → Spanish reply:
 "El baño está inundado" → "No puede ser!! 😤 Ya estoy mandando al equipo para allá AHORA! Aguanta un momento!! 💪🔧"'''
 
         sector_line = f'\nThe participant scanned a QR code at this festival sector: "{sector_name}". Mention the place naturally in your reply (translated to their language if needed).' if sector_name else ''
+
+        # Informacao oficial cadastrada pela producao: o conteudo e obrigatorio,
+        # o jeito de dizer fica com a IA.
+        official_line = ''
+        if official_answer:
+            official_line = (
+                '\n\nOFFICIAL ANSWER FROM THE FESTIVAL STAFF (you MUST convey this '
+                'information, keeping every fact exactly right, but say it in your own '
+                f'voice and in the participant language):\n"{official_answer}"'
+            )
+
+        # Tom de voz extra configurado no painel.
+        persona_line = ''
+        try:
+            persona = (EVENT_STORE.bot_settings() or {}).get('persona')
+        except Exception:  # noqa: BLE001
+            persona = None
+        if persona:
+            persona_line = f'\n\nEXTRA INSTRUCTIONS FROM THE ORGANIZERS:\n{persona}'
         user_msg = f'''Sentiment: {urgency}
 Category: {category}
 Participant message: "{text}"{sector_line}
 
 Generate ONE creative, unique reply (do NOT copy the examples). Reply in the SAME LANGUAGE as the participant's message:'''
+        user_msg += official_line + persona_line
 
         response = client.chat.completions.create(
             **_chat_completion_kwargs(
@@ -605,8 +626,12 @@ Generate ONE creative, unique reply (do NOT copy the examples). Reply in the SAM
             reply = reply[1:-1]
 
         # O WhatsApp usa *negrito* com um asterisco; **assim** apareceria cru.
-        reply = re.sub(r"\*{2,}([^*]+)\*{2,}", r"**", reply)
-        reply = re.sub(r"_{2,}([^_]+)_{2,}", r"__", reply)
+        reply = re.sub(r"\*{2,}([^*]+)\*{2,}", r"*\1*", reply)
+        reply = re.sub(r"_{2,}([^_]+)_{2,}", r"_\1_", reply)
+        # Às vezes o modelo abre ênfase e não escreve nada dentro. Sobra um
+        # "**" solto no meio da frase, então a marcação vazia é removida.
+        reply = re.sub(r"[*_]+[\s\u200b\u200c\u200d]*[*_]+", " ", reply)
+        reply = re.sub(r"[ \t]{2,}", " ", reply).strip()
         
         print(f"🤖 [VIRAL-REPLY] Generated: {reply}")
         return reply
@@ -774,6 +799,227 @@ Seja profissional mas acessível. Use dados concretos. Não use emojis demais (m
     except Exception as e:
         print(f"❌ [REPORT-AI] Error: {e}")
         return "Não foi possível gerar o resumo automático neste momento."
+
+# --- BASE DE PERGUNTAS E RESPOSTAS ---
+
+def _normalize(text):
+    """Baixa caixa e remove acento para o casamento não depender de digitação."""
+
+    import unicodedata
+
+    lowered = str(text or "").lower()
+    decomposed = unicodedata.normalize("NFD", lowered)
+    return "".join(c for c in decomposed if unicodedata.category(c) != "Mn")
+
+
+def match_knowledge(content, entries=None):
+    """Acha a resposta oficial para a mensagem, se existir uma cadastrada.
+
+    Casamento determinístico de propósito: o operador precisa conseguir prever
+    o que o bot vai responder. A IA entra depois, só para dar o tom.
+    """
+
+    if entries is None:
+        try:
+            entries = EVENT_STORE.knowledge()
+        except Exception as e:
+            logger.error("Base do bot indisponível: %s", type(e).__name__)
+            return None
+
+    alvo = _normalize(content)
+    if not alvo:
+        return None
+
+    melhor = None
+    melhor_peso = 0
+    for entry in entries or []:
+        if not entry.get("active", True):
+            continue
+        gatilhos = [g for g in (entry.get("keywords") or []) if g]
+        # A própria pergunta cadastrada também serve de gatilho, pelas
+        # palavras com mais de três letras que ela contém.
+        termos = [t for t in _normalize(entry.get("question")).split() if len(t) > 3]
+
+        peso = 0
+        for gatilho in gatilhos:
+            if _normalize(gatilho) in alvo:
+                # Gatilho explícito vale mais que palavra solta da pergunta.
+                peso += 10 + len(gatilho)
+        if not peso:
+            # Segundo nível: as palavras do gatilho, para "como pago" pegar
+            # "como eu pago". Vale menos que o gatilho inteiro.
+            palavras_alvo = set(alvo.split())
+            for gatilho in gatilhos:
+                partes = [w for w in _normalize(gatilho).split() if len(w) > 3]
+                # Exige duas palavras: senão "show de" viraria só "show" e
+                # pegaria qualquer elogio ao show.
+                if len(partes) >= 2 and all(w in palavras_alvo for w in partes):
+                    peso = max(peso, 5 + len(partes))
+
+        if not peso and termos:
+            # Terceiro nível: metade das palavras da própria pergunta.
+            acertos = sum(1 for t in termos if t in alvo)
+            if acertos >= max(2, len(termos) // 2):
+                peso = acertos
+
+        if peso:
+            peso += int(entry.get("priority") or 0) / 100
+            if peso > melhor_peso:
+                melhor_peso = peso
+                melhor = entry
+
+    return melhor
+
+
+# --- COMPORTAMENTO DO BOT (usado pelo worker e pelo simulador) ---
+
+SECTOR_PATTERN = re.compile(
+    r"^\s*#SETOR:([A-Z0-9][A-Z0-9_-]{0,49})\s*(?:\r?\n|\|)?\s*",
+    flags=re.IGNORECASE,
+)
+
+# Saudações puras não viram card no dashboard: recebem as boas-vindas do bot.
+GREETING_PATTERN = re.compile(
+    r"^\s*(?:oi+e?|ol[aá]+|opa+|eae+|e\s*a[ií]|salve|fala+|hey+|hi+|hello+|hola+|"
+    r"bom\s*dia|boa\s*tarde|boa\s*noite|good\s*(?:morning|evening|night)|"
+    r"come[çc]ar|start|menu|ajuda|help)"
+    r"[\s!.,?~^0-9]*$",
+    flags=re.IGNORECASE,
+)
+
+WELCOME_MESSAGE = (
+    "🌴🔥 Bem-vindo(a) ao *ChatBob*, o canal oficial da *Tropicadelia 2026*!\n\n"
+    "Eu levo sua voz direto para a sala de controle do festival. "
+    "Me manda *texto ou áudio* contando:\n"
+    "🚻 um problema (fila, banheiro, som, limpeza...)\n"
+    "🎶 um elogio para o show ou para a estrutura\n"
+    "🎒 algo que você perdeu ou encontrou\n\n"
+    "⚡ Sua mensagem chega *na hora* para a equipe certa.\n\n"
+    "🔒 *Dica de ouro:* o ChatBob é 100% gratuito e *NUNCA* pede Pix, "
+    "senha ou pagamento."
+)
+
+def _extract_sector(content: str) -> tuple[str | None, str]:
+    """Extrai o código do QR e devolve somente a mensagem do participante."""
+
+    match = SECTOR_PATTERN.match(content)
+    if not match:
+        return None, content.strip()
+    return match.group(1).upper(), content[match.end():].strip()
+
+
+def welcome_text() -> str:
+    """Boas-vindas configurada no painel, ou a padrão do produto."""
+
+    try:
+        custom = (EVENT_STORE.bot_settings() or {}).get("welcome")
+    except Exception:  # noqa: BLE001
+        custom = None
+    return custom or WELCOME_MESSAGE
+
+
+def _is_greeting(content: str) -> bool:
+    """Detecta um cumprimento sem relato para responder com as boas-vindas."""
+
+    return len(content) <= 40 and bool(GREETING_PATTERN.match(content))
+
+
+def _sector_prompt(sector: dict[str, Any] | None) -> str:
+    """Convida a pessoa a relatar algo usando o CTA cadastrado do setor."""
+
+    if not sector:
+        return "Conte em poucas palavras (ou num áudio 🎤) o que aconteceu ou o que podemos melhorar."
+    metadata = sector.get("metadata") or {}
+    cta = metadata.get("cta") or "Conte o que está acontecendo por aí."
+    return f"📍 Você está em *{sector['name']}*!\n{cta}\nPode mandar texto ou áudio 🎤"
+
+
+def _topic(content: str, category: str, urgency: str) -> str:
+    """Gera um rótulo curto e determinístico para o dashboard."""
+
+    lowered = content.lower()
+    if "banheiro" in lowered:
+        return "Banheiro Sujo" if urgency == "Urgente" else "Banheiro"
+    if "fila" in lowered:
+        return "Fila"
+    if "show" in lowered or "palco" in lowered:
+        return "Show"
+    if "comida" in lowered or "bebida" in lowered:
+        return "Alimentação"
+    return category if category != "Experiência Geral" else content[:80]
+
+
+def _reply(urgency: str) -> str:
+    """Responde sem prometer uma ação humana que ainda não foi confirmada."""
+
+    if urgency == "Critico":
+        return (
+            "🚨 Recebemos seu alerta e ele foi marcado como prioridade máxima. "
+            "Se houver risco imediato, procure agora a segurança ou equipe médica mais próxima."
+        )
+    if urgency == "Urgente":
+        return "⚠️ Recebemos e destacamos sua mensagem para a equipe do evento. Obrigado por avisar!"
+    if urgency == "Positivo":
+        return "🎉 Que bom receber isso! Obrigado pelo feedback e aproveite o evento!"
+    return "✅ Mensagem recebida! Obrigado por ajudar a melhorar sua experiência no evento."
+
+
+def _classify(content: str, sector: dict[str, Any] | None) -> tuple[str, str, str]:
+    """Classifica urgência, categoria e região com IA e fallback determinístico."""
+
+    # classificar_urgencia ja tenta a IA e cai em palavras-chave se ela falhar.
+    urgency = classificar_urgencia(content)
+
+    category = classificar_categoria(content)
+    region = str(sector["name"]) if sector else classificar_regiao(content)
+
+    # Categoria ambígua: a IA tenta enriquecer sem substituir o setor do QR.
+    if category == "Experiência Geral":
+        try:
+            enriched = classificar_com_ia(content)
+        except Exception:  # noqa: BLE001
+            enriched = None
+        if enriched:
+            category = enriched.get("categoria") or category
+            if not sector and enriched.get("regiao") not in (None, "N/A"):
+                region = enriched["regiao"]
+
+    return urgency, category, region
+
+
+def _compose_reply(
+    content: str,
+    category: str,
+    urgency: str,
+    sector: dict[str, Any] | None,
+    transcribed: bool,
+) -> str:
+    """Monta a resposta: crítico é sempre o protocolo fixo, o resto ganha IA."""
+
+    prefix = "🎤 *Ouvi seu áudio!*\n\n" if transcribed else ""
+    if urgency == "Critico":
+        return prefix + _reply(urgency)
+
+    # Elogio não é pergunta: a base de perguntas não entra aí, senão um
+    # "show incrível" voltaria com o horário do line-up.
+    known = match_knowledge(content) if urgency != "Positivo" else None
+    sector_name = str(sector["name"]) if sector else None
+    try:
+        reply = generate_ai_response(
+            content, category, urgency, sector_name,
+            official_answer=(known or {}).get("answer"),
+        )
+        if reply:
+            return prefix + reply
+    except Exception as exc:  # noqa: BLE001 - resposta criativa é opcional
+        logger.error("IA de resposta indisponível | erro=%s", type(exc).__name__)
+
+    if known:
+        # Sem IA, o texto oficial vai como está: é melhor soar formal do que
+        # deixar a pergunta sem a informação correta.
+        return prefix + known["answer"]
+    return prefix + _reply(urgency)
+
 
 # --- ROUTES ---
 
@@ -1217,6 +1463,181 @@ def get_ai_pulse():
     ai_pulse_cache = {"data": result, "timestamp": now}
     
     return jsonify(result)
+
+# --- SIMULADOR E CONFIGURAÇÃO DO CHATBOB ---
+
+MAX_SIMULATE_LENGTH = 900
+
+
+@app.route("/chatbob")
+@login_required
+def chatbob_page():
+    """Tela para testar e configurar o bot."""
+
+    return render_template("chatbob.html")
+
+
+@app.route("/api/simulate", methods=["POST"])
+@login_required
+def api_simulate():
+    """Responde como o bot responderia no WhatsApp, sem gravar nem enviar.
+
+    Usa exatamente as mesmas funções do worker, então o que aparece aqui é o
+    que o participante receberia. Nenhum feedback é criado e nada sai para a
+    Meta: é uma simulação para os sócios experimentarem o bot.
+    """
+
+    payload = request.get_json(silent=True) or {}
+    content_raw = str(payload.get("content") or "").strip()
+    sector_code = (payload.get("setor") or "").strip().upper() or None
+
+    if not content_raw:
+        return jsonify({"error": "escreva uma mensagem"}), 400
+    if len(content_raw) > MAX_SIMULATE_LENGTH:
+        return jsonify({"error": "mensagem muito longa"}), 400
+
+    # O QR do setor entra como o participante enviaria, na primeira linha.
+    if sector_code and not content_raw.upper().startswith("#SETOR:"):
+        content_raw = f"#SETOR:{sector_code}\n{content_raw}"
+
+    code, content = _extract_sector(content_raw)
+    sector = None
+    if code:
+        try:
+            sector = EVENT_STORE.sector_by_code(code)
+        except Exception as e:
+            logger.error("Falha ao resolver setor na simulação: %s", type(e).__name__)
+
+    if _is_greeting(content):
+        return jsonify({
+            "reply": welcome_text(),
+            "kind": "saudacao",
+            "explain": "Saudação sem relato: o bot manda as boas-vindas e não abre chamado.",
+            "sector": sector["name"] if sector else None,
+            "createsCard": False,
+        })
+
+    if len(content) < 3 or is_emoji_only(content):
+        return jsonify({
+            "reply": _sector_prompt(sector),
+            "kind": "convite",
+            "explain": "Mensagem curta ou só emoji: o bot convida a pessoa a contar o que houve.",
+            "sector": sector["name"] if sector else None,
+            "createsCard": False,
+        })
+
+    urgency, category, region = _classify(content, sector)
+    known = match_knowledge(content) if urgency != "Positivo" else None
+    reply = _compose_reply(content, category, urgency, sector, False)
+
+    if urgency == "Critico":
+        explain = "Crítico: o bot usa o protocolo fixo e orienta procurar a equipe, sem texto criativo."
+    elif known:
+        explain = f'Respondido pela base: "{known["question"]}".'
+    else:
+        explain = "Sem pergunta cadastrada para isso: o bot responde no tom dele e registra o chamado."
+
+    return jsonify({
+        "reply": reply,
+        "kind": "chamado",
+        "urgency": urgency,
+        "category": category,
+        "region": region,
+        "sector": sector["name"] if sector else None,
+        "topic": _topic(content, category, urgency),
+        "matched": {"question": known["question"], "id": known["id"]} if known else None,
+        "explain": explain,
+        "createsCard": True,
+    })
+
+
+@app.route("/api/bot/knowledge", methods=["GET"])
+@login_required
+def list_knowledge():
+    """Base completa, inclusive as perguntas desativadas."""
+
+    try:
+        return jsonify({"entries": EVENT_STORE.knowledge(only_active=False)})
+    except Exception as e:
+        logger.error("Falha ao listar base do bot: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+
+
+@app.route("/api/bot/knowledge", methods=["POST"])
+@login_required
+def save_knowledge_route():
+    """Cria ou atualiza uma pergunta e resposta."""
+
+    payload = request.get_json(silent=True) or {}
+    question = str(payload.get("question") or "").strip()
+    answer = str(payload.get("answer") or "").strip()
+    if len(question) < 3:
+        return jsonify({"error": "escreva a pergunta"}), 400
+    if not answer:
+        return jsonify({"error": "escreva a resposta"}), 400
+
+    keywords = payload.get("keywords")
+    if isinstance(keywords, str):
+        keywords = [k.strip() for k in keywords.split(",")]
+
+    try:
+        entry = EVENT_STORE.save_knowledge({
+            "id": payload.get("id"),
+            "question": question,
+            "answer": answer,
+            "keywords": keywords or [],
+            "priority": payload.get("priority", 50),
+            "active": payload.get("active", True),
+        })
+    except Exception as e:
+        logger.error("Falha ao salvar pergunta: %s", type(e).__name__)
+        return jsonify({"error": "não foi possível salvar"}), 503
+    return jsonify({"success": True, "entry": entry})
+
+
+@app.route("/api/bot/knowledge/<entry_id>", methods=["DELETE"])
+@login_required
+def delete_knowledge_route(entry_id):
+    """Remove uma pergunta da base."""
+
+    try:
+        removido = EVENT_STORE.delete_knowledge(entry_id)
+    except Exception as e:
+        logger.error("Falha ao remover pergunta: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+    if not removido:
+        return jsonify({"error": "not_found"}), 404
+    return jsonify({"success": True})
+
+
+@app.route("/api/bot/settings", methods=["GET", "PUT"])
+@login_required
+def bot_settings_route():
+    """Tom de voz e boas-vindas do bot."""
+
+    if request.method == "GET":
+        try:
+            settings = EVENT_STORE.bot_settings() or {}
+        except Exception as e:
+            logger.error("Falha ao ler ajustes do bot: %s", type(e).__name__)
+            settings = {}
+        return jsonify({
+            "persona": settings.get("persona") or "",
+            "welcome": settings.get("welcome") or "",
+            "defaultWelcome": WELCOME_MESSAGE,
+        })
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        EVENT_STORE.save_bot_settings(
+            payload.get("persona"),
+            payload.get("welcome"),
+        )
+    except Exception as e:
+        logger.error("Falha ao salvar ajustes do bot: %s", type(e).__name__)
+        return jsonify({"error": "não foi possível salvar"}), 503
+    return jsonify({"success": True})
+
 
 # --- ATENDIMENTO HUMANO (handon / handoff) ---
 

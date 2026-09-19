@@ -190,6 +190,30 @@ contador laranja na barra lateral mostra quantas estão na mão da equipe.
 
 ---
 
+## 5.2. Deixar os sócios brincarem com o bot
+
+Abra `/chatbob` e passe o teclado para eles. É a parte que convence sem
+precisar de celular, número da Meta ou nada configurado.
+
+À esquerda eles escrevem como um frequentador escreveria. O bot responde igual
+ao WhatsApp e, embaixo de cada resposta, aparece o que ele entendeu: urgência,
+categoria, setor e se aquilo abre chamado. Os botões de atalho já trazem os
+casos que valem mostrar: `oi`, uma pergunta de horário, uma falta de papel, uma
+briga, um elogio e um objeto perdido.
+
+À direita eles cadastram as respostas oficiais do festival. Escreva a pergunta,
+a resposta e os jeitos de perguntar separados por vírgula. Salve, volte para a
+esquerda e pergunte: o bot já responde com a informação nova, no tom dele.
+
+A base já vem com sete perguntas de partida: horário, local, o que pode entrar,
+achados e perdidos, acessibilidade, pagamento e line-up. Revise esses textos
+com o organizador antes do evento, porque são eles que o público vai receber.
+
+Na aba "Jeito de falar" dá para ajustar o tom e trocar a mensagem de
+boas-vindas. Tom é só jeito de falar; informação vai nas perguntas e respostas.
+
+---
+
 ## 6. Se algo der errado no meio
 
 | Sintoma | Causa provável | O que fazer |
@@ -201,6 +225,7 @@ contador laranja na barra lateral mostra quantas estão na mão da equipe.
 | Resposta sem graça, genérica | OpenAI fora do ar ou sem crédito | O sistema cai no texto fixo de propósito, para nunca deixar ninguém sem resposta |
 | Bot não responde ninguém | A conversa foi assumida e não devolvida | Abra a aba Atendimento e clique em Devolver ao ChatBob |
 | Não consigo enviar pelo painel | Conversa sem mensagem recebida, ou passou de 24h | O painel explica o motivo no próprio campo de escrita |
+| Bot responde errado uma pergunta | Falta gatilho na base | Abra `/chatbob`, teste a frase e acrescente o jeito de perguntar que falhou |
 
 Os logs em produção ficam no Coolify, em cada serviço: `web` para recebimento e
 `worker` para classificação e envio.

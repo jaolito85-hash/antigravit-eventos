@@ -3,6 +3,7 @@
 import unittest
 from unittest import mock
 
+import server
 import worker
 from worker import _extract_sector, process_inbox
 
@@ -68,10 +69,11 @@ def _message(**overrides):
 
 class WorkerTests(unittest.TestCase):
     def setUp(self):
-        # Nenhum teste toca a rede: a resposta criativa e o enriquecimento de
-        # categoria ficam desligados, então sobra o texto determinístico.
+        # Nenhum teste toca a rede. A decisão do bot mora no server, então é
+        # lá que a resposta criativa e o enriquecimento de categoria ficam
+        # desligados, sobrando o texto determinístico.
         for target in ("generate_ai_response", "classificar_com_ia"):
-            patcher = mock.patch.object(worker, target, lambda *a, **k: None)
+            patcher = mock.patch.object(server, target, lambda *a, **k: None)
             patcher.start()
             self.addCleanup(patcher.stop)
 
