@@ -1218,6 +1218,160 @@ def get_ai_pulse():
     
     return jsonify(result)
 
+# --- ATENDIMENTO HUMANO (handon / handoff) ---
+
+# A conversa e identificada pelo hash HMAC do remetente. O telefone fica no
+# servidor: e usado para enfileirar o envio e nunca sai nas respostas da API.
+
+MAX_OPERATOR_MESSAGE = 900
+
+
+def _conversation_payload(sender_hash):
+    """Monta a conversa com o estado de atendimento para o painel."""
+
+    thread = EVENT_STORE.conversation_thread(sender_hash)
+    thread["conversationId"] = sender_hash
+    thread["participant"] = sender_hash[:12]
+    return thread
+
+
+@app.route("/api/conversations")
+@login_required
+def list_conversations():
+    """Lista as conversas do evento, com quem está em atendimento humano no topo."""
+
+    feedbacks = get_feedbacks()
+    modes = EVENT_STORE.conversation_modes()
+
+    agrupadas = {}
+    for fb in feedbacks:
+        sender_hash = fb.get("sender_hash")
+        if not sender_hash:
+            continue
+        item = agrupadas.setdefault(sender_hash, {
+            "conversationId": sender_hash,
+            "participant": sender_hash[:12],
+            "total": 0,
+            "open": 0,
+            "worst": "Positivo",
+            "lastAt": None,
+            "lastMessage": None,
+            "region": None,
+            "mode": modes.get(sender_hash, "bot"),
+        })
+        item["total"] += 1
+        if (fb.get("status") or "aberto") != "resolvido":
+            item["open"] += 1
+        if _URGENCY_RANK.get(fb.get("urgency"), 0) > _URGENCY_RANK.get(item["worst"], 0):
+            item["worst"] = fb.get("urgency")
+        ts = fb.get("updated_at") or fb.get("timestamp")
+        if ts and (item["lastAt"] is None or ts > item["lastAt"]):
+            item["lastAt"] = ts
+            item["lastMessage"] = (fb.get("message") or "")[:160]
+            item["region"] = fb.get("region")
+
+    conversas = sorted(
+        agrupadas.values(),
+        key=lambda c: (
+            c["mode"] != "human",
+            -_URGENCY_RANK.get(c["worst"], 0),
+            c["lastAt"] or "",
+        ),
+    )
+    return jsonify({
+        "conversations": conversas,
+        "humanCount": sum(1 for c in conversas if c["mode"] == "human"),
+    })
+
+
+@app.route("/api/conversations/by-feedback/<int:feedback_id>")
+@login_required
+def conversation_by_feedback(feedback_id):
+    """Abre a conversa a partir de um chamado clicado no dashboard."""
+
+    try:
+        sender_hash = EVENT_STORE.sender_hash_for_feedback(feedback_id)
+    except Exception as e:
+        logger.error("Falha ao resolver conversa: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+    if not sender_hash:
+        return jsonify({"error": "not_found"}), 404
+    return jsonify(_conversation_payload(sender_hash))
+
+
+@app.route("/api/conversations/<conversation_id>")
+@login_required
+def conversation_detail(conversation_id):
+    """Histórico da conversa nos dois sentidos."""
+
+    try:
+        return jsonify(_conversation_payload(conversation_id))
+    except Exception as e:
+        logger.error("Falha ao carregar conversa: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+
+
+@app.route("/api/conversations/<conversation_id>/mode", methods=["PUT"])
+@login_required
+def conversation_mode_route(conversation_id):
+    """Assume o atendimento (human) ou devolve ao ChatBob (bot)."""
+
+    mode = (request.get_json(silent=True) or {}).get("mode")
+    if mode not in ("bot", "human"):
+        return jsonify({"error": "modo inválido"}), 400
+
+    operator = os.getenv("ADMIN_USER") or "operador"
+    try:
+        EVENT_STORE.set_conversation_mode(conversation_id, mode, operator)
+    except Exception as e:
+        logger.error("Falha ao trocar modo da conversa: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+
+    logger.info("Atendimento alterado | modo=%s", mode)
+    if mode == "human":
+        # Avisa o participante para ele não achar que falou com o vazio.
+        try:
+            EVENT_STORE.enqueue_operator_message(
+                conversation_id,
+                "👋 Aqui é a equipe da Tropicadelia assumindo a conversa. "
+                "Pode falar direto comigo!",
+            )
+        except Exception as e:
+            logger.error("Falha ao avisar troca de atendimento: %s", type(e).__name__)
+
+    return jsonify({"success": True, "mode": mode})
+
+
+@app.route("/api/conversations/<conversation_id>/message", methods=["POST"])
+@login_required
+def conversation_send(conversation_id):
+    """Enfileira a mensagem escrita no painel; o worker entrega pela Meta."""
+
+    content = ((request.get_json(silent=True) or {}).get("content") or "").strip()
+    if not content:
+        return jsonify({"error": "mensagem vazia"}), 400
+    if len(content) > MAX_OPERATOR_MESSAGE:
+        return jsonify({"error": "mensagem muito longa"}), 400
+
+    try:
+        mode = EVENT_STORE.conversation_mode(conversation_id)
+        if mode != "human":
+            return jsonify({
+                "error": "assuma o atendimento antes de responder",
+            }), 409
+        enviado = EVENT_STORE.enqueue_operator_message(conversation_id, content)
+    except Exception as e:
+        logger.error("Falha ao enfileirar mensagem do operador: %s", type(e).__name__)
+        return jsonify({"error": "unavailable"}), 503
+
+    if not enviado:
+        return jsonify({
+            "error": "Esta conversa não tem mensagem recebida pelo WhatsApp, "
+                     "então não há número para responder.",
+        }), 404
+    return jsonify({"success": True})
+
+
 @app.route("/api/export/csv")
 @login_required
 def export_csv():

@@ -58,6 +58,32 @@ fica sem resposta por causa disso.
 | Foto, vídeo, documento | Pede texto ou áudio. Não cria card. |
 | Menos de 3 caracteres ou só emoji | Convida a contar o que aconteceu. Não cria card. |
 | Quarta mensagem do mesmo número em 10 min | Pede para aguardar. Limite compartilhado via banco, não memória. |
+| Qualquer mensagem, com a conversa assumida por um operador | Registra o chamado normalmente e **não envia nada**. Quem responde é a pessoa, pelo painel. O limite de mensagens também não se aplica. |
+
+## Atendimento humano (handon e handoff)
+
+Todo chamado no painel tem o botão **Conversar**, e a aba **Atendimento** lista
+as conversas. Ali o operador pode:
+
+- **Assumir atendimento (handon):** a conversa passa para o modo `human`. O
+  participante recebe um aviso de que a equipe entrou, e o ChatBob para de
+  responder aquela pessoa. O chamado continua entrando no dashboard e no mapa,
+  só a resposta automática deixa de sair.
+- **Devolver ao ChatBob (handoff):** volta para o modo `bot` e o automático
+  reassume na mensagem seguinte.
+
+O estado vive em `conversation_handoff`, uma linha por conversa, identificada
+pelo hash HMAC do remetente. O telefone nunca sai do servidor: o painel fala
+com a conversa pelo hash e quem resolve o número é o `EventStore` ao enfileirar
+o envio.
+
+Dois limites que o painel avisa na tela:
+
+- Conversa sem mensagem recebida pelo WhatsApp não tem número para responder.
+  É o caso dos registros de demonstração, que nascem direto em `feedbacks`.
+- A Meta só entrega texto livre até 24 horas depois da última mensagem do
+  participante. Fora dessa janela o envio pode falhar até a pessoa escrever
+  de novo.
 
 ## Níveis de urgência
 

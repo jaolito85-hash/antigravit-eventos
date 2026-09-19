@@ -8,16 +8,22 @@ from worker import _extract_sector, process_inbox
 
 
 class FakeStore:
-    def __init__(self):
+    def __init__(self, mode="bot"):
         self.feedback = None
         self.response = None
         self.finished = None
         self.failed = None
+        self.mode = mode
+        self.rate_checked = False
 
     def claim_inbox(self, _message):
         return True
 
+    def conversation_mode(self, _sender_hash):
+        return self.mode
+
     def recent_sender_count(self, _sender_hash):
+        self.rate_checked = True
         return 1
 
     def sector_by_code(self, code):
@@ -164,6 +170,64 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.finished, "ignored")
         self.assertIn("Palco Tropical", store.response[1])
         self.assertIn("som", store.response[1])
+
+    # ------------------------------------------------------------------
+    # Atendimento humano: o bot registra e cala a boca
+    # ------------------------------------------------------------------
+
+    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    def test_operador_no_comando_registra_sem_responder(self, _mock_ia):
+        """Com o operador na conversa, o chamado entra mas nada e enviado."""
+
+        store = FakeStore(mode="human")
+
+        process_inbox(store, _message(content="a fila do bar travou de novo"))
+
+        self.assertIsNone(store.failed)
+        self.assertEqual(store.finished, "processed")
+        self.assertIsNotNone(store.feedback)
+        self.assertEqual(store.feedback["urgency"], "Urgente")
+        # O participante esta falando com uma pessoa: nada de resposta do bot.
+        self.assertIsNone(store.response)
+
+    def test_operador_no_comando_nao_manda_boas_vindas(self):
+        store = FakeStore(mode="human")
+
+        process_inbox(store, _message(content="oi"))
+
+        self.assertIsNone(store.feedback)
+        self.assertEqual(store.finished, "ignored")
+        self.assertIsNone(store.response)
+
+    def test_operador_no_comando_nao_manda_convite_do_setor(self):
+        store = FakeStore(mode="human")
+
+        conteudo = "#SETOR:PALCO" + chr(10)
+        process_inbox(store, _message(content=conteudo))
+
+        self.assertIsNone(store.feedback)
+        self.assertIsNone(store.response)
+
+    def test_operador_no_comando_ignora_o_limite_de_mensagens(self):
+        """Quem esta conversando com a equipe pode escrever a vontade."""
+
+        store = FakeStore(mode="human")
+        store.recent_sender_count = lambda _h: 99
+
+        process_inbox(store, _message(content="obrigado pela ajuda de voces"))
+
+        self.assertEqual(store.finished, "processed")
+        self.assertIsNone(store.response)
+
+    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    def test_bot_volta_a_responder_quando_devolvem_a_conversa(self, _mock_ia):
+        store = FakeStore(mode="bot")
+
+        process_inbox(store, _message(content="a fila do bar travou de novo"))
+
+        self.assertEqual(store.finished, "processed")
+        self.assertIsNotNone(store.response)
+        self.assertIn("destacamos", store.response[1])
 
     def test_video_pede_texto_ou_audio(self):
         store = FakeStore()

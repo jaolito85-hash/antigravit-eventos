@@ -803,6 +803,284 @@
             gap: 12px;
         }
 
+        /* ===== ATENDIMENTO: LISTA E CHAT ===== */
+        .conv-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+            gap: 14px;
+        }
+
+        .conv-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--tone);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .conv-card:hover {
+            border-color: var(--accent-primary);
+            transform: translateY(-1px);
+        }
+
+        .conv-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .conv-who {
+            font-size: 0.86rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .conv-mode {
+            font-size: 0.64rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .conv-mode.human {
+            background: rgba(255, 107, 44, 0.16);
+            color: #ff8a55;
+            border: 1px solid rgba(255, 107, 44, 0.5);
+        }
+
+        .conv-mode.bot {
+            background: rgba(59, 130, 246, 0.12);
+            color: #7aa7f7;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+        }
+
+        .conv-msg {
+            font-size: 0.85rem;
+            color: #cbd2dd;
+            line-height: 1.45;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 36px;
+        }
+
+        .conv-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 11px;
+            border-top: 1px solid var(--border);
+            font-size: 0.73rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* ---------- Painel de chat ---------- */
+        .chat-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 94%;
+            max-width: 680px;
+            height: 86vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideIn 0.22s ease-out;
+        }
+
+        .chat-head {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .chat-title {
+            font-size: 1rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .chat-sub {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .chat-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-handoff {
+            border: none;
+            border-radius: 8px;
+            padding: 9px 15px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+        }
+
+        .btn-handoff.take {
+            background: var(--accent-primary);
+            color: #fff;
+        }
+
+        .btn-handoff.release {
+            background: transparent;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: #7aa7f7;
+        }
+
+        .btn-handoff:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .chat-stream {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+            background: #07080c;
+        }
+
+        .bubble {
+            max-width: 78%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 0.89rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .bubble-meta {
+            font-size: 0.65rem;
+            margin-top: 6px;
+            opacity: 0.65;
+            font-weight: 600;
+        }
+
+        /* Participante a esquerda, nos a direita, como em qualquer mensageiro */
+        .bubble.in {
+            align-self: flex-start;
+            background: #1b1e27;
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .bubble.out-bot {
+            align-self: flex-end;
+            background: rgba(59, 130, 246, 0.14);
+            border: 1px solid rgba(59, 130, 246, 0.32);
+            border-bottom-right-radius: 4px;
+        }
+
+        .bubble.out-operator {
+            align-self: flex-end;
+            background: rgba(255, 107, 44, 0.16);
+            border: 1px solid rgba(255, 107, 44, 0.42);
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-compose {
+            border-top: 1px solid var(--border);
+            padding: 13px 16px;
+            flex-shrink: 0;
+            background: var(--bg-card);
+        }
+
+        .chat-warn {
+            font-size: 0.76rem;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 9px;
+            padding: 9px 12px;
+            margin-bottom: 11px;
+            line-height: 1.45;
+        }
+
+        .chat-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 10px;
+            padding: 11px 13px;
+            font-family: inherit;
+            font-size: 0.89rem;
+            resize: none;
+            min-height: 44px;
+            max-height: 130px;
+            line-height: 1.45;
+        }
+
+        .chat-input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .chat-input:disabled {
+            opacity: 0.5;
+        }
+
+        .btn-send {
+            background: var(--accent-primary);
+            color: #fff;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+        }
+
+        .btn-send:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .chat-hint {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
         /* ===== MAPA AO VIVO (GÊMEO DIGITAL) ===== */
         .map-shell {
             display: grid;
@@ -1500,6 +1778,9 @@
         <div class="nav-item" onclick="nav('feedbacks', this)"><i class="ri-chat-3-line"></i> Feedbacks
             <span class="nav-badge hidden" id="nav-badge-open">0</span>
         </div>
+        <div class="nav-item" onclick="nav('conversas', this)"><i class="ri-customer-service-2-line"></i> Atendimento
+            <span class="nav-badge hidden" id="nav-badge-human" style="background:#ff6b2c">0</span>
+        </div>
 
         <div class="nav-label">ANÁLISE</div>
         <div class="nav-item" onclick="nav('regions', this)"><i class="ri-map-pin-line"></i> Regiões</div>
@@ -1672,6 +1953,27 @@
         </div>
     </div>
 
+    <!-- ATENDIMENTO VIEW -->
+    <div class="main hidden" id="view-conversas">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>Atendimento</h1>
+                <p>Assuma a conversa para falar você mesmo com o participante</p>
+            </div>
+            <div class="filters-bar" style="margin:0">
+                <select id="filtro-conversa" class="filter-select" onchange="loadConversas()">
+                    <option value="">Todas as conversas</option>
+                    <option value="human">Em atendimento humano</option>
+                    <option value="bot">No ChatBob</option>
+                    <option value="abertos">Com chamado em aberto</option>
+                </select>
+            </div>
+        </div>
+        <div class="conv-list" id="conv-list">
+            <p style="color:var(--text-muted)">Carregando conversas...</p>
+        </div>
+    </div>
+
     <!-- FEEDBACKS VIEW -->
     <div class="main hidden" id="view-feedbacks">
         <div class="page-header">
@@ -1800,6 +2102,7 @@
 
             if (view === 'dashboard') loadData();
             if (view === 'mapa') loadMapa();
+            if (view === 'conversas') loadConversas();
             if (view === 'feedbacks') {
                 document.getElementById('filtro-status').value = 'ativos';
                 aplicarFiltros();
@@ -2379,6 +2682,243 @@
         }
 
 
+        // ===================== ATENDIMENTO =====================
+        // O operador tira a conversa do bot, responde ele mesmo e devolve
+        // quando terminar. Enquanto estiver com ele, o worker fica calado.
+        let _chatId = null;
+        let _chatTimer = null;
+
+        async function loadConversas() {
+            const box = document.getElementById('conv-list');
+            let data = { conversations: [], humanCount: 0 };
+            try {
+                const res = await fetch('/api/conversations');
+                data = await res.json();
+            } catch (err) {
+                console.error('Erro ao carregar conversas:', err);
+                box.innerHTML = '<p style="color:var(--text-muted)">Não foi possível carregar as conversas.</p>';
+                return;
+            }
+
+            atualizarBadgeHumano(data.humanCount);
+
+            const filtro = document.getElementById('filtro-conversa')?.value || '';
+            let lista = data.conversations;
+            if (filtro === 'human') lista = lista.filter(c => c.mode === 'human');
+            if (filtro === 'bot') lista = lista.filter(c => c.mode !== 'human');
+            if (filtro === 'abertos') lista = lista.filter(c => c.open > 0);
+
+            if (!lista.length) {
+                box.innerHTML = '<p style="color:var(--text-muted)">Nenhuma conversa neste filtro.</p>';
+                return;
+            }
+
+            box.innerHTML = lista.map(c => {
+                const tone = urgencyTone(c.worst);
+                const modo = c.mode === 'human'
+                    ? '<span class="conv-mode human"><i class="ri-user-voice-line"></i> Você atende</span>'
+                    : '<span class="conv-mode bot"><i class="ri-robot-2-line"></i> ChatBob</span>';
+                return `<div class="conv-card" style="--tone:${tone}" data-conversation="${escHtml(c.conversationId)}">
+                    <div class="conv-top">
+                        <span class="conv-who"><i class="ri-user-3-line"></i> Participante ${escHtml(c.participant)}</span>
+                        ${modo}
+                    </div>
+                    <div class="conv-msg">${escHtml(c.lastMessage || 'Sem mensagens')}</div>
+                    <div class="conv-foot">
+                        <span><i class="ri-map-pin-line"></i> ${escHtml(c.region || 'Sem setor')}</span>
+                        <span>${c.open} em aberto · ${escHtml(formatarTempo(c.lastAt))}</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            wireDrill(box, 'data-conversation', openChat);
+        }
+
+        function atualizarBadgeHumano(total) {
+            const badge = document.getElementById('nav-badge-human');
+            if (!badge) return;
+            badge.innerText = total || 0;
+            badge.classList.toggle('hidden', !total);
+        }
+
+        function closeChat() {
+            document.getElementById('chat-overlay').classList.add('hidden');
+            clearInterval(_chatTimer);
+            _chatTimer = null;
+            _chatId = null;
+        }
+
+        // Abre por conversa ou a partir de um chamado do dashboard.
+        async function openChat(conversationId) {
+            _chatId = conversationId;
+            renderChat({ messages: [], mode: 'bot', carregando: true });
+            document.getElementById('chat-overlay').classList.remove('hidden');
+            await refreshChat();
+
+            clearInterval(_chatTimer);
+            // A pessoa pode responder enquanto o painel está aberto.
+            _chatTimer = setInterval(refreshChat, 7000);
+        }
+
+        async function openChatByFeedback(feedbackId) {
+            try {
+                const res = await fetch('/api/conversations/by-feedback/' + feedbackId);
+                if (!res.ok) {
+                    alert('Não foi possível abrir a conversa deste chamado.');
+                    return;
+                }
+                const data = await res.json();
+                closeDrill();
+                _chatId = data.conversationId;
+                document.getElementById('chat-overlay').classList.remove('hidden');
+                renderChat(data);
+                clearInterval(_chatTimer);
+                _chatTimer = setInterval(refreshChat, 7000);
+            } catch (err) {
+                console.error('Erro ao abrir conversa:', err);
+            }
+        }
+
+        async function refreshChat() {
+            if (!_chatId) return;
+            try {
+                const res = await fetch('/api/conversations/' + encodeURIComponent(_chatId));
+                if (!res.ok) return;
+                renderChat(await res.json());
+            } catch (err) {
+                console.error('Erro ao atualizar conversa:', err);
+            }
+        }
+
+        function renderChat(data) {
+            const humano = data.mode === 'human';
+            const podeEscrever = humano && data.hasContact !== false;
+            const box = document.getElementById('chat-box');
+            const anterior = document.getElementById('chat-input')?.value || '';
+
+            const bolhas = (data.messages || []).map(m => {
+                if (m.direction === 'in') {
+                    return `<div class="bubble in">${escHtml(m.content || '[' + (m.type || 'mídia') + ']')}
+                        <div class="bubble-meta">Participante · ${escHtml(formatarTempo(m.at))}</div></div>`;
+                }
+                const operador = m.origin === 'operator';
+                const entrega = m.status && m.status !== 'sent' && m.status !== 'delivered' && m.status !== 'read'
+                    ? ' · ' + escHtml(m.status)
+                    : '';
+                return `<div class="bubble ${operador ? 'out-operator' : 'out-bot'}">${escHtml(m.content)}
+                    <div class="bubble-meta">${operador ? 'Você' : 'ChatBob'} · ${escHtml(formatarTempo(m.at))}${entrega}</div></div>`;
+            }).join('');
+
+            const vazio = data.carregando
+                ? '<p style="color:var(--text-muted); text-align:center; margin:auto">Carregando conversa...</p>'
+                : '<p style="color:var(--text-muted); text-align:center; margin:auto">Nenhuma mensagem nesta conversa.</p>';
+
+            // Dois impedimentos diferentes: nao ter contato e estar fora da
+            // janela de 24h que a Meta exige para texto livre.
+            const semContato = data.hasContact === false;
+            const foraDaJanela = data.canReply === false && !semContato;
+            let aviso = '';
+            if (!humano) {
+                aviso = `<div class="chat-warn"><i class="ri-robot-2-line"></i> O ChatBob está respondendo
+                   esta conversa. Assuma o atendimento para escrever você mesmo.</div>`;
+            } else if (semContato) {
+                aviso = `<div class="chat-warn"><i class="ri-error-warning-line"></i> Esta conversa não tem
+                   mensagem recebida pelo WhatsApp, então não existe número para responder. É o caso dos
+                   registros de demonstração.</div>`;
+            } else if (foraDaJanela) {
+                aviso = `<div class="chat-warn"><i class="ri-time-line"></i> Passaram mais de 24 horas desde a
+                   última mensagem do participante. A Meta não entrega texto livre fora dessa janela, então o
+                   envio pode falhar até a pessoa escrever de novo.</div>`;
+            }
+
+            box.innerHTML = `
+                <div class="chat-head">
+                    <div>
+                        <div class="chat-title"><i class="ri-whatsapp-line" style="color:#25D366"></i>
+                            Participante ${escHtml(data.participant || '')}</div>
+                        <div class="chat-sub">${humano
+                            ? 'Você assumiu esta conversa. O bot está calado.'
+                            : 'Respondida automaticamente pelo ChatBob.'}</div>
+                    </div>
+                    <div class="chat-actions">
+                        ${humano
+                            ? `<button class="btn-handoff release" onclick="trocarAtendimento('bot')">
+                                   <i class="ri-robot-2-line"></i> Devolver ao ChatBob</button>`
+                            : `<button class="btn-handoff take" onclick="trocarAtendimento('human')">
+                                   <i class="ri-user-voice-line"></i> Assumir atendimento</button>`}
+                        <button class="drill-close" onclick="closeChat()">&times;</button>
+                    </div>
+                </div>
+                <div class="chat-stream" id="chat-stream">${bolhas || vazio}</div>
+                <div class="chat-compose">
+                    ${aviso}
+                    <div class="chat-row">
+                        <textarea class="chat-input" id="chat-input" rows="1"
+                            placeholder="${podeEscrever ? 'Escreva para o participante...' : (humano ? 'Sem número para responder' : 'Assuma o atendimento para responder')}"
+                            ${podeEscrever ? '' : 'disabled'}
+                            onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); enviarMensagem();}"
+                        >${escHtml(anterior)}</textarea>
+                        <button class="btn-send" onclick="enviarMensagem()" ${podeEscrever ? '' : 'disabled'}
+                            title="Enviar (Enter)"><i class="ri-send-plane-fill"></i></button>
+                    </div>
+                    <div class="chat-hint">Enter envia, Shift e Enter pula linha. A mensagem sai pelo número
+                        oficial do festival.</div>
+                </div>`;
+
+            const stream = document.getElementById('chat-stream');
+            if (stream) stream.scrollTop = stream.scrollHeight;
+        }
+
+        async function trocarAtendimento(mode) {
+            if (!_chatId) return;
+            if (mode === 'bot' && !confirm('Devolver esta conversa para o ChatBob responder automaticamente?')) return;
+            try {
+                const res = await fetch('/api/conversations/' + encodeURIComponent(_chatId) + '/mode', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode })
+                });
+                if (!res.ok) {
+                    const erro = await res.json().catch(() => ({}));
+                    alert(erro.error || 'Não foi possível trocar o atendimento.');
+                    return;
+                }
+            } catch (err) {
+                console.error('Erro ao trocar atendimento:', err);
+                return;
+            }
+            await refreshChat();
+            loadConversas();
+        }
+
+        async function enviarMensagem() {
+            const input = document.getElementById('chat-input');
+            if (!input || !_chatId) return;
+            const content = input.value.trim();
+            if (!content) return;
+
+            input.disabled = true;
+            try {
+                const res = await fetch('/api/conversations/' + encodeURIComponent(_chatId) + '/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                if (!res.ok) {
+                    const erro = await res.json().catch(() => ({}));
+                    alert(erro.error || 'Não foi possível enviar a mensagem.');
+                    input.disabled = false;
+                    return;
+                }
+                input.value = '';
+            } catch (err) {
+                console.error('Erro ao enviar:', err);
+                input.disabled = false;
+                return;
+            }
+            await refreshChat();
+        }
+
         // ===================== PAINEL DE DETALHE =====================
         // O mapa sozinho so diz que algo esta vermelho. Aqui o operador
         // chega na mensagem, no numero e na acao, sem sair da tela.
@@ -2484,6 +3024,10 @@
                         ${extra}
                         <div class="drill-item-foot">
                             <span class="drill-item-where"><i class="ri-price-tag-3-line"></i> ${escHtml(e.category || 'Geral')}</span>
+                            <div style="display:flex; gap:8px; align-items:center">
+                            <button class="drill-btn ghost" style="padding:5px 11px; font-size:0.76rem"
+                                onclick="openChatByFeedback(${e.id})" title="Falar com quem enviou">
+                                <i class="ri-whatsapp-line"></i> Conversar</button>
                             ${acionavel
                                 ? `<select class="filter-select" style="min-width:150px; padding:5px 9px; font-size:0.78rem; border-color:${sc.color}; color:${sc.color}"
                                 onchange="drillChangeStatus(${e.id}, this.value)">
@@ -2491,7 +3035,8 @@
                                 <option value="em_andamento" ${e.status === 'em_andamento' ? 'selected' : ''}>Em Andamento</option>
                                 <option value="resolvido" ${e.status === 'resolvido' ? 'selected' : ''}>Resolvido</option>
                             </select>`
-                                : `<span class="drill-item-time"><i class="ri-checkbox-blank-circle-line" style="color:${tone}"></i> sem ação necessária</span>`}
+                                : `<span class="drill-item-time"><i class="ri-checkbox-blank-circle-line" style="color:${tone}"></i> sem ação</span>`}
+                            </div>
                         </div>
                     </div>`;
                 }).join('');
@@ -2653,7 +3198,7 @@
         }
 
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') closeDrill();
+            if (e.key === 'Escape') { closeDrill(); closeChat(); }
         });
 
         // Charts
@@ -2916,6 +3461,8 @@
         loadTopInsights();
         popularFiltrosCategorias(); // Popular dropdown de categorias
         popularFiltroSetores();
+        // O badge de atendimento humano precisa aparecer em qualquer aba.
+        loadConversas();
         setInterval(() => { loadData(); loadTopInsights(); }, 5000);
 
         // ========== SISTEMA DE ALERTAS CRÍTICOS ==========
@@ -3015,8 +3562,10 @@
             const regionsVisible = !document.getElementById('view-regions').classList.contains('hidden');
             const categoriesVisible = !document.getElementById('view-categories').classList.contains('hidden');
             const mapaVisible = !document.getElementById('view-mapa').classList.contains('hidden');
+            const conversasVisible = !document.getElementById('view-conversas').classList.contains('hidden');
 
             if (mapaVisible) loadMapa();
+            if (conversasVisible) loadConversas();
             if (dashboardVisible) {
                 console.log('[AUTO-REFRESH] Atualizando dashboard...');
                 loadData();
@@ -3035,6 +3584,13 @@
         // Close thread modal on Esc
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeThreadModal(); });
     </script>
+
+    <!-- Chat com o participante -->
+    <div id="chat-overlay" class="modal-overlay hidden" onclick="if(event.target===this) closeChat()">
+        <div class="chat-box" id="chat-box">
+            <!-- Preenchido por openChat() -->
+        </div>
+    </div>
 
     <!-- Painel de Detalhe (drill-down) -->
     <div id="drill-overlay" class="modal-overlay hidden" onclick="if(event.target===this) closeDrill()">

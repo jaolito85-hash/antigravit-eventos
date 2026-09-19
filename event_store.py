@@ -340,6 +340,232 @@ class EventStore:
             .execute()
         )
 
+    # ------------------------------------------------------------------
+    # Atendimento humano (handon / handoff)
+    # ------------------------------------------------------------------
+
+    def conversation_mode(self, sender_hash: str) -> str:
+        """Diz se a conversa está no bot ou com um operador.
+
+        Em qualquer falha devolve "bot": o pior cenário é o participante
+        receber uma resposta automática, nunca ficar sem resposta.
+        """
+
+        if not sender_hash:
+            return "bot"
+        try:
+            response = (
+                self._get_client()
+                .table("conversation_handoff")
+                .select("mode")
+                .eq("event_id", self.event_id())
+                .eq("sender_hash", sender_hash)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001 - indisponibilidade não pode calar o bot
+            logger.error("Falha ao ler modo da conversa: %s", type(exc).__name__)
+            return "bot"
+        if not response.data:
+            return "bot"
+        return str(response.data[0].get("mode") or "bot")
+
+    def set_conversation_mode(
+        self,
+        sender_hash: str,
+        mode: str,
+        operator: str | None = None,
+    ) -> dict[str, Any]:
+        """Assume (human) ou devolve ao bot, mantendo uma linha por conversa."""
+
+        if mode not in {"bot", "human"}:
+            raise ValueError("modo inválido")
+        now = datetime.now(timezone.utc).isoformat()
+        row = {
+            "event_id": self.event_id(),
+            "sender_hash": sender_hash,
+            "mode": mode,
+            "operator": (operator or None) if mode == "human" else None,
+            "taken_at": now if mode == "human" else None,
+            "released_at": now if mode == "bot" else None,
+            "updated_at": now,
+        }
+        response = (
+            self._get_client()
+            .table("conversation_handoff")
+            .upsert(row, on_conflict="event_id,sender_hash")
+            .execute()
+        )
+        return (response.data or [row])[0]
+
+    def conversation_modes(self) -> dict[str, str]:
+        """Modo de todas as conversas que já saíram do padrão."""
+
+        try:
+            response = (
+                self._get_client()
+                .table("conversation_handoff")
+                .select("sender_hash,mode,operator,taken_at")
+                .eq("event_id", self.event_id())
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Falha ao listar modos: %s", type(exc).__name__)
+            return {}
+        return {
+            str(row["sender_hash"]): str(row.get("mode") or "bot")
+            for row in (response.data or [])
+        }
+
+    def sender_hash_for_feedback(self, feedback_id: int) -> str | None:
+        """Resolve a conversa a partir de um chamado do dashboard."""
+
+        response = (
+            self._get_client()
+            .table("feedbacks")
+            .select("sender_hash")
+            .eq("event_id", self.event_id())
+            .eq("id", feedback_id)
+            .limit(1)
+            .execute()
+        )
+        if not response.data:
+            return None
+        return response.data[0].get("sender_hash")
+
+    def conversation_thread(self, sender_hash: str, limit: int = 100) -> dict[str, Any]:
+        """Monta a conversa nos dois sentidos, sem devolver o telefone.
+
+        O painel precisa ver o que o participante mandou e o que já foi
+        respondido, para o operador não repetir o que o bot acabou de dizer.
+        """
+
+        client = self._get_client()
+        event_id = self.event_id()
+
+        inbound = (
+            client.table("message_inbox")
+            .select("id,message_type,content,occurred_at,created_at,sender_name")
+            .eq("event_id", event_id)
+            .eq("sender_hash", sender_hash)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+
+        # A caixa de saída não guarda o hash, então o vínculo é o telefone,
+        # que fica só no servidor e nunca sai nesta resposta.
+        recipient = self._recipient_for(sender_hash)
+        outbound_rows: list[dict[str, Any]] = []
+        if recipient:
+            outbound = (
+                client.table("outbound_messages")
+                .select("id,content,origin,delivery_status,created_at,sent_at")
+                .eq("event_id", event_id)
+                .eq("recipient", recipient)
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            outbound_rows = list(outbound.data or [])
+
+        messages = [
+            {
+                "direction": "in",
+                "content": row.get("content"),
+                "type": row.get("message_type"),
+                "at": row.get("occurred_at") or row.get("created_at"),
+            }
+            for row in (inbound.data or [])
+        ] + [
+            {
+                "direction": "out",
+                "content": row.get("content"),
+                "origin": row.get("origin") or "bot",
+                "status": row.get("delivery_status"),
+                "at": row.get("sent_at") or row.get("created_at"),
+            }
+            for row in outbound_rows
+        ]
+        messages.sort(key=lambda m: m.get("at") or "")
+
+        last_inbound = max(
+            (m["at"] for m in messages if m["direction"] == "in" and m.get("at")),
+            default=None,
+        )
+        return {
+            "messages": messages,
+            "mode": self.conversation_mode(sender_hash),
+            "lastInboundAt": last_inbound,
+            # Sem telefone conhecido nao existe para quem enviar. Acontece com
+            # a massa de demonstracao, que nasce direto na tabela de feedbacks.
+            "hasContact": recipient is not None,
+            "canReply": self._within_service_window(last_inbound),
+        }
+
+    def _recipient_for(self, sender_hash: str) -> str | None:
+        """Telefone do participante, usado só para enfileirar o envio."""
+
+        response = (
+            self._get_client()
+            .table("message_inbox")
+            .select("sender,channel_account_id")
+            .eq("event_id", self.event_id())
+            .eq("sender_hash", sender_hash)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if not response.data:
+            return None
+        return response.data[0].get("sender")
+
+    @staticmethod
+    def _within_service_window(last_inbound_at: str | None) -> bool:
+        """A Meta só aceita texto livre até 24h após a última mensagem recebida."""
+
+        if not last_inbound_at:
+            return False
+        try:
+            moment = datetime.fromisoformat(str(last_inbound_at).replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) - moment < timedelta(hours=24)
+
+    def enqueue_operator_message(self, sender_hash: str, content: str) -> bool:
+        """Enfileira uma mensagem escrita no painel; o worker faz o envio."""
+
+        response = (
+            self._get_client()
+            .table("message_inbox")
+            .select("sender,channel_account_id")
+            .eq("event_id", self.event_id())
+            .eq("sender_hash", sender_hash)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if not response.data:
+            return False
+        contact = response.data[0]
+
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+        row = {
+            "event_id": self.event_id(),
+            "provider": "meta",
+            "channel_account_id": contact["channel_account_id"],
+            "recipient": contact["sender"],
+            "message_type": "text",
+            "content": content[:4096],
+            "origin": "operator",
+            "idempotency_key": f"operator:{sender_hash[:24]}:{stamp}",
+            "delivery_status": "queued",
+        }
+        self._get_client().table("outbound_messages").insert(row).execute()
+        return True
+
     def pending_outbox(self, limit: int = 20) -> list[dict[str, Any]]:
         """Busca respostas prontas para envio."""
 

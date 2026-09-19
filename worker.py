@@ -193,11 +193,17 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
     if not store.claim_inbox(message):
         return
     try:
-        if store.recent_sender_count(str(message.get("sender_hash") or "")) > 3:
-            store.enqueue_text(
-                message,
-                "Você já enviou várias mensagens recentes. Aguarde alguns minutos antes de tentar novamente.",
-            )
+        sender_hash = str(message.get("sender_hash") or "")
+        # Operador no comando: o chamado ainda entra no dashboard, mas quem
+        # fala com o participante e a pessoa, nao o bot.
+        atendimento_humano = store.conversation_mode(sender_hash) == "human"
+
+        if not atendimento_humano and store.recent_sender_count(sender_hash) > 3:
+            if not atendimento_humano:
+                store.enqueue_text(
+                    message,
+                    "Você já enviou várias mensagens recentes. Aguarde alguns minutos antes de tentar novamente.",
+                )
             store.finish_inbox(str(message["id"]), "ignored")
             return
 
@@ -211,18 +217,20 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 raw_content = transcript
                 transcribed = True
             else:
-                store.enqueue_text(
-                    message,
-                    "🎤 Não consegui entender seu áudio agora. "
-                    "Pode tentar de novo ou escrever em texto?",
-                )
+                if not atendimento_humano:
+                    store.enqueue_text(
+                        message,
+                        "🎤 Não consegui entender seu áudio agora. "
+                        "Pode tentar de novo ou escrever em texto?",
+                    )
                 store.finish_inbox(str(message["id"]), "ignored")
                 return
         elif message_type != "text":
-            store.enqueue_text(
-                message,
-                "Por enquanto, envie sua mensagem em texto ou áudio 🎤 para conseguirmos encaminhá-la corretamente.",
-            )
+            if not atendimento_humano:
+                store.enqueue_text(
+                    message,
+                    "Por enquanto, envie sua mensagem em texto ou áudio 🎤 para conseguirmos encaminhá-la corretamente.",
+                )
             store.finish_inbox(str(message["id"]), "ignored")
             return
 
@@ -233,12 +241,14 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             welcome = WELCOME_MESSAGE
             if sector:
                 welcome += f"\n\n{_sector_prompt(sector)}"
-            store.enqueue_text(message, welcome)
+            if not atendimento_humano:
+                store.enqueue_text(message, welcome)
             store.finish_inbox(str(message["id"]), "ignored")
             return
 
         if len(content) < 3 or is_emoji_only(content):
-            store.enqueue_text(message, _sector_prompt(sector))
+            if not atendimento_humano:
+                store.enqueue_text(message, _sector_prompt(sector))
             store.finish_inbox(str(message["id"]), "ignored")
             return
 
@@ -252,13 +262,21 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             topic=_topic(content, category, urgency),
             sector_id=str(sector["id"]) if sector else None,
         )
-        store.enqueue_text(
-            message,
-            _compose_reply(content, category, urgency, sector, transcribed),
-            feedback_id,
-        )
+        if not atendimento_humano:
+            store.enqueue_text(
+                message,
+                _compose_reply(content, category, urgency, sector, transcribed),
+                feedback_id,
+            )
         store.finish_inbox(str(message["id"]))
-        logger.info("Mensagem processada com sucesso | prioridade=%s", urgency)
+        if atendimento_humano:
+            logger.info(
+                "Chamado registrado sem resposta automatica | prioridade=%s", urgency
+            )
+        else:
+            logger.info(
+                "Mensagem processada com sucesso | prioridade=%s", urgency
+            )
     except Exception as exc:  # noqa: BLE001 - failed jobs must be persisted for retry
         logger.error("Falha ao processar mensagem | erro=%s", type(exc).__name__)
         store.fail_inbox(message, exc)

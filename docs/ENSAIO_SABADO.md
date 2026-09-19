@@ -159,6 +159,27 @@ Atenção ao limite: o rate limit corta a partir de 4 mensagens do mesmo número
 
 ---
 
+## 5.1. Assumir a conversa na frente do organizador
+
+Esse é o momento que mostra que não é só um robô. Depois de mandar um relato do
+celular:
+
+1. No painel, abra o chamado (pelo pin do mapa ou pela aba Feedbacks) e clique
+   em **Conversar**.
+2. Clique em **Assumir atendimento**. O celular recebe na hora: *"Aqui é a
+   equipe da Tropicadelia assumindo a conversa. Pode falar direto comigo!"*
+3. Escreva do painel e mostre a mensagem chegando no celular. Suas mensagens
+   aparecem em laranja, as do bot em azul.
+4. Mande outra mensagem do celular e mostre que **o bot não responde mais**:
+   o chamado entra no dashboard, mas quem fala é você.
+5. Clique em **Devolver ao ChatBob** e mande mais uma do celular. O automático
+   volta a responder.
+
+A aba **Atendimento** lista todas as conversas, com as assumidas no topo, e o
+contador laranja na barra lateral mostra quantas estão na mão da equipe.
+
+---
+
 ## 6. Se algo der errado no meio
 
 | Sintoma | Causa provável | O que fazer |
@@ -168,6 +189,8 @@ Atenção ao limite: o rate limit corta a partir de 4 mensagens do mesmo número
 | Pin não acende | Mensagem foi enviada sem a tag `#SETOR:` | Gere o QR de novo pelo `/qrcode` com o setor selecionado |
 | Telão sem atualizar | Sessão expirou | Recarregue e entre de novo |
 | Resposta sem graça, genérica | OpenAI fora do ar ou sem crédito | O sistema cai no texto fixo de propósito, para nunca deixar ninguém sem resposta |
+| Bot não responde ninguém | A conversa foi assumida e não devolvida | Abra a aba Atendimento e clique em Devolver ao ChatBob |
+| Não consigo enviar pelo painel | Conversa sem mensagem recebida, ou passou de 24h | O painel explica o motivo no próprio campo de escrita |
 
 Os logs em produção ficam no Coolify, em cada serviço: `web` para recebimento e
 `worker` para classificação e envio.

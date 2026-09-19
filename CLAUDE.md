@@ -59,6 +59,8 @@ Siga as 3 camadas do `AGENTE.md`:
 - Roteamento determinístico por setor através da tag `#SETOR:CODIGO` do QR Code
 - Telão da sala de controle (`/telao`) com a planta aérea 3D e alerta crítico em tela cheia
 - Mapa ao Vivo, dashboard com filtros, exportação CSV/JSON
+- Atendimento humano: o operador assume a conversa pelo painel, fala direto com o
+  participante e devolve ao bot quando terminar
 - Relatório pós-evento com resumo executivo e desempenho por setor
 - Autenticação por sessão (ADMIN_USER / ADMIN_PASS)
 

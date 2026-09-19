@@ -11,6 +11,7 @@ Uso:
 
 from __future__ import annotations
 
+import hashlib
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -145,7 +146,9 @@ def seed() -> None:
             "event_id": event_id,
             "sector_id": sector["id"],
             "sender": None,
-            "sender_hash": f"demo-{index:03d}",
+            # Hash de 64 caracteres como o HMAC real, senao a tabela de
+            # atendimento recusa a conversa pela restricao de tamanho.
+            "sender_hash": hashlib.sha256(f"demo-{index:03d}".encode()).hexdigest(),
             "name": "Anônimo",
             "message": message,
             "category": category,
