@@ -9,7 +9,7 @@ from io import StringIO
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, session, redirect
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import Counter, defaultdict
 from typing import Any
 from event_store import EventStore
@@ -31,6 +31,10 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Momento em que este processo subiu. Serve para saber se um deploy entrou:
+# sem isso não há como distinguir código novo de container antigo ainda no ar.
+PROCESS_STARTED_AT = datetime.now(timezone.utc).isoformat()
 
 REQUIRED_PRODUCTION_ENV = (
     "SUPABASE_URL",
@@ -1238,6 +1242,7 @@ def health():
         "status": "ok" if database_ok and configuration_ok else "degraded",
         "configuration": "ok" if configuration_ok else "incomplete",
         "database": "ok" if database_ok else "unavailable",
+        "started_at": PROCESS_STARTED_AT,
     }), 200 if database_ok and configuration_ok else 503
 
 

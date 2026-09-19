@@ -4,10 +4,47 @@ Roteiro operacional para o teste com o organizador. Siga na ordem.
 
 ---
 
-## 0. Bloqueador: três credenciais da Meta estão vazias
+## 0. Bloqueador de hoje: recebe, classifica e não consegue responder
 
-Verificado no `.env` local em 18/09/2026. Sem elas o bot **não funciona**, então
-resolva isso antes de qualquer outra coisa:
+Verificado em produção em 19/09/2026. O que está de pé e o que não está:
+
+| Etapa | Estado |
+|---|---|
+| Site, banco e `/health` | ok, HTTP 200 com `configuration: ok` |
+| Recebimento pelo webhook | ok, as 6 mensagens reais entraram e validaram assinatura |
+| Worker e classificação | ok, processou cada uma em 3 a 10 segundos |
+| **Envio da resposta** | **falha**, nenhuma das 7 respostas foi aceita pela Meta |
+
+As 7 tentativas de envio, de 15/09 a 19/09, morreram depois de 8 tentativas cada
+sem receber ID de mensagem da Meta. A cronologia elimina as suspeitas óbvias:
+
+- **Não é a janela de 24 horas.** Cada resposta foi tentada de 1 a 6 segundos
+  depois da mensagem do participante entrar, com a janela escancarada.
+- **Não é token vazio.** O worker constrói o cliente da Meta antes do laço: com
+  a variável vazia ele morreria no start, e ele processou o inbox normalmente.
+- **Não é `META_APP_SECRET` nem `META_PHONE_NUMBER_ID`.** O recebimento valida
+  a assinatura HMAC e o ID do número, e o recebimento funciona.
+- **Não é regressão.** Nunca funcionou nenhuma vez, nem na primeira mensagem de
+  15/09. É condição permanente de configuração da conta na Meta.
+
+Sobraram quatro causas, todas do lado da conta, e o código da Graph API separa
+uma da outra. Com a correção de 19/09 esse código aparece no próprio chamado,
+no painel, em vez de ficar escondido em log de container:
+
+| Código no chamado | Causa | Onde resolver |
+|---|---|---|
+| `code 131030` | O número de destino não está na lista de destinatários de teste, e o app está em modo de desenvolvimento. Recebe de qualquer número, envia só para os cadastrados. | Meta → WhatsApp → Configuração da API → "Para", adicionar número. É a causa mais provável. |
+| `code 190` ou HTTP 401 | Token vencido ou do tipo errado, por exemplo token temporário de 24 horas em vez do permanente do usuário do sistema. | Meta → Usuários do sistema → gerar token permanente com `whatsapp_business_messaging`. |
+| HTTP 403 | Token sem a permissão de envio. | Mesma tela, conferir as permissões do token. |
+| `code 133010` | O número do bot não foi registrado na Cloud API. | Meta → WhatsApp → Configuração da API → registrar o número. |
+
+Para descobrir qual é: mande um `oi` do celular para o número do bot e abra o
+chamado no painel. A resposta vai falhar, e o motivo fica escrito ali.
+
+### As três credenciais que fazem o bot existir
+
+Hoje estão preenchidas em produção e vazias no `.env` local. Se algum dia o
+`/health` voltar a devolver 503, é uma destas:
 
 | Variável | O que quebra se ficar vazia |
 |---|---|
@@ -222,11 +259,11 @@ boas-vindas. Tom é só jeito de falar; informação vai nas perguntas e respost
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
 | Mensagem enviada e nada aparece | Webhook rejeitado por assinatura | Confira `META_APP_SECRET` e o log do web: procure "assinatura inválida" |
-| Card aparece mas o bot não responde | Worker parado ou token vencido | Veja o log do worker: procure "Falha ao enviar resposta" |
+| Card aparece mas o bot não responde | Envio recusado pela Meta | Abra o chamado no painel: o estado de entrega da resposta traz o código da Graph API. Compare com a tabela da seção 0 |
 | Pin não acende | Mensagem foi enviada sem a tag `#SETOR:` | Gere o QR de novo pelo `/qrcode` com o setor selecionado |
 | Telão sem atualizar | Sessão expirou | Recarregue e entre de novo |
 | Resposta sem graça, genérica | OpenAI fora do ar ou sem crédito | O sistema cai no texto fixo de propósito, para nunca deixar ninguém sem resposta |
-| Bot não responde ninguém | A conversa foi assumida e não devolvida | Abra a aba Atendimento e clique em Devolver ao ChatBob |
+| Bot não responde uma pessoa só | A conversa foi assumida e não devolvida | Em Chamados, ligue o filtro "Só em atendimento humano", abra a conversa e clique em Devolver ao ChatBob |
 | Não consigo enviar pelo painel | Conversa sem mensagem recebida, ou passou de 24h | O painel explica o motivo no próprio campo de escrita |
 | Bot responde errado uma pergunta | Falta gatilho na base | Abra `/chatbob`, teste a frase e acrescente o jeito de perguntar que falhou |
 
