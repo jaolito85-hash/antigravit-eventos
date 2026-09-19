@@ -77,12 +77,21 @@ class WorkerTests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
+        # A conversa por IA também sai do caminho. O patch vai no worker, que é
+        # quem chama a função: o nome foi importado para o namespace dele.
+        smalltalk = mock.patch.object(
+            worker, "compose_smalltalk", lambda _c: "BOAS-VINDAS DO CHATBOB"
+        )
+        smalltalk.start()
+        self.addCleanup(smalltalk.stop)
+
     def test_extract_sector_marker(self):
         code, content = _extract_sector("#SETOR:PALCO\nBanheiro sujo")
         self.assertEqual(code, "PALCO")
         self.assertEqual(content, "Banheiro sujo")
 
-    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "relato", "urgencia": "Urgente"})
     def test_falta_de_estoque_vai_para_a_ia(self, mock_ia):
         store = FakeStore()
 
@@ -95,7 +104,8 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.feedback["category"], "Alimentação & Bebidas")
         self.assertIn("destacamos", store.response[1])
 
-    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "relato", "urgencia": "Urgente"})
     def test_frase_incomum_ainda_passa_pela_ia(self, mock_ia):
         store = FakeStore()
         content = "no camarote ninguem consegue mais beber o que pediu"
@@ -105,7 +115,7 @@ class WorkerTests(unittest.TestCase):
         mock_ia.assert_called_once_with(content)
         self.assertEqual(store.feedback["urgency"], "Urgente")
 
-    @mock.patch("server.classificar_sentimento_ia", return_value=None)
+    @mock.patch("server.triar_mensagem_ia", return_value=None)
     def test_palavras_chave_assumem_quando_a_ia_cai(self, _mock_ia):
         """Com a OpenAI fora do ar, um relato de falta não pode virar Neutro."""
 
@@ -116,7 +126,8 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.finished, "processed")
         self.assertEqual(store.feedback["urgency"], "Urgente")
 
-    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "relato", "urgencia": "Urgente"})
     def test_processa_texto_com_setor(self, _mock_ia):
         store = FakeStore()
 
@@ -137,7 +148,8 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.finished, "ignored")
         self.assertIn("texto", store.response[1])
 
-    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "relato", "urgencia": "Urgente"})
     def test_audio_com_media_id_e_transcrito(self, _mock_ia):
         store = FakeStore()
 
@@ -153,15 +165,18 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.feedback["urgency"], "Urgente")
         self.assertIn("áudio", store.response[1])
 
-    def test_saudacao_recebe_boas_vindas_sem_criar_card(self):
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "conversa", "urgencia": "Neutro"})
+    def test_conversa_recebe_resposta_sem_criar_card(self, _mock_ia):
+        """A IA disse que e conversa: responde e nao entra na fila de trabalho."""
+
         store = FakeStore()
 
         process_inbox(store, _message(content="Oi!"))
 
         self.assertIsNone(store.feedback)
         self.assertEqual(store.finished, "ignored")
-        self.assertIn("ChatBob", store.response[1])
-        self.assertIn("Tropicadelia", store.response[1])
+        self.assertIn("CHATBOB", store.response[1])
 
     def test_scan_de_qr_sem_texto_responde_o_convite_do_setor(self):
         store = FakeStore()
@@ -177,7 +192,8 @@ class WorkerTests(unittest.TestCase):
     # Atendimento humano: o bot registra e cala a boca
     # ------------------------------------------------------------------
 
-    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "relato", "urgencia": "Urgente"})
     def test_operador_no_comando_registra_sem_responder(self, _mock_ia):
         """Com o operador na conversa, o chamado entra mas nada e enviado."""
 
@@ -192,7 +208,9 @@ class WorkerTests(unittest.TestCase):
         # O participante esta falando com uma pessoa: nada de resposta do bot.
         self.assertIsNone(store.response)
 
-    def test_operador_no_comando_nao_manda_boas_vindas(self):
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "conversa", "urgencia": "Neutro"})
+    def test_operador_no_comando_nao_manda_boas_vindas(self, _mock_ia):
         store = FakeStore(mode="human")
 
         process_inbox(store, _message(content="oi"))
@@ -201,7 +219,8 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.finished, "ignored")
         self.assertIsNone(store.response)
 
-    def test_operador_no_comando_nao_manda_convite_do_setor(self):
+    @mock.patch("server.triar_mensagem_ia", return_value=None)
+    def test_operador_no_comando_nao_manda_convite_do_setor(self, _mock_ia):
         store = FakeStore(mode="human")
 
         conteudo = "#SETOR:PALCO" + chr(10)
@@ -210,7 +229,9 @@ class WorkerTests(unittest.TestCase):
         self.assertIsNone(store.feedback)
         self.assertIsNone(store.response)
 
-    def test_operador_no_comando_ignora_o_limite_de_mensagens(self):
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "relato", "urgencia": "Positivo"})
+    def test_operador_no_comando_ignora_o_limite_de_mensagens(self, _mock_ia):
         """Quem esta conversando com a equipe pode escrever a vontade."""
 
         store = FakeStore(mode="human")
@@ -221,7 +242,8 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.finished, "processed")
         self.assertIsNone(store.response)
 
-    @mock.patch("server.classificar_sentimento_ia", return_value="Urgente")
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "relato", "urgencia": "Urgente"})
     def test_bot_volta_a_responder_quando_devolvem_a_conversa(self, _mock_ia):
         store = FakeStore(mode="bot")
 

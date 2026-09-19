@@ -441,8 +441,20 @@ def _chat_completion_kwargs(messages, max_output_tokens: int, temperature: float
     return kwargs
 
 
-def classificar_sentimento_ia(texto):
-    """Classifica pelo sentido da mensagem, sem depender de palavras previstas."""
+TIPOS_MENSAGEM = ("conversa", "relato")
+URGENCIAS = ("Critico", "Urgente", "Positivo", "Neutro")
+
+
+def triar_mensagem_ia(texto):
+    """Uma chamada decide o tipo e a urgência da mensagem.
+
+    Tipo separa conversa de relato, que é o que evita a fila de trabalho
+    encher de "oi, tudo bem". Isso é julgamento de linguagem, então quem
+    decide é a IA: lista de palavras em português não cobre a gíria de
+    festival. Devolve None se a IA estiver fora, e aí o chamador usa o
+    caminho determinístico.
+    """
+
     client = _openai_chat_client()
     if not client:
         return None
@@ -450,14 +462,24 @@ def classificar_sentimento_ia(texto):
     try:
         system = (
             "Você tria mensagens de WhatsApp de um festival. "
-            "Interprete o SENTIDO, não procure palavras-chave. "
-            "Qualquer relato de problema operacional (falta de item, fila, sujeira, "
-            "quebra, atraso, preço abusivo, reclamação, risco) NUNCA é Neutro. "
-            "Responda com UMA palavra: Critico, Urgente, Positivo ou Neutro.\n"
-            "Critico = emergência, violência, acidente, risco à vida.\n"
-            "Urgente = problema ou reclamação que a operação precisa resolver.\n"
-            "Positivo = elogio, gratidão, satisfação.\n"
-            "Neutro = SOMENTE pergunta, saudação ou comentário sem problema."
+            "Interprete o SENTIDO, não procure palavras-chave.\n\n"
+            "Responda APENAS com JSON: {\"tipo\": \"...\", \"urgencia\": \"...\"}\n\n"
+            "tipo = conversa quando a pessoa só cumprimenta, agradece, se despede, "
+            "puxa assunto ou testa o canal, sem informar nada e sem perguntar nada "
+            "que a produção precise responder. Exemplos: \"oi\", \"salve, tudo bem?\", "
+            "\"qual foi\", \"tmj\", \"obrigado!\", \"tchau\", \"teste\".\n"
+            "tipo = relato quando a mensagem diz ALGO sobre o evento: estrutura, "
+            "atendimento, atração, problema, pedido ou dúvida.\n"
+            "ELOGIO É SEMPRE relato, nunca conversa, porque conta na satisfação "
+            "do festival. \"show incrível\", \"amei o palco\" e \"a comida tá ótima\" "
+            "são relato com urgencia Positivo.\n"
+            "Cumprimento MAIS conteúdo é relato: \"bom dia, faltou cerveja\".\n"
+            "Na dúvida entre os dois, escolha relato.\n\n"
+            "urgencia = Critico para emergência, violência, acidente ou risco à vida.\n"
+            "urgencia = Urgente para problema ou reclamação que a operação precisa "
+            "resolver, incluindo falta de item, fila, sujeira, quebra e atraso.\n"
+            "urgencia = Positivo para elogio, gratidão e satisfação.\n"
+            "urgencia = Neutro para pergunta, informação ou conversa sem problema."
         )
         response = client.chat.completions.create(
             **_chat_completion_kwargs(
@@ -465,20 +487,60 @@ def classificar_sentimento_ia(texto):
                     {"role": "system", "content": system},
                     {"role": "user", "content": texto},
                 ],
-                max_output_tokens=32,
+                max_output_tokens=64,
             )
         )
-        result = (response.choices[0].message.content or "").strip()
-        valid = ["Critico", "Urgente", "Positivo", "Neutro"]
-        for v in valid:
-            if v.lower() in result.lower():
-                logger.info("Classificação de sentimento concluída | resultado=%s", v)
-                return v
-        logger.warning("Resposta inesperada da IA de sentimento, usando fallback")
+        bruto = (response.choices[0].message.content or "").strip()
+        if bruto.startswith("```"):
+            bruto = bruto.split("```")[1]
+            if bruto.startswith("json"):
+                bruto = bruto[4:]
+
+        dados = json.loads(bruto)
+        tipo = str(dados.get("tipo", "")).strip().lower()
+        urgencia = str(dados.get("urgencia", "")).strip()
+
+        if tipo not in TIPOS_MENSAGEM:
+            tipo = "relato"
+        escolhida = next(
+            (u for u in URGENCIAS if u.lower() == urgencia.lower()),
+            None,
+        )
+        if not escolhida:
+            logger.warning("Urgência inesperada da IA, usando fallback")
+            return None
+
+        logger.info("Triagem concluída | tipo=%s urgencia=%s", tipo, escolhida)
+        return {"tipo": tipo, "urgencia": escolhida}
+    except (ValueError, KeyError, TypeError):
+        logger.warning("JSON inesperado na triagem, usando fallback")
         return None
     except Exception:
-        logger.exception("Falha na IA de sentimento, usando fallback")
+        logger.exception("Falha na triagem por IA, usando fallback")
         return None
+
+
+def classificar_sentimento_ia(texto):
+    """Só a urgência, para quem não precisa do tipo."""
+
+    resultado = triar_mensagem_ia(texto)
+    return resultado["urgencia"] if resultado else None
+
+
+def triar_mensagem(texto):
+    """Triagem com IA e caminho determinístico de reserva.
+
+    Com a IA fora, o tipo sai do vocabulário de cortesia e a urgência das
+    palavras-chave. É pior, mas ninguém fica sem resposta.
+    """
+
+    resultado = triar_mensagem_ia(texto)
+    if resultado:
+        return resultado
+    return {
+        "tipo": "conversa" if _is_greeting(texto) else "relato",
+        "urgencia": classificar_sentimento(texto),
+    }
 
 
 def classificar_urgencia(texto: str) -> str:
@@ -878,14 +940,65 @@ SECTOR_PATTERN = re.compile(
     flags=re.IGNORECASE,
 )
 
-# Saudações puras não viram card no dashboard: recebem as boas-vindas do bot.
-GREETING_PATTERN = re.compile(
-    r"^\s*(?:oi+e?|ol[aá]+|opa+|eae+|e\s*a[ií]|salve|fala+|hey+|hi+|hello+|hola+|"
-    r"bom\s*dia|boa\s*tarde|boa\s*noite|good\s*(?:morning|evening|night)|"
-    r"come[çc]ar|start|menu|ajuda|help)"
-    r"[\s!.,?~^0-9]*$",
-    flags=re.IGNORECASE,
+# Saudação e agradecimento não viram card: são conversa, não informação
+# operacional. A regra é de vocabulário, não de frase exata, porque no festival
+# a pessoa escreve "oi tudo bem", "salve galera", "boa noite pessoal".
+CUMPRIMENTOS = {
+    "oi", "oie", "oii", "oiii", "ola", "opa", "opaa", "eae", "eai", "salve",
+    "fala", "hey", "hei", "hi", "hello", "hola", "alo", "alow", "yo",
+    "menu", "ajuda", "help", "start", "comecar", "iniciar",
+}
+
+# Agradecimento e despedida também são conversa, não chamado.
+CORTESIAS = {
+    "obrigado", "obrigada", "obrigadao", "brigado", "brigada", "valeu", "vlw",
+    "tchau", "falou", "abraco", "abracos", "bjs", "beijos",
+    "tudo", "bem", "bom", "boa", "td", "tb", "beleza", "blz", "suave",
+    "firmeza", "tranquilo", "tranquila", "boaa", "como", "vai", "esta", "estao",
+    "voce", "voces", "vc", "vcs", "ai", "la", "de", "e",
+    "pessoal", "galera", "gente", "time", "equipe", "amigo", "amiga", "amigos",
+    "mocada", "rapaziada", "povo", "chatbob", "bot", "por", "favor", "pfv",
+    "dia", "tarde", "noite", "sim", "nao", "ok", "okay", "certo",
+}
+
+# Cumprimentos de duas palavras: a checagem por token isolado nao pega "bom
+# dia" nem "e ai", porque nenhuma das palavras sozinha e um cumprimento.
+CUMPRIMENTOS_COMPOSTOS = (
+    "bom dia", "boa tarde", "boa noite", "boa madrugada",
+    "e ai", "e ae", "fala ai", "fala tu", "tudo bem", "tudo bom",
+    "como vai", "como vao", "beleza ai",
 )
+
+GREETING_MAX_LENGTH = 60
+
+
+def _is_greeting(content: str) -> bool:
+    """Diz se a mensagem é só cumprimento, agradecimento ou cortesia.
+
+    Basta uma palavra fora do vocabulário, como "banheiro" ou "perdi", para a
+    mensagem deixar de ser saudação e virar chamado.
+    """
+
+    if not content or len(content) > GREETING_MAX_LENGTH:
+        return False
+
+    # Normaliza e quebra em palavras, descartando pontuação e números.
+    limpo = _normalize(content)
+    palavras = [p for p in re.split(r"[^a-z]+", limpo) if p]
+    if not palavras:
+        return False
+
+    AGRADECIMENTOS = {"obrigado", "obrigada", "obrigadao", "valeu", "vlw",
+                      "brigado", "brigada", "tchau", "falou"}
+    tem_cumprimento = (
+        any(p in CUMPRIMENTOS or p in AGRADECIMENTOS for p in palavras)
+        or any(frase in limpo for frase in CUMPRIMENTOS_COMPOSTOS)
+    )
+    if not tem_cumprimento:
+        return False
+
+    return all(p in CUMPRIMENTOS or p in CORTESIAS for p in palavras)
+
 
 WELCOME_MESSAGE = (
     "🌴🔥 Bem-vindo(a) ao *ChatBob*, o canal oficial da *Tropicadelia 2026*!\n\n"
@@ -916,12 +1029,6 @@ def welcome_text() -> str:
     except Exception:  # noqa: BLE001
         custom = None
     return custom or WELCOME_MESSAGE
-
-
-def _is_greeting(content: str) -> bool:
-    """Detecta um cumprimento sem relato para responder com as boas-vindas."""
-
-    return len(content) <= 40 and bool(GREETING_PATTERN.match(content))
 
 
 def _sector_prompt(sector: dict[str, Any] | None) -> str:
@@ -961,14 +1068,24 @@ def _reply(urgency: str) -> str:
         return "⚠️ Recebemos e destacamos sua mensagem para a equipe do evento. Obrigado por avisar!"
     if urgency == "Positivo":
         return "🎉 Que bom receber isso! Obrigado pelo feedback e aproveite o evento!"
-    return "✅ Mensagem recebida! Obrigado por ajudar a melhorar sua experiência no evento."
+    # Neutro costuma ser pergunta: não faz sentido agradecer por um relato
+    # que a pessoa não fez.
+    return (
+        "✅ Recebi sua mensagem! Se for uma dúvida, a equipe do evento responde por aqui. "
+        "Qualquer coisa, me chama de novo."
+    )
 
 
-def _classify(content: str, sector: dict[str, Any] | None) -> tuple[str, str, str]:
+def _classify(
+    content: str,
+    sector: dict[str, Any] | None,
+    urgency: str | None = None,
+) -> tuple[str, str, str]:
     """Classifica urgência, categoria e região com IA e fallback determinístico."""
 
-    # classificar_urgencia ja tenta a IA e cai em palavras-chave se ela falhar.
-    urgency = classificar_urgencia(content)
+    # Quando a triagem ja decidiu a urgencia, nao se paga outra chamada de IA.
+    if not urgency:
+        urgency = classificar_urgencia(content)
 
     category = classificar_categoria(content)
     region = str(sector["name"]) if sector else classificar_regiao(content)
@@ -985,6 +1102,58 @@ def _classify(content: str, sector: dict[str, Any] | None) -> tuple[str, str, st
                 region = enriched["regiao"]
 
     return urgency, category, region
+
+
+def compose_smalltalk(content: str) -> str:
+    """Responde um cumprimento no tom do bot, sem abrir chamado.
+
+    A pessoa só puxou assunto. O bot cumprimenta de volta e diz em uma linha
+    para que serve o canal. O texto de boas-vindas configurado no painel entra
+    quando a IA estiver fora, para ninguém ficar sem resposta.
+    """
+
+    convite = welcome_text()
+    client = _openai_chat_client()
+    if not client:
+        return convite
+
+    try:
+        system = (
+            "Você é o ChatBob, atendente animado da Tropicadelia 2026, festival "
+            "em Londrina. A pessoa só te cumprimentou ou agradeceu, não relatou "
+            "nada.\n"
+            "Responda em no máximo 2 frases curtas, no idioma da pessoa, com a "
+            "energia de quem trabalha nos bastidores do festival. Use 1 ou 2 "
+            "emojis.\n"
+            "Cumprimente de volta e diga em UMA linha que ela pode te mandar "
+            "problema, elogio ou dúvida do evento, por texto ou áudio, que você "
+            "leva para a equipe.\n"
+            "Nunca diga que é robô, IA ou sistema. Nunca peça Pix, senha ou "
+            "pagamento."
+        )
+        persona = (EVENT_STORE.bot_settings() or {}).get("persona")
+        if persona:
+            system += f"\n\nINSTRUÇÕES DOS ORGANIZADORES:\n{persona}"
+
+        response = client.chat.completions.create(
+            **_chat_completion_kwargs(
+                [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": content},
+                ],
+                max_output_tokens=120,
+                temperature=0.9,
+            )
+        )
+        reply = (response.choices[0].message.content or "").strip()
+        if reply.startswith('"') and reply.endswith('"'):
+            reply = reply[1:-1]
+        reply = re.sub(r"\*{2,}([^*]+)\*{2,}", r"*\1*", reply)
+        reply = re.sub(r"[*_]+[\s\u200b\u200c\u200d]*[*_]+", " ", reply)
+        return re.sub(r"[ \t]{2,}", " ", reply).strip() or convite
+    except Exception as exc:  # noqa: BLE001 - conversa nunca derruba o fluxo
+        logger.error("IA de conversa indisponível | erro=%s", type(exc).__name__)
+        return convite
 
 
 def _compose_reply(
@@ -1543,11 +1712,13 @@ def api_simulate():
         except Exception as e:
             logger.error("Falha ao resolver setor na simulação: %s", type(e).__name__)
 
-    if _is_greeting(content):
+    triagem = triar_mensagem(content)
+    if triagem["tipo"] == "conversa":
         return jsonify({
-            "reply": welcome_text(),
-            "kind": "saudacao",
-            "explain": "Saudação sem relato: o bot manda as boas-vindas e não abre chamado.",
+            "reply": compose_smalltalk(content),
+            "kind": "conversa",
+            "explain": "A IA entendeu que é só conversa, sem relato: o bot responde no tom "
+                       "dele e não abre chamado.",
             "sector": sector["name"] if sector else None,
             "createsCard": False,
         })
@@ -1561,7 +1732,7 @@ def api_simulate():
             "createsCard": False,
         })
 
-    urgency, category, region = _classify(content, sector)
+    urgency, category, region = _classify(content, sector, urgency=triagem["urgencia"])
     known = match_knowledge(content) if urgency != "Positivo" else None
     reply = _compose_reply(content, category, urgency, sector, False)
 

@@ -52,12 +52,13 @@ fica sem resposta por causa disso.
 | Chega | O que o worker faz |
 |---|---|
 | Só a tag do QR (`#SETOR:X`) | Responde com o nome do setor e o convite cadastrado em `metadata.cta`. Não cria card. |
-| Saudação (`oi`, `bom dia`, `menu`) | Manda as boas-vindas com a regra de ouro anti-golpe. Não cria card. |
 | Texto com relato | Classifica, cria o feedback, responde com jeito de gente citando o setor. |
 | Áudio | Baixa da Graph API em duas etapas, transcreve com Whisper e segue o fluxo de texto. Resposta começa com "Ouvi seu áudio". |
 | Foto, vídeo, documento | Pede texto ou áudio. Não cria card. |
 | Menos de 3 caracteres ou só emoji | Convida a contar o que aconteceu. Não cria card. |
 | Quarta mensagem do mesmo número em 10 min | Pede para aguardar. Limite compartilhado via banco, não memória. |
+| Saudação, agradecimento ou despedida, sem conteúdo do evento | A IA marca como `conversa`. O bot responde no tom dele e **não abre chamado**, para a fila de trabalho não encher de "oi, tudo bem". |
+| Cumprimento junto com conteúdo, como "bom dia, faltou cerveja" | A IA marca como `relato`. Abre chamado normalmente. |
 | Qualquer mensagem, com a conversa assumida por um operador | Registra o chamado normalmente e **não envia nada**. Quem responde é a pessoa, pelo painel. O limite de mensagens também não se aplica. |
 
 ## Chamados e Atendimento são coisas diferentes
@@ -133,6 +134,23 @@ horário do line-up. Crítico também não: ele tem protocolo fixo.
 O campo de tom de voz entra em toda resposta gerada pela IA e serve para o
 jeito de falar, não para informação. Informação vai nas perguntas e respostas,
 que é onde o operador controla o conteúdo.
+
+## Conversa ou relato: quem decide é a IA
+
+A mesma chamada de IA que define a urgência também diz se a mensagem é
+`conversa` ou `relato`. Isso é julgamento de linguagem, e lista de palavras em
+português não cobre a gíria de festival: "qual foi", "tmj", "eaew mano" e
+"cêis tão aí" não estão em lista nenhuma, mas a IA entende.
+
+Duas regras que precisam ficar de pé:
+
+- **Elogio é sempre relato**, nunca conversa, porque conta na satisfação do
+  evento e no relatório. "show incrível" abre chamado com urgência Positivo.
+- **Na dúvida, relato.** Perder um chamado é pior que ter um card a mais.
+
+Com a OpenAI fora, o tipo sai do vocabulário de cortesia em `_is_greeting` e a
+urgência das palavras-chave. É pior, e é de propósito: ninguém fica sem
+resposta por causa de uma indisponibilidade.
 
 ## Níveis de urgência
 

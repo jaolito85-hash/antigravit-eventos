@@ -13,15 +13,15 @@ from meta_whatsapp import MetaWhatsAppClient, download_media
 # O comportamento do bot vive no server para o simulador do painel usar
 # exatamente a mesma decisao que o WhatsApp recebe.
 from server import (
-    welcome_text,
     _classify,
     _compose_reply,
     _extract_sector,
-    _is_greeting,
     _sector_prompt,
     _topic,
+    compose_smalltalk,
     is_emoji_only,
     transcribe_audio,
+    triar_mensagem,
 )
 
 logging.basicConfig(
@@ -114,13 +114,18 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         sector_code, content = _extract_sector(raw_content)
         sector = store.sector_by_code(sector_code)
 
-        if _is_greeting(content):
-            welcome = welcome_text()
+        # A IA decide se isso e conversa ou relato; a lista de palavras do
+        # server so entra se ela estiver fora do ar.
+        triagem = triar_mensagem(content)
+
+        if triagem["tipo"] == "conversa":
+            resposta = compose_smalltalk(content)
             if sector:
-                welcome += f"\n\n{_sector_prompt(sector)}"
+                resposta += f"\n\n{_sector_prompt(sector)}"
             if not atendimento_humano:
-                store.enqueue_text(message, welcome)
+                store.enqueue_text(message, resposta)
             store.finish_inbox(str(message["id"]), "ignored")
+            logger.info("Conversa respondida sem abrir chamado")
             return
 
         if len(content) < 3 or is_emoji_only(content):
@@ -129,7 +134,9 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             store.finish_inbox(str(message["id"]), "ignored")
             return
 
-        urgency, category, region = _classify(content, sector)
+        urgency, category, region = _classify(
+            content, sector, urgency=triagem["urgencia"]
+        )
         feedback_id = store.create_feedback(
             message=message,
             content=content,
