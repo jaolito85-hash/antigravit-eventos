@@ -412,8 +412,8 @@
 
         .pin-core {
             position: relative;
-            width: 15px;
-            height: 15px;
+            width: 13px;
+            height: 13px;
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.9);
             background: var(--pin);
@@ -424,13 +424,27 @@
             font-weight: 800;
             color: #fff;
             font-family: 'Oxanium', sans-serif;
+            transition: width 0.2s, height 0.2s;
         }
+
+        /* Setor sem chamado aberto recua: com 36 pontos na planta, tratar
+           tranquilo e urgente do mesmo tamanho esconde justamente o urgente. */
+        .pin.is-quiet .pin-core {
+            width: 7px;
+            height: 7px;
+            border-width: 1px;
+            opacity: 0.5;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+        }
+
+        .pin:hover { z-index: 6; }
+        .pin:hover .pin-core { width: 17px; height: 17px; opacity: 1; }
 
         .pin-ring {
             position: absolute;
             top: 50%; left: 50%;
-            width: 15px;
-            height: 15px;
+            width: 13px;
+            height: 13px;
             border-radius: 50%;
             border: 2px solid var(--pin);
             transform: translate(-50%, -50%);
@@ -440,9 +454,30 @@
 
         .pin-ring.slow { animation-duration: 3.4s; }
 
+        /* A onda fica menor que antes (eram 64px): com 36 pinos, ondas grandes
+           se sobrepõem e a planta some atrás da animação. */
         @keyframes ripple {
-            0% { width: 15px; height: 15px; opacity: 0.85; }
-            100% { width: 64px; height: 64px; opacity: 0; }
+            0% { width: 13px; height: 13px; opacity: 0.8; }
+            100% { width: 40px; height: 40px; opacity: 0; }
+        }
+
+        /* O número de chamados vira selo no canto do pino. Antes não tinha
+           estilo nenhum e ficava solto, empurrando o próprio pino. */
+        .pin-count {
+            position: absolute;
+            left: 9px;
+            bottom: 7px;
+            min-width: 14px;
+            padding: 0 3px;
+            border-radius: 7px;
+            background: rgba(4, 4, 10, 0.92);
+            border: 1px solid currentColor;
+            font-family: 'Oxanium', sans-serif;
+            font-size: 0.56rem;
+            font-weight: 800;
+            line-height: 14px;
+            text-align: center;
+            pointer-events: none;
         }
 
         .pin.is-critical .pin-core { animation: throb 0.85s ease-in-out infinite; }
@@ -471,8 +506,85 @@
             transition: opacity 0.25s;
         }
 
+        /* Só o pino em alerta mostra o nome sozinho, e o resto aparece quando o
+           mouse está nele. Antes o hover no quadro acendia os 36 de uma vez. */
         .pin.is-hot .pin-label { opacity: 1; }
-        .map-frame:hover .pin-label { opacity: 1; }
+        .pin:hover .pin-label { opacity: 1; z-index: 7; }
+
+        /* ===================== MODO SÓ A PLANTA =====================
+           Para o telão do projetor: esconde cabeçalho, KPIs e coluna lateral,
+           e a planta ocupa a tela inteira. Tudo continua clicável. */
+        body.only-map .topbar,
+        body.only-map .kpis,
+        body.only-map .rail,
+        body.only-map .panel-head { display: none; }
+
+        body.only-map .stage {
+            padding: 0;
+            gap: 0;
+            grid-template-rows: 1fr;
+        }
+
+        body.only-map .content { grid-template-columns: 1fr; }
+
+        body.only-map .panel {
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+        }
+
+        /* A faixa de macrozonas sai e a planta fica centralizada: no projetor o
+           que se olha é o mapa, e as zonas continuam no painel normal. */
+        body.only-map .zone-strip { display: none; }
+
+        body.only-map .map-wrap {
+            padding: 0;
+            justify-content: center;
+        }
+
+        body.only-map .map-frame {
+            border-radius: 0;
+            box-shadow: none;
+            /* Amplia para a área que tem pino de verdade, que vai de 7% a 63%
+               na horizontal e de 19% a 93% na vertical. O ganho fica limitado
+               pela altura (1 / 0.82), senão o zoom corta pino. A escala é no
+               quadro inteiro, com imagem e pinos juntos, então o alinhamento
+               que foi medido continua valendo. */
+            transform: scale(1.2);
+            transform-origin: 35% 56%;
+        }
+
+        body.only-map .map-wrap { overflow: hidden; }
+
+        /* A planta fica maior, então o pino acompanha, senão ele vira um ponto
+           perdido no meio do mapa. */
+        body.only-map .pin-core { width: 17px; height: 17px; }
+        body.only-map .pin.is-quiet .pin-core { width: 9px; height: 9px; }
+        body.only-map .pin-label { font-size: 0.7rem; top: 24px; }
+        body.only-map .pin-count { font-size: 0.64rem; left: 12px; }
+
+        /* Botão de voltar, único jeito de sair do modo sem adivinhar tecla. */
+        .exit-only-map {
+            position: fixed;
+            top: 14px;
+            right: 16px;
+            z-index: 40;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 14px;
+            border-radius: 10px;
+            background: rgba(4, 4, 10, 0.82);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            backdrop-filter: blur(6px);
+        }
+
+        body.only-map .exit-only-map { display: flex; }
+        .exit-only-map:hover { border-color: var(--accent); color: var(--accent); }
 
         .map-legend {
             position: absolute;
@@ -1100,6 +1212,10 @@
 </head>
 
 <body>
+    <button class="exit-only-map" onclick="toggleOnlyMap()">
+        <i class="ri-close-line"></i> Sair da planta cheia
+    </button>
+
     <div class="stage">
         <!-- ================= TOPBAR ================= -->
         <header class="topbar">
@@ -1115,6 +1231,7 @@
                 <div class="chip" id="chip-sync"><i class="ri-refresh-line"></i> <span id="sync-label">--</span></div>
                 <div class="chip button" id="chip-sound" onclick="toggleSound()"><i class="ri-volume-mute-line"
                         id="sound-icon"></i> <span id="sound-label">Som off</span></div>
+                <div class="chip button" onclick="toggleOnlyMap()"><i class="ri-layout-top-line"></i> Só a planta</div>
                 <div class="chip button" onclick="goFullscreen()"><i class="ri-fullscreen-line"></i> Telão</div>
                 <div class="clock" id="clock">--:--:--</div>
             </div>
@@ -1337,6 +1454,19 @@
         function goFullscreen() {
             if (document.fullscreenElement) document.exitFullscreen();
             else document.documentElement.requestFullscreen().catch(() => { });
+        }
+
+        // Só a planta: esconde cabeçalho, KPIs e coluna lateral, e pede tela
+        // cheia junto, porque a razão de existir do modo é o projetor.
+        function toggleOnlyMap() {
+            const ligando = !document.body.classList.contains('only-map');
+            document.body.classList.toggle('only-map', ligando);
+            if (ligando && !document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => { });
+            }
+            if (!ligando && document.fullscreenElement) {
+                document.exitFullscreen().catch(() => { });
+            }
         }
 
         // ===== Alerta crítico em tela cheia =====
@@ -1800,13 +1930,20 @@
                 const hot = ['Critico', 'Crítico', 'Urgente'].includes(sector.worst);
                 const isCritical = ['Critico', 'Crítico'].includes(sector.worst);
 
+                // Sem chamado aberto o pino recua: com 36 pontos, o que importa
+                // é achar os poucos que precisam de alguém agora.
+                const quiet = !(sector.open > 0);
+
                 const pin = document.createElement('div');
-                pin.className = 'pin' + (hot ? ' is-hot' : '') + (isCritical ? ' is-critical' : '');
+                pin.className = 'pin' + (hot ? ' is-hot' : '') + (isCritical ? ' is-critical' : '')
+                    + (quiet ? ' is-quiet' : '');
                 pin.style.left = sector.coord.x + '%';
                 pin.style.top = sector.coord.y + '%';
                 pin.style.setProperty('--pin', color);
 
-                const ring = sector.open > 0
+                // A onda pulsante fica reservada a urgente e crítico. Antes
+                // qualquer dúvida aberta pulsava, e 36 ondas escondem a planta.
+                const ring = hot
                     ? '<div class="pin-ring' + (isCritical ? '' : ' slow') + '"></div>'
                     : '';
                 const count = sector.open > 0
@@ -1954,9 +2091,15 @@
         }
 
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') { hideTakeover(); closeSheet(); closeTalk(); }
+            if (e.key === 'Escape') {
+                hideTakeover(); closeSheet(); closeTalk();
+                // Escape também devolve o painel inteiro, porque é a tecla que
+                // todo mundo aperta quando quer sair de alguma coisa.
+                if (document.body.classList.contains('only-map')) toggleOnlyMap();
+            }
             if (e.key.toLowerCase() === 'f') goFullscreen();
             if (e.key.toLowerCase() === 's') toggleSound();
+            if (e.key.toLowerCase() === 'p') toggleOnlyMap();
         });
 
         tickClock();

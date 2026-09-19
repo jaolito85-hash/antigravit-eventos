@@ -196,7 +196,12 @@ Atenção ao limite: o rate limit corta a partir de 4 mensagens do mesmo número
 
 ## 5. O que mostrar, na ordem
 
-1. **Telão** (`/telao`, tecla `F` para tela cheia). Deixe rodando no projetor.
+1. **Telão** (`/telao`). Deixe rodando no projetor. Tem dois modos:
+   o painel completo, com KPIs e coluna lateral, e o **Só a planta**, no
+   botão do topo ou tecla `P`, que esconde tudo e deixa a planta grande na
+   tela inteira. No modo planta cheia o mapa continua clicável, e `Escape`
+   ou o botão do canto devolvem o painel. Tecla `F` é a tela cheia do
+   navegador.
    É a peça de impacto: a planta aérea do Ney Braga com os pins pulsando, os
    cinco KPIs, o pulso da IA e as macrozonas. **Tudo ali é clicável e opera
    de verdade**, não é um cartaz:
