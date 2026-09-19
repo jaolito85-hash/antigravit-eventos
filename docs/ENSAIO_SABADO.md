@@ -27,19 +27,37 @@ sem receber ID de mensagem da Meta. A cronologia elimina as suspeitas óbvias:
 - **Não é regressão.** Nunca funcionou nenhuma vez, nem na primeira mensagem de
   15/09. É condição permanente de configuração da conta na Meta.
 
-Sobraram quatro causas, todas do lado da conta, e o código da Graph API separa
-uma da outra. Com a correção de 19/09 esse código aparece no próprio chamado,
-no painel, em vez de ficar escondido em log de container:
+### O que a Meta responde
 
-| Código no chamado | Causa | Onde resolver |
+Medido em 19/09/2026, depois de a instrumentação entrar em produção:
+
+```
+HTTP 500 | code 1 | An unknown error has occurred.
+```
+
+O `code 1` é o `API_UNKNOWN`: requisição fora dos requisitos do endpoint, ou
+instabilidade da Meta. Instabilidade está descartada, porque falha em 100% das
+tentativas, todo dia, desde 15/09.
+
+Também foi descartado, com medição:
+
+- **Não é o payload.** 143 caracteres, sem caractere de controle, ID do número
+  e destino só com dígitos, `type: text` como a documentação pede.
+- **Não é o nono dígito do destino.** O DDD 44 é do Paraná, e fora de SP, RJ e
+  ES o `wa_id` legítimo vem mesmo sem o 9. O código usa o `wa_id` que a Meta
+  entregou no webhook, que é o que a documentação manda fazer.
+- **Não é a versão da Graph API.** Depois de trocar para a v26.0, a tentativa
+  seguinte falhou com o mesmo erro.
+
+Sobraram duas causas, as duas dentro do painel da Meta:
+
+| Suspeita | Como confirmar | Onde resolver |
 |---|---|---|
-| `code 131030` | O número de destino não está na lista de destinatários de teste, e o app está em modo de desenvolvimento. Recebe de qualquer número, envia só para os cadastrados. | Meta → WhatsApp → Configuração da API → "Para", adicionar número. É a causa mais provável. |
-| `code 190` ou HTTP 401 | Token vencido ou do tipo errado, por exemplo token temporário de 24 horas em vez do permanente do usuário do sistema. | Meta → Usuários do sistema → gerar token permanente com `whatsapp_business_messaging`. |
-| HTTP 403 | Token sem a permissão de envio. | Mesma tela, conferir as permissões do token. |
-| `code 133010` | O número do bot não foi registrado na Cloud API. | Meta → WhatsApp → Configuração da API → registrar o número. |
+| Token do tipo errado. Um App Token no formato `id\|secret`, ou um temporário de 24 horas, se comporta assim: erro genérico em vez de 401. | `/api/debug` no painel, campo `meta_channel` | Meta → Usuários do sistema → token permanente com `whatsapp_business_messaging` |
+| Restrição na conta do WhatsApp Business, por exemplo número em modo de teste ou forma de pagamento pendente. | `meta_channel` responde `ok` e o envio continua falhando | Meta → WhatsApp → Configuração da API, e a aba de cobrança do WABA |
 
-Para descobrir qual é: mande um `oi` do celular para o número do bot e abra o
-chamado no painel. A resposta vai falhar, e o motivo fica escrito ali.
+O `/api/debug` é a ferramenta: ele pergunta à Meta se token e número estão de
+pé com uma leitura do próprio número, sem enviar mensagem para ninguém.
 
 ### As três credenciais que fazem o bot existir
 
