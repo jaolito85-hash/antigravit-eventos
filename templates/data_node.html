@@ -1196,7 +1196,9 @@
 
         .map-frame {
             position: relative;
-            aspect-ratio: 1024 / 915;
+            /* Proporção da arte oficial. Precisa bater com a imagem, senão a
+               planta distorce e os pinos saem do lugar que foi medido. */
+            aspect-ratio: 2800 / 2250;
             width: 100%;
             border-radius: 14px;
             overflow: hidden;
@@ -2005,7 +2007,7 @@
         <div class="page-header">
             <div class="page-title">
                 <h1>Mapa ao Vivo</h1>
-                <p>Gêmeo digital do Parque Ney Braga com os 26 pontos de escuta</p>
+                <p>Gêmeo digital do Parque Ney Braga com <span id="map-subtitle-count">os</span> pontos de escuta</p>
             </div>
             <a href="/telao" target="_blank" class="export-btn" style="text-decoration:none">
                 <i class="ri-tv-2-line"></i> Abrir no Telão
@@ -2014,7 +2016,7 @@
 
         <div class="map-shell">
             <div class="map-frame" id="dash-map-frame">
-                <img src="/static/planta-tropicadelia-3d.jpg" alt="Planta aérea da Tropicadelia 2026">
+                <img src="/static/planta-tropicadelia-oficial.jpg" alt="Planta oficial da Tropicadelia 2026">
                 <div class="map-grid-overlay"></div>
                 <div class="map-legend-bar">
                     <div class="legend-item"><span class="legend-swatch" style="background:#ef4444"></span> Crítico</div>
@@ -2842,6 +2844,10 @@
             document.getElementById('map-coverage').innerText = active + '/' + sectors.length;
             document.getElementById('map-coverage-sub').innerText =
                 sectors.length ? 'de ' + sectors.length + ' setores com movimento' : 'setores cadastrados';
+            // O número vem dos dados: escrito à mão, ele desatualiza a cada
+            // mudança de planta, e já desatualizou uma vez.
+            const subtitulo = document.getElementById('map-subtitle-count');
+            if (subtitulo) subtitulo.innerText = sectors.length ? 'os ' + sectors.length : 'os';
         }
 
 

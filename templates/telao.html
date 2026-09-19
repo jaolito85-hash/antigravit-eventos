@@ -289,7 +289,9 @@
 
         .map-frame {
             position: relative;
-            aspect-ratio: 1024 / 915;
+            /* Proporção da arte oficial. Precisa bater com a imagem, senão a
+               planta distorce e os pinos saem do lugar que foi medido. */
+            aspect-ratio: 2800 / 2250;
             height: 100%;
             flex-shrink: 0;
             border-radius: 12px;
@@ -1172,7 +1174,7 @@
                 </div>
                 <div class="map-wrap">
                     <div class="map-frame" id="map-frame">
-                        <img src="/static/planta-tropicadelia-3d.jpg" alt="Planta aérea da Tropicadelia 2026">
+                        <img src="/static/planta-tropicadelia-oficial.jpg" alt="Planta oficial da Tropicadelia 2026">
                         <div class="map-grid"></div>
                         <div class="map-scan"></div>
                         <div class="map-legend">

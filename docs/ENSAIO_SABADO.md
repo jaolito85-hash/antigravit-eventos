@@ -127,15 +127,14 @@ O botão "Verificar e salvar" só passa se o servidor estiver no ar.
 
 ## 2. Massa de demonstração para o telão não nascer vazio
 
-O banco hoje tem 6 feedbacks antigos, nenhum vinculado a setor, então o mapa
-começa apagado. Para o ensaio ficar apresentável:
+Sem massa de teste o mapa começa apagado. Para o ensaio ficar apresentável:
 
 ```bash
 python execution/seed_demo_tropicadelia.py
 ```
 
-Isso cria 28 feedbacks espalhados pelos setores reais nas últimas 5 horas, com
-mistura de elogios, urgências e 2 críticos. Cada registro leva
+Isso cria 30 feedbacks espalhados pelos setores da planta oficial nas últimas
+5 horas, com mistura de elogios, urgências e 2 críticos. Cada registro leva
 `source=manual` e `metadata.demo = true`.
 
 Para conferir o que existe:
@@ -161,7 +160,7 @@ Abra `/qrcode` e para cada setor:
 
 1. Nome do evento: `Tropicadelia 2026`
 2. Número do WhatsApp: o número oficial, formato `5543999999999`
-3. Setor da planta: escolha na lista (os 26 vêm do banco, agrupados por zona)
+3. Setor da planta: escolha na lista (vêm do banco, agrupados por zona)
 4. Gerar, depois "Baixar Cartaz"
 
 A mensagem sai como `#SETOR:CODIGO`. Essa tag é o contrato com o worker: é ela
@@ -172,7 +171,7 @@ Quando a pessoa escaneia e envia, o bot responde com o nome do setor e o convite
 cadastrado. Exemplo real do setor de sanitários:
 
 ```
-📍 Você está em *Sanitários Femininos • Palco Principal*!
+📍 Você está em *Sanitários Femininos • Palco Tropical*!
 Falta papel, sabonete ou fila travada? Avise nossa equipe.
 Pode mandar texto ou áudio 🎤
 ```

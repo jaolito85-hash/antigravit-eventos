@@ -21,7 +21,7 @@ event_store.py     — Persistência no Supabase (inbox, feedbacks, outbox, seto
 meta_whatsapp.py   — Integração com a Graph API (assinatura, parse, envio, mídia)
 templates/         — telao.html, data_node.html, relatorio.html, qrcode.html, login.html
 static/            — Logo, ícones, planta aérea 3D, manifest PWA
-supabase/migrations/ — Schema, RLS e os 26 setores da planta
+supabase/migrations/ — Schema, RLS e os setores da planta oficial
 execution/         — Scripts determinísticos de operação
 scripts/           — Verificação de banco e geração de documentos
 directives/        — event_monitor.md (SOP principal, leia antes de mexer no fluxo)
