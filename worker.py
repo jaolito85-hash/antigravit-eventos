@@ -200,6 +200,10 @@ def run() -> None:
     if not store.healthcheck():
         raise RuntimeError("Worker não conseguiu acessar o evento no Supabase")
 
+    # Uma leitura do próprio número na Graph API: revela token vencido ou sem
+    # permissão no start, em vez de só na primeira resposta que o público espera.
+    logger.info("Credenciais da Meta | %s", client.check_credentials())
+
     logger.info("Worker iniciado")
     while _running:
         worked = False

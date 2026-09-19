@@ -10,9 +10,22 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from meta_whatsapp import IncomingMessage, MessageStatus
+from meta_whatsapp import IncomingMessage, MessageStatus, MetaAPIError
 
 logger = logging.getLogger(__name__)
+
+
+def _linha_de_erro(error: Exception) -> str:
+    """Texto de falha para o painel: detalha o que é nosso e omite o resto.
+
+    A mensagem de MetaAPIError é montada por nós e já sai sem token nem
+    telefone, então pode ir para o banco. Exceção de terceiro pode carregar
+    dado do participante no texto, e dessas guardamos só o tipo.
+    """
+
+    if isinstance(error, MetaAPIError):
+        return f"MetaAPIError: {error}"
+    return f"{type(error).__name__}: envio falhou"
 
 
 class StoreConfigurationError(RuntimeError):
@@ -785,6 +798,6 @@ class EventStore:
             "next_attempt_at": (
                 datetime.now(timezone.utc) + timedelta(seconds=delay)
             ).isoformat(),
-            "last_error": f"{type(error).__name__}: envio falhou"[:2000],
+            "last_error": _linha_de_erro(error)[:2000],
             "failed_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", message["id"]).execute()

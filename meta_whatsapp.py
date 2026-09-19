@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -13,6 +14,46 @@ import requests
 
 class MetaAPIError(RuntimeError):
     """Erro controlado ao chamar a Graph API."""
+
+
+_LONG_DIGITS = re.compile(r"\d{7,}")
+
+
+def _sanitize(text: str) -> str:
+    """Tira telefone do texto de erro antes de logar ou persistir.
+
+    Código da Meta tem no máximo 6 dígitos, então mascarar sequências de 7
+    para cima preserva o diagnóstico e descarta identificador de participante.
+    """
+
+    return _LONG_DIGITS.sub("[numero]", text)
+
+
+def describe_api_error(response: Any) -> str:
+    """Resume o erro da Graph API em uma linha, sem token e sem telefone.
+
+    Sem isso o operador só vê "envio falhou" e precisa abrir log de container
+    para saber se o problema é token, permissão ou janela de atendimento.
+    """
+
+    status = getattr(response, "status_code", None) or "sem status"
+    try:
+        error = (response.json() or {}).get("error") or {}
+    except (AttributeError, TypeError, ValueError):
+        error = {}
+    partes = [f"HTTP {status}"]
+    codigo = error.get("code")
+    if codigo is not None:
+        subcodigo = error.get("error_subcode")
+        partes.append(f"code {codigo}.{subcodigo}" if subcodigo else f"code {codigo}")
+    detalhe = (
+        error.get("error_user_title")
+        or ((error.get("error_data") or {}).get("details") if isinstance(error.get("error_data"), dict) else None)
+        or error.get("message")
+    )
+    if detalhe:
+        partes.append(_sanitize(str(detalhe))[:300])
+    return " | ".join(partes)
 
 
 @dataclass(frozen=True)
@@ -219,7 +260,38 @@ class MetaWhatsAppClient:
         except requests.Timeout as exc:
             raise MetaAPIError("Timeout ao enviar mensagem para a Meta") from exc
         except requests.RequestException as exc:
-            status = exc.response.status_code if exc.response is not None else "network"
-            raise MetaAPIError(f"Falha da Meta HTTP {status}") from exc
+            if exc.response is not None:
+                raise MetaAPIError(describe_api_error(exc.response)) from exc
+            raise MetaAPIError(f"Falha de rede: {type(exc).__name__}") from exc
         except (TypeError, ValueError) as exc:
             raise MetaAPIError("Resposta inválida da Meta") from exc
+
+    def check_credentials(self) -> str:
+        """Confere token e número na Graph API sem enviar mensagem para ninguém.
+
+        Serve de diagnóstico: uma leitura do próprio número revela token
+        vencido ou sem permissão antes de o evento começar.
+        """
+
+        try:
+            response = requests.get(
+                self._base_url,
+                params={"fields": "id,display_phone_number,quality_rating,verified_name"},
+                headers={"Authorization": f"Bearer {self._access_token}"},
+                timeout=15,
+            )
+            response.raise_for_status()
+            dados = response.json() or {}
+            return (
+                "ok | numero "
+                f"{_sanitize(str(dados.get('display_phone_number') or 'sem numero'))}"
+                f" | qualidade {dados.get('quality_rating') or 'sem dado'}"
+            )
+        except requests.Timeout:
+            return "Timeout ao consultar a Meta"
+        except requests.RequestException as exc:
+            if exc.response is not None:
+                return describe_api_error(exc.response)
+            return f"Falha de rede: {type(exc).__name__}"
+        except (TypeError, ValueError):
+            return "Resposta inválida da Meta"
