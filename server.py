@@ -703,6 +703,36 @@ def _rules_block(idioma: str = "pt") -> str:
 
 
 # --- AI RESPONSE FUNCTION ---
+# Emojis que o Tuca usa para fechar frase: servem de "ponto final" na limpeza.
+_EMOJI = r"[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]"
+_FIM_DE_FRASE = re.compile(r"(?:[.!?…)]|" + _EMOJI + r")\s+([^\W\d_]{2,})\s*$")
+
+
+def _limpar_resposta(reply: str) -> str:
+    """Tira da resposta da IA o que o WhatsApp não deve ver.
+
+    Aspas em volta, negrito com dois asteriscos, ênfase vazia, travessão (a
+    produção não usa) e uma palavra solta depois da última frase: em 20/09 o
+    modelo terminou uma resposta em português com "unerquicklich", e nada
+    aqui pegava isso.
+    """
+
+    reply = (reply or "").strip()
+    if reply.startswith('"') and reply.endswith('"'):
+        reply = reply[1:-1]
+    # O WhatsApp usa *negrito* com um asterisco; **assim** apareceria cru.
+    reply = re.sub(r"\*{2,}([^*]+)\*{2,}", r"*\1*", reply)
+    reply = re.sub(r"_{2,}([^_]+)_{2,}", r"_\1_", reply)
+    # Às vezes o modelo abre ênfase e não escreve nada dentro.
+    reply = re.sub(r"[*_]+[\s​‌‍]*[*_]+", " ", reply)
+    # Travessão vira vírgula: a frase continua, só a pontuação muda.
+    reply = re.sub(r"\s*[—–]\s*", ", ", reply)
+    reply = re.sub(r"([.!?…,])\s*,\s*", r"\1 ", reply)
+    # Uma palavra sozinha depois do fecho da última frase é lixo do modelo.
+    reply = _FIM_DE_FRASE.sub(lambda m: m.group(0)[: m.start(1) - m.start(0)].rstrip(), reply)
+    return re.sub(r"[ \t]{2,}", " ", reply).strip()
+
+
 def generate_ai_response(text, category, urgency, sector_name=None, official_answer=None):
     """Generates a fun response using AI, like a friend who works at the event"""
     api_key = os.getenv("OPENAI_API_KEY")
@@ -721,9 +751,11 @@ def generate_ai_response(text, category, urgency, sector_name=None, official_ans
 Your personality:
 - You're a young, energetic toucan stuck working backstage and jealous of the people enjoying the event
 - You're FUNNY but never disrespectful
-- You use casual slang natural to the detected language (Brazilian Portuguese gírias, American English slang, Dutch straattaal, Latin American Spanish slang)
+- You use casual slang natural to the detected language (Brazilian Portuguese gírias, American English slang, Latin American Spanish slang)
 - You use emojis moderately (2-4 per message)
 - Your replies are SHORT (max 2-3 sentences, ideal for WhatsApp)
+- NEVER use the em dash (—) or the en dash (–). Use a comma, a period or an ellipsis instead
+- End your reply with punctuation or an emoji. NEVER add a word after your last sentence, and NEVER mix in a word from another language
 - NEVER mention being a robot, AI, system, or bot
 - NEVER use corporate or formal language
 - NEVER mention categories, classifications, or technical terms
@@ -739,12 +771,6 @@ Portuguese input → Portuguese reply:
 English input → English reply:
 "Amazing show tonight!" → "YOOO no way!! 🔥🔥 I'm stuck backstage and SO jealous rn!! Send me a clip, I can only hear it from here!! 🎶😭"
 "Bathroom is flooded" → "Yo for REAL?? 😤 I'm sending the crew over RIGHT NOW! Hang tight, they're on their way!! 💪🔧"
-
-Dutch input → Dutch reply:
-"Geweldige show vanavond!" → "WOOOOW echt waar!! 🔥🔥 Ik zit hier vast backstage en ben ZO jaloers!! Stuur me een filmpje, ik kan het alleen maar horen hiervandaan!! 🎶😭"
-"Toilet is overstroomd" → "Serieus WAT?? 😤 Ik stuur het team er NU op af! Hou vol, ze komen eraan!! 💪🔧"
-"Eten is echt lekker!" → "Jaaaa toch!! 🔥 En ik zit hier backstage met m'n boterhammetje 😭 Geniet ervan voor mij!! 🍕"
-"De muziek is te hard" → "Oei dat is balen!! 😬 Ik geef het METEEN door aan het geluidsteam! Ze gaan het fixen!! 🎧💪"
 
 Spanish input → Spanish reply:
 "El show está increíble!" → "UFFF qué envidia!! 🔥🔥 Yo aquí atrapado trabajando y ustedes disfrutando!! Mándame un video porfa!! 🎶😭"
@@ -788,19 +814,7 @@ Generate ONE creative, unique reply (do NOT copy the examples). Reply in the SAM
             )
         )
         
-        reply = response.choices[0].message.content.strip()
-        
-        # Remove quotes if AI added them
-        if reply.startswith('"') and reply.endswith('"'):
-            reply = reply[1:-1]
-
-        # O WhatsApp usa *negrito* com um asterisco; **assim** apareceria cru.
-        reply = re.sub(r"\*{2,}([^*]+)\*{2,}", r"*\1*", reply)
-        reply = re.sub(r"_{2,}([^_]+)_{2,}", r"_\1_", reply)
-        # Às vezes o modelo abre ênfase e não escreve nada dentro. Sobra um
-        # "**" solto no meio da frase, então a marcação vazia é removida.
-        reply = re.sub(r"[*_]+[\s\u200b\u200c\u200d]*[*_]+", " ", reply)
-        reply = re.sub(r"[ \t]{2,}", " ", reply).strip()
+        reply = _limpar_resposta(response.choices[0].message.content or "")
         
         # Só o tamanho: a resposta carrega o contexto do participante, e um
         # print com emoji quebrava tudo em stdout que não fosse UTF-8.
@@ -1241,6 +1255,8 @@ def compose_smalltalk(content: str) -> str:
             "Cumprimente de volta e diga em UMA linha que ela pode te mandar "
             "problema, elogio ou dúvida do evento, por texto ou áudio, que você "
             "leva para a equipe.\n"
+            "Sem travessão: use vírgula ou ponto. Termine com pontuação ou emoji e "
+            "não acrescente nenhuma palavra depois da última frase.\n"
             "Nunca diga que é robô, IA ou sistema. Nunca peça Pix, senha ou "
             "pagamento."
         )
@@ -1259,12 +1275,7 @@ def compose_smalltalk(content: str) -> str:
                 temperature=0.9,
             )
         )
-        reply = (response.choices[0].message.content or "").strip()
-        if reply.startswith('"') and reply.endswith('"'):
-            reply = reply[1:-1]
-        reply = re.sub(r"\*{2,}([^*]+)\*{2,}", r"*\1*", reply)
-        reply = re.sub(r"[*_]+[\s\u200b\u200c\u200d]*[*_]+", " ", reply)
-        return re.sub(r"[ \t]{2,}", " ", reply).strip() or convite
+        return _limpar_resposta(response.choices[0].message.content or "") or convite
     except Exception as exc:  # noqa: BLE001 - conversa nunca derruba o fluxo
         logger.error("IA de conversa indisponível | erro=%s", type(exc).__name__)
         return convite
