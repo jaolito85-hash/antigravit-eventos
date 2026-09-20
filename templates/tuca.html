@@ -501,8 +501,8 @@
                 <div>
                     <div class="panel-title"><i class="ri-whatsapp-line" style="color:#25D366"></i> Converse com o
                         Tuca</div>
-                    <div class="panel-sub">Responde exatamente como responderia no WhatsApp. Nada é gravado e nenhuma
-                        mensagem é enviada para ninguém.</div>
+                    <div class="panel-sub">Responde exatamente como responderia no WhatsApp. Nenhuma mensagem é
+                        enviada para ninguém. A conversa fica guardada neste navegador até você clicar em Limpar.</div>
                 </div>
                 <button class="btn ghost" onclick="limparConversa()"><i class="ri-eraser-line"></i> Limpar</button>
             </div>
@@ -727,10 +727,48 @@
         }
 
         // ================= SIMULADOR =================
+        // A conversa fica guardada no navegador de quem testa. Sem isso, cada
+        // troca de página apagava tudo que a produção tinha perguntado ao bot.
+        const CHAVE_CONVERSA = 'tuca.simulador.conversa';
+        const CHAVE_SETOR = 'tuca.simulador.setor';
+        let conversa = [];
+
+        function guardarConversa() {
+            try {
+                localStorage.setItem(CHAVE_CONVERSA, JSON.stringify(conversa));
+            } catch (err) {
+                console.warn('Não foi possível guardar a conversa:', err);
+            }
+        }
+
+        function lembrar(item) {
+            conversa.push(item);
+            guardarConversa();
+        }
+
+        function restaurarConversa() {
+            let itens = [];
+            try {
+                itens = JSON.parse(localStorage.getItem(CHAVE_CONVERSA) || '[]');
+            } catch (err) {
+                itens = [];
+            }
+            if (!Array.isArray(itens) || !itens.length) return;
+
+            document.getElementById('vazio').style.display = 'none';
+            itens.forEach(item => {
+                if (item.tipo === 'veredito') veredito(item.data || {});
+                else bolha(item.tipo === 'me' ? 'me' : 'bot', item.texto || '');
+            });
+            conversa = itens;
+        }
+
         function limparConversa() {
             const stream = document.getElementById('stream');
             stream.querySelectorAll('.msg, .verdict').forEach(el => el.remove());
             document.getElementById('vazio').style.display = '';
+            conversa = [];
+            try { localStorage.removeItem(CHAVE_CONVERSA); } catch (err) { /* sem storage, segue */ }
         }
 
         function tentar(texto) {
@@ -778,6 +816,7 @@
 
             document.getElementById('vazio').style.display = 'none';
             bolha('me', content);
+            lembrar({ tipo: 'me', texto: content });
             input.value = '';
             const pensando = bolha('bot', 'digitando...');
 
@@ -794,13 +833,24 @@
                 const data = await res.json();
                 if (!res.ok) {
                     pensando.textContent = data.error || 'Não foi possível simular.';
+                    lembrar({ tipo: 'bot', texto: pensando.textContent });
                     return;
                 }
                 pensando.textContent = data.reply;
+                lembrar({ tipo: 'bot', texto: data.reply });
                 veredito(data);
+                // Só o que a tela usa: o veredito inteiro pode trazer campos a mais.
+                lembrar({
+                    tipo: 'veredito',
+                    data: {
+                        urgency: data.urgency, category: data.category, sector: data.sector,
+                        createsCard: data.createsCard, explain: data.explain
+                    }
+                });
             } catch (err) {
                 console.error('Erro na simulação:', err);
                 pensando.textContent = 'Erro ao falar com o servidor.';
+                lembrar({ tipo: 'bot', texto: pensando.textContent });
             }
         }
 
@@ -1218,11 +1268,20 @@
                     .slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
                 select.innerHTML = '<option value="">Nenhum (mensagem direta)</option>' +
                     sectors.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join('');
+                try {
+                    const lembrado = localStorage.getItem(CHAVE_SETOR) || '';
+                    if (lembrado && Array.from(select.options).some(o => o.value === lembrado)) select.value = lembrado;
+                } catch (err) { /* sem storage, segue */ }
             } catch (err) {
                 console.error('Erro ao carregar setores:', err);
             }
         }
 
+        document.getElementById('setor').addEventListener('change', ev => {
+            try { localStorage.setItem(CHAVE_SETOR, ev.target.value || ''); } catch (err) { /* sem storage, segue */ }
+        });
+
+        restaurarConversa();
         carregarSetores();
         carregarBase();
         carregarRegras();
