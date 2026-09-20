@@ -61,3 +61,21 @@ services:
     depends_on:
       web:
         condition: service_healthy
+
+  agente:
+    build: .
+    command: ["python", "telegram_agent.py"]
+    restart: unless-stopped
+    environment:
+      <<: *common-environment
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
+      META_GRAPH_API_VERSION: ${META_GRAPH_API_VERSION}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_IDS: ${TELEGRAM_CHAT_IDS:-}
+      TELEGRAM_ALERT_CHAT_ID: ${TELEGRAM_ALERT_CHAT_ID:-}
+      APP_HEALTH_URL: http://web:5001/health
+      MONITOR_INTERVAL_MIN: ${MONITOR_INTERVAL_MIN:-30}
+      MONITOR_VIGIA_SEG: ${MONITOR_VIGIA_SEG:-60}
+    depends_on:
+      web:
+        condition: service_healthy

@@ -97,6 +97,15 @@ class EventStore:
             self._event_id = str(response.data[0]["id"])
             return self._event_id
 
+    def table(self, name: str) -> Any:
+        """Consulta direta a uma tabela, para leituras operacionais do monitor.
+
+        O monitor do Telegram faz dezenas de leituras pequenas e diferentes;
+        uma por método aqui viraria ruído. Ele usa isto e filtra por evento.
+        """
+
+        return self._get_client().table(name)
+
     def healthcheck(self) -> bool:
         """Confirma acesso à service role e existência do evento."""
 

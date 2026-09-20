@@ -19,6 +19,8 @@ server.py          — App Flask: webhook da Meta, APIs do dashboard, telas
 worker.py          — Processa a fila: transcreve, classifica e envia respostas
 event_store.py     — Persistência no Supabase (inbox, feedbacks, outbox, setores)
 meta_whatsapp.py   — Integração com a Graph API (assinatura, parse, envio, mídia)
+monitor.py         — Leituras operacionais, varredura de problemas e catálogo de correções
+telegram_agent.py  — Agente da equipe no Telegram: conversa, varredura agendada e correção por botão
 templates/         — telao.html, data_node.html, relatorio.html, qrcode.html, login.html
 static/            — Logo, ícones, planta aérea 3D, manifest PWA
 supabase/migrations/ — Schema, RLS e os setores da planta oficial
@@ -71,6 +73,9 @@ Siga as 3 camadas do `AGENTE.md`:
   fala direto com o participante e devolve ao bot quando terminar
 - Relatório pós-evento com resumo executivo e desempenho por setor
 - Autenticação por sessão (ADMIN_USER / ADMIN_PASS)
+- Agente no Telegram para a equipe: responde sobre chamados, erros e respostas do
+  Tuca, varre o sistema de meia em meia hora, avisa o grupo e corrige o que está no
+  catálogo quando alguém confirma no botão (veja `directives/agente_telegram.md`)
 
 ## Rascunho e Publicação
 
