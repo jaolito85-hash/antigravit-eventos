@@ -63,10 +63,36 @@ Siga as 3 camadas do `AGENTE.md`:
   e vê a classificação, sem gravar nem enviar mensagem
 - Base de perguntas e respostas configurável: o conteúdo é cadastrado pela
   produção e a IA só escolhe o jeito de dizer
+- Regras de negócio ligáveis uma a uma, que entram no fim do prompt e valem
+  mais que o tom de voz
+- Rascunho e publicação: o cadastro não vai ao ar sozinho, e o histórico
+  permite voltar a uma versão anterior (veja abaixo)
 - Atendimento humano: pelo botão de conversar dentro do chamado, o operador assume,
   fala direto com o participante e devolve ao bot quando terminar
 - Relatório pós-evento com resumo executivo e desempenho por setor
 - Autenticação por sessão (ADMIN_USER / ADMIN_PASS)
+
+## Rascunho e Publicação
+
+Regra que não é óbvia lendo o código: **as tabelas de cadastro são rascunho.**
+
+- `bot_knowledge`, `bot_rules` e `bot_settings` são o que a produção edita
+- `bot_config_version` guarda fotografias publicadas, e a linha com `is_live`
+  é a única que o bot lê
+- Publicar tira a foto do rascunho; restaurar devolve uma foto antiga ao ar
+  **e ao cadastro**, para a tela nunca mostrar algo diferente do que o
+  participante recebe
+
+Quem quiser a configuração no ar usa `EVENT_STORE.knowledge()`, `.rules()` ou
+`.bot_settings()`. Quem quiser o rascunho, que é só o painel, usa os
+`draft_*`. O cache de 30s do `EventStore` é a janela entre publicar e o
+WhatsApp mudar, e é como o worker, que roda em outro container, acompanha.
+
+Se não houver versão publicada legível, o rascunho assume, de propósito: bot
+mudo no meio do festival é pior que bot sem revisão.
+
+O simulador de `/tuca` testa o rascunho por padrão. O modo publicado existe
+para conferir o que o participante recebe agora.
 
 ## Regras que Valem Sempre
 
