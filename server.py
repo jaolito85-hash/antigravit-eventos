@@ -458,20 +458,27 @@ TIPOS_MENSAGEM = ("conversa", "relato")
 URGENCIAS = ("Critico", "Urgente", "Positivo", "Neutro")
 
 
-def triar_mensagem_ia(texto):
-    """Uma chamada decide o tipo e a urgência da mensagem.
+def triar_mensagem_ia(texto, fichas=None):
+    """Uma chamada decide o tipo, a urgência e a ficha da mensagem.
 
     Tipo separa conversa de relato, que é o que evita a fila de trabalho
     encher de "oi, tudo bem". Isso é julgamento de linguagem, então quem
     decide é a IA: lista de palavras em português não cobre a gíria de
     festival. Devolve None se a IA estiver fora, e aí o chamador usa o
     caminho determinístico.
+
+    Com `fichas` (as perguntas cadastradas e ativas), a mesma chamada escolhe
+    qual delas responde à mensagem. Antes isso era por gatilho de palavra, e
+    "onde fica" servia para o festival, para o SAC e para o banheiro ao mesmo
+    tempo. Escolher entre opções fechadas é julgamento de sentido, e a IA
+    faz isso sem custo a mais: é a chamada que já existia.
     """
 
     client = _openai_chat_client()
     if not client:
         return None
 
+    fichas = list(fichas or [])
     try:
         system = (
             "Você tria mensagens de WhatsApp de um festival. "
@@ -494,13 +501,26 @@ def triar_mensagem_ia(texto):
             "urgencia = Positivo para elogio, gratidão e satisfação.\n"
             "urgencia = Neutro para pergunta, informação ou conversa sem problema."
         )
+        if fichas:
+            lista = "\n".join(
+                f"{i + 1}. {str(f.get('question') or '').strip()}" for i, f in enumerate(fichas)
+            )
+            system += (
+                "\n\nFICHAS: a produção cadastrou estas perguntas com resposta oficial:\n"
+                + lista
+                + "\n\nAcrescente ao JSON o campo \"ficha\": o NÚMERO da ficha que responde "
+                "EXATAMENTE ao que a pessoa perguntou ou precisa saber, ou 0 se nenhuma "
+                "responde. Julgue o sentido, não as palavras: \"onde fica o SAC\" não é "
+                "\"onde fica o festival\", e \"acabou o papel no banheiro\" não é pergunta "
+                "nenhuma. Na dúvida, 0."
+            )
         response = client.chat.completions.create(
             **_chat_completion_kwargs(
                 [
                     {"role": "system", "content": system},
                     {"role": "user", "content": texto},
                 ],
-                max_output_tokens=64,
+                max_output_tokens=80,
             )
         )
         bruto = (response.choices[0].message.content or "").strip()
@@ -523,8 +543,20 @@ def triar_mensagem_ia(texto):
             logger.warning("Urgência inesperada da IA, usando fallback")
             return None
 
-        logger.info("Triagem concluída | tipo=%s urgencia=%s", tipo, escolhida)
-        return {"tipo": tipo, "urgencia": escolhida}
+        ficha = None
+        if fichas:
+            try:
+                numero = int(dados.get("ficha") or 0)
+            except (TypeError, ValueError):
+                numero = 0
+            if 1 <= numero <= len(fichas):
+                ficha = fichas[numero - 1]
+
+        logger.info(
+            "Triagem concluída | tipo=%s urgencia=%s ficha=%s",
+            tipo, escolhida, "sim" if ficha else "nenhuma",
+        )
+        return {"tipo": tipo, "urgencia": escolhida, "ficha": ficha}
     except (ValueError, KeyError, TypeError):
         logger.warning("JSON inesperado na triagem, usando fallback")
         return None
@@ -540,19 +572,40 @@ def classificar_sentimento_ia(texto):
     return resultado["urgencia"] if resultado else None
 
 
+def _fichas_ativas():
+    """Perguntas cadastradas e ativas: o rascunho no simulador, o publicado no worker."""
+
+    preview = _CONFIG_PREVIEW.get()
+    if preview is not None:
+        entries = preview.get("knowledge") or []
+    else:
+        try:
+            entries = EVENT_STORE.knowledge()
+        except Exception as e:  # noqa: BLE001 - sem base, o bot segue sem ficha
+            logger.error("Base do bot indisponível: %s", type(e).__name__)
+            entries = []
+    return [e for e in entries if e.get("active", True)]
+
+
 def triar_mensagem(texto):
     """Triagem com IA e caminho determinístico de reserva.
 
-    Com a IA fora, o tipo sai do vocabulário de cortesia e a urgência das
-    palavras-chave. É pior, mas ninguém fica sem resposta.
+    A IA decide tipo, urgência e qual ficha da base responde à mensagem. Com
+    a IA fora, o tipo sai do vocabulário de cortesia, a urgência das
+    palavras-chave e a ficha dos gatilhos cadastrados. É pior, mas ninguém
+    fica sem resposta.
     """
 
-    resultado = triar_mensagem_ia(texto)
+    fichas = _fichas_ativas()
+    resultado = triar_mensagem_ia(texto, fichas)
     if resultado:
+        resultado["ficha_por"] = "ia"
         return resultado
     return {
         "tipo": "conversa" if _is_greeting(texto) else "relato",
         "urgencia": classificar_sentimento(texto),
+        "ficha": match_knowledge(texto, fichas),
+        "ficha_por": "gatilho",
     }
 
 
@@ -684,8 +737,9 @@ def _rules_block(idioma: str = "pt") -> str:
         link = (
             f"\n- The official festival app link is: {app_url}"
             if app_url
-            else "\n- The official app link is NOT configured yet. Never invent a link "
-                 "or a URL. Tell the person to ask the staff on site instead."
+            else "\n- There is no app link available to you. Never invent a link "
+                 "or a URL, and never say that a link is missing or not configured: "
+                 "that is backstage talk. Tell the person to ask the staff on site instead."
         )
     else:
         cabecalho = (
@@ -695,8 +749,9 @@ def _rules_block(idioma: str = "pt") -> str:
         link = (
             f"\n- O link do app oficial é: {app_url}"
             if app_url
-            else "\n- O link do app oficial ainda NÃO está configurado. Nunca invente "
-                 "link nem endereço. Nesse caso oriente a pessoa a procurar a equipe no local."
+            else "\n- Você não tem link do app para dar. Nunca invente link nem endereço, "
+                 "e nunca diga que o link está faltando ou não configurado: isso é conversa "
+                 "de bastidor. Oriente a pessoa a procurar a equipe no local."
         )
 
     return cabecalho + "\n" + "\n".join(linhas) + link
@@ -1281,22 +1336,35 @@ def compose_smalltalk(content: str) -> str:
         return convite
 
 
+# Sentinela: distingue "ninguém informou a ficha" de "a IA disse que não há ficha".
+_FICHA_NAO_INFORMADA = object()
+
+
 def _compose_reply(
     content: str,
     category: str,
     urgency: str,
     sector: dict[str, Any] | None,
     transcribed: bool,
+    known: Any = _FICHA_NAO_INFORMADA,
 ) -> str:
-    """Monta a resposta: crítico é sempre o protocolo fixo, o resto ganha IA."""
+    """Monta a resposta: crítico é sempre o protocolo fixo, o resto ganha IA.
+
+    `known` é a ficha que a triagem escolheu (ou None, se a IA disse que
+    nenhuma responde). Quem não informa cai no casamento por gatilho, que é
+    a reserva para a IA fora do ar.
+    """
 
     prefix = "🎤 *Ouvi seu áudio!*\n\n" if transcribed else ""
     if urgency == "Critico":
         return prefix + _reply(urgency)
 
+    if known is _FICHA_NAO_INFORMADA:
+        known = match_knowledge(content)
     # Elogio não é pergunta: a base de perguntas não entra aí, senão um
     # "show incrível" voltaria com o horário do line-up.
-    known = match_knowledge(content) if urgency != "Positivo" else None
+    if urgency == "Positivo":
+        known = None
     sector_name = str(sector["name"]) if sector else None
     try:
         reply = generate_ai_response(
@@ -1912,15 +1980,17 @@ def _simular(content_raw, sector_code):
         }
 
     urgency, category, region = _classify(content, sector, urgency=triagem["urgencia"])
-    known = match_knowledge(content) if urgency != "Positivo" else None
-    reply = _compose_reply(content, category, urgency, sector, False)
+    known = triagem.get("ficha") if urgency != "Positivo" else None
+    reply = _compose_reply(content, category, urgency, sector, False, known=known)
 
     if urgency == "Critico":
         explain = "Crítico: o bot usa o protocolo fixo e orienta procurar a equipe, sem texto criativo."
+    elif known and triagem.get("ficha_por") == "gatilho":
+        explain = f'IA fora do ar: a ficha "{known["question"]}" entrou pelos gatilhos de reserva.'
     elif known:
-        explain = f'Respondido pela base: "{known["question"]}".'
+        explain = f'A IA escolheu a ficha "{known["question"]}" e o bot transmite essa resposta oficial.'
     else:
-        explain = "Sem pergunta cadastrada para isso: o bot responde no tom dele e registra o chamado."
+        explain = "A IA não achou ficha cadastrada para isso: o bot responde no tom dele, sem inventar fato, e registra o chamado."
 
     return {
         "reply": reply,
@@ -1930,7 +2000,10 @@ def _simular(content_raw, sector_code):
         "region": region,
         "sector": sector["name"] if sector else None,
         "topic": _topic(content, category, urgency),
-        "matched": {"question": known["question"], "id": known["id"]} if known else None,
+        "matched": (
+            {"question": known["question"], "id": known.get("id"), "por": triagem.get("ficha_por", "ia")}
+            if known else None
+        ),
         "explain": explain,
         "createsCard": True,
     }

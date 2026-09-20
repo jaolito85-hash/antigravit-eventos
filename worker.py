@@ -156,7 +156,10 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         if not atendimento_humano:
             store.enqueue_text(
                 message,
-                _compose_reply(content, category, urgency, sector, transcribed),
+                _compose_reply(
+                    content, category, urgency, sector, transcribed,
+                    known=triagem.get("ficha"),
+                ),
                 feedback_id,
             )
         store.finish_inbox(str(message["id"]))

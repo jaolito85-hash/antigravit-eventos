@@ -99,7 +99,8 @@ class WorkerTests(unittest.TestCase):
 
         self.assertIsNone(store.failed)
         self.assertEqual(store.finished, "processed")
-        mock_ia.assert_called_once_with("Falta cerveja no bar do camarote")
+        mock_ia.assert_called_once()
+        self.assertEqual(mock_ia.call_args.args[0], "Falta cerveja no bar do camarote")
         self.assertEqual(store.feedback["urgency"], "Urgente")
         self.assertEqual(store.feedback["category"], "Alimentação & Bebidas")
         self.assertIn("destacamos", store.response[1])
@@ -112,7 +113,8 @@ class WorkerTests(unittest.TestCase):
 
         process_inbox(store, _message(content=content))
 
-        mock_ia.assert_called_once_with(content)
+        mock_ia.assert_called_once()
+        self.assertEqual(mock_ia.call_args.args[0], content)
         self.assertEqual(store.feedback["urgency"], "Urgente")
 
     @mock.patch("server.triar_mensagem_ia", return_value=None)

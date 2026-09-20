@@ -593,10 +593,10 @@
                             dele.</div>
                     </div>
                     <div class="field">
-                        <label for="k">Gatilhos, separados por vírgula</label>
+                        <label for="k">Gatilhos (opcional), separados por vírgula</label>
                         <input type="text" id="k" placeholder="que horas, horario, abre, portao">
-                        <div class="field-hint">Se a mensagem contiver um desses trechos, o bot usa esta resposta.
-                            Quanto mais jeitos de perguntar você listar, melhor.</div>
+                        <div class="field-hint">A IA escolhe a ficha pelo sentido da pergunta, sem precisar de gatilho.
+                            Os gatilhos só entram como reserva se a IA estiver fora do ar.</div>
                     </div>
                     <div class="field">
                         <label for="prio">Prioridade (0 a 100)</label>
@@ -800,6 +800,10 @@
             }
             if (data.sector) {
                 tags.push(`<span class="vtag" style="--tone:#2979ff">${esc(data.sector)}</span>`);
+            }
+            // Qual ficha a IA escolheu: é o que deixa a produção prever a resposta.
+            if (data.matched && data.matched.question) {
+                tags.push(`<span class="vtag" style="--tone:#f59e0b">ficha: ${esc(data.matched.question)}</span>`);
             }
             tags.push(`<span class="vtag" style="--tone:${data.createsCard ? '#22c55e' : '#5a6274'}">${data.createsCard ? 'abre chamado' : 'sem chamado'}</span>`);
 
