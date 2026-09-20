@@ -246,6 +246,15 @@ class MonitorTests(unittest.TestCase):
             achado = m._achado_nao_entregues()
         self.assertEqual(achado.acao, "reenviar_cancelados")
 
+    def test_janela_de_24h_da_meta_nao_acorda_a_nuvem(self):
+        m = self._monitor()
+        janela = [{"id": "o1", "provider_message_id": "wamid", "last_error": "MetaAPIError: 131047 janela fechada"}]
+        with mock.patch.object(Monitor, "_saidas_canceladas", return_value=janela):
+            self.assertFalse(m._achado_nao_entregues().investigar)
+        outro = janela + [{"id": "o2", "provider_message_id": "wamid2", "last_error": "MetaAPIError: 190 token vencido"}]
+        with mock.patch.object(Monitor, "_saidas_canceladas", return_value=outro):
+            self.assertTrue(m._achado_nao_entregues().investigar)
+
     def test_tempo_de_resposta_ignora_operador(self):
         base = agora()
         feedbacks = [{"id": 1, "inbox_message_id": "in1"}]

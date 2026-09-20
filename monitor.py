@@ -33,6 +33,11 @@ except Exception:  # noqa: BLE001 - imagem sem tzdata cai no offset fixo
 CRITICOS = {"Critico", "Crítico"}
 URGENTES = CRITICOS | {"Urgente"}
 
+# Códigos da Meta que descrevem o participante, não o Tuca: 131047 é a janela
+# de 24h fechada, 131026 é número fora do WhatsApp, 131049 e 130472 são a
+# Meta segurando a entrega por política própria. Nada disso se corrige em código.
+META_ERROS_DO_PARTICIPANTE = ("131047", "131026", "131049", "130472")
+
 # Limites da varredura. Ficam em variável de ambiente para a equipe apertar
 # ou afrouxar durante o festival sem redeploy de código.
 ESPERA_WORKER_MIN = int(os.getenv("MONITOR_ESPERA_WORKER_MIN", "3"))
@@ -655,6 +660,12 @@ class Monitor:
         reenviaveis = [c for c in canceladas if not c.get("provider_message_id")]
         recusadas = [c for c in canceladas if c.get("provider_message_id")]
         erros = sorted({str(c.get("last_error") or "sem detalhe") for c in canceladas})[:3]
+        # Recusa da Meta por condição do participante (janela de 24h fechada,
+        # número fora do WhatsApp) não é bug: não vale acordar a nuvem por isso.
+        so_condicao_do_participante = bool(canceladas) and not reenviaveis and all(
+            any(codigo in str(c.get("last_error") or "") for codigo in META_ERROS_DO_PARTICIPANTE)
+            for c in canceladas
+        )
         partes = [f"{len(canceladas)} resposta(s) do Tuca não chegaram ao participante nas últimas {JANELA_ERROS_HORAS}h."]
         if reenviaveis:
             partes.append(f"{len(reenviaveis)} nem foram aceitas pela Meta (posso reenviar).")
@@ -668,7 +679,7 @@ class Monitor:
             detalhe=" ".join(partes),
             acao="reenviar_cancelados" if reenviaveis else None,
             quantidade=len(canceladas),
-            investigar=True,
+            investigar=not so_condicao_do_participante,
         )
 
     def _achado_criticos(self) -> Achado | None:
