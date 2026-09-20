@@ -805,6 +805,10 @@
             if (data.matched && data.matched.question) {
                 tags.push(`<span class="vtag" style="--tone:#f59e0b">ficha: ${esc(data.matched.question)}</span>`);
             }
+            // Moderação: a produção precisa ver que isso não vira chamado nem vai ao telão.
+            if (data.kind === 'bloqueado') {
+                tags.push(`<span class="vtag" style="--tone:#ef4444">bloqueado pela moderação</span>`);
+            }
             tags.push(`<span class="vtag" style="--tone:${data.createsCard ? '#22c55e' : '#5a6274'}">${data.createsCard ? 'abre chamado' : 'sem chamado'}</span>`);
 
             div.innerHTML = '<div class="verdict-tags">' + tags.join('') + '</div>' +

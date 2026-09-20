@@ -104,6 +104,7 @@ class SimuladorTests(unittest.TestCase):
     def test_simulador_mostra_a_ficha_escolhida(self):
         triagem = {"tipo": "relato", "urgencia": "Neutro", "ficha": FICHAS[1], "ficha_por": "ia"}
         with mock.patch.object(server, "triar_mensagem", return_value=triagem), \
+                mock.patch.object(server, "moderar_texto", return_value={"bloquear": False, "motivo": None}), \
                 mock.patch.object(server, "_classify", return_value=("Neutro", "Estrutura & Espaço", "N/A")), \
                 mock.patch.object(server, "_compose_reply", return_value="resposta") as compor:
             r = server._simular("onde fica o sac?", None)

@@ -1160,7 +1160,7 @@
             catBreakdown.innerHTML = '<div style="padding: 8px 0;">' + catLabels.map((cat, i) => {
                 const pct = stats.total > 0 ? Math.round(catValues[i] / stats.total * 100) : 0;
                 return `<div class="stat-row">
-                    <span class="stat-label">${cat}</span>
+                    <span class="stat-label">${escHtml(cat)}</span>
                     <div class="stat-bar-bg"><div class="stat-bar" style="width:${pct}%; background:${catColors[i % catColors.length]};"></div></div>
                     <span class="stat-count" style="color:${catColors[i % catColors.length]}">${catValues[i]}</span>
                 </div>`;
@@ -1174,7 +1174,7 @@
             regBreakdown.innerHTML = '<div style="padding: 8px 0;">' + regLabels.map((reg, i) => {
                 const pct = stats.total > 0 ? Math.round(regValues[i] / stats.total * 100) : 0;
                 return `<div class="stat-row">
-                    <span class="stat-label">${reg}</span>
+                    <span class="stat-label">${escHtml(reg)}</span>
                     <div class="stat-bar-bg"><div class="stat-bar" style="width:${pct}%; background:${regColors[i % regColors.length]};"></div></div>
                     <span class="stat-count" style="color:${regColors[i % regColors.length]}">${regValues[i]}</span>
                 </div>`;
@@ -1230,7 +1230,7 @@
                         <div class="feedback-text">"${escHtml(fb.message)}"</div>
                         <div class="feedback-meta">
                             <span class="feedback-tag" style="background: var(--green-glow); color: var(--green);">${escHtml(fb.category)}</span>
-                            <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${fb.name || 'Anônimo'}</span>
+                            <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${escHtml(fb.name || 'Anônimo')}</span>
                         </div>
                     </div>
                 </div>
@@ -1251,7 +1251,7 @@
                         <div class="feedback-meta">
                             <span class="feedback-tag" style="background: ${glow}; color: ${color};">${escHtml(fb.urgency)}</span>
                             <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${escHtml(fb.category)}</span>
-                            <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${fb.region || 'N/A'}</span>
+                            <span class="feedback-tag" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${escHtml(fb.region || 'N/A')}</span>
                         </div>
                     </div>
                 </div>`;
@@ -1263,9 +1263,9 @@
                 const initials = (p.name || 'AN').substring(0, 2).toUpperCase();
                 return `
                 <div class="participant-card">
-                    <div class="participant-avatar">${initials}</div>
+                    <div class="participant-avatar">${escHtml(initials)}</div>
                     <div>
-                        <div class="participant-name">${p.name || 'Anônimo'}</div>
+                        <div class="participant-name">${escHtml(p.name || 'Anônimo')}</div>
                         <div class="participant-msgs">${p.count} mensagens</div>
                     </div>
                 </div>`;

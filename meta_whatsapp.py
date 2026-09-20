@@ -218,15 +218,36 @@ def parse_webhook(payload: dict[str, Any]) -> tuple[list[IncomingMessage], list[
     return messages, statuses
 
 
-def download_media(media_id: str, access_token: str, graph_api_version: str) -> bytes | None:
+@dataclass(frozen=True)
+class Media:
+    """Mídia baixada da Meta, ou o motivo de não ter sido."""
+
+    content: bytes | None
+    mime_type: str | None
+    file_size: int | None
+    # "ok", "muito_grande" ou "indisponivel"
+    status: str
+
+
+DEFAULT_MEDIA_MAX_BYTES = 25 * 1024 * 1024
+
+
+def fetch_media(
+    media_id: str,
+    access_token: str,
+    graph_api_version: str,
+    max_bytes: int = DEFAULT_MEDIA_MAX_BYTES,
+) -> Media:
     """Baixa uma mídia recebida (ex.: áudio) em duas etapas da Graph API.
 
     A Meta não entrega o binário no webhook: primeiro resolvemos a URL
-    temporária do media_id e só então baixamos o conteúdo autenticado.
+    temporária do media_id e só então baixamos o conteúdo autenticado. O
+    tamanho declarado na primeira etapa já barra arquivo grande demais antes
+    de gastar banda, e o teto real é conferido de novo depois do download.
     """
 
     if not media_id or not access_token or not graph_api_version:
-        return None
+        return Media(None, None, None, "indisponivel")
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
         lookup = requests.get(
@@ -235,20 +256,35 @@ def download_media(media_id: str, access_token: str, graph_api_version: str) -> 
             timeout=15,
         )
         lookup.raise_for_status()
-        media_url = (lookup.json() or {}).get("url")
+        dados = lookup.json() or {}
+        media_url = dados.get("url")
+        mime_type = dados.get("mime_type")
+        try:
+            file_size = int(dados.get("file_size")) if dados.get("file_size") is not None else None
+        except (TypeError, ValueError):
+            file_size = None
         if not media_url:
-            return None
+            return Media(None, mime_type, file_size, "indisponivel")
+        if file_size is not None and file_size > max_bytes:
+            return Media(None, mime_type, file_size, "muito_grande")
         response = requests.get(media_url, headers=headers, timeout=30)
         response.raise_for_status()
         content = response.content
-        # Whisper aceita até 25MB; acima disso o download é descartado.
-        if not content or len(content) > 25 * 1024 * 1024:
-            return None
-        return content
+        if not content:
+            return Media(None, mime_type, file_size, "indisponivel")
+        if len(content) > max_bytes:
+            return Media(None, mime_type, len(content), "muito_grande")
+        return Media(content, mime_type, len(content), "ok")
     except requests.RequestException:
-        return None
+        return Media(None, None, None, "indisponivel")
     except (TypeError, ValueError):
-        return None
+        return Media(None, None, None, "indisponivel")
+
+
+def download_media(media_id: str, access_token: str, graph_api_version: str) -> bytes | None:
+    """Compatibilidade: só o binário, ou None."""
+
+    return fetch_media(media_id, access_token, graph_api_version).content
 
 
 class MetaWhatsAppClient:

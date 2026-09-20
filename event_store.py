@@ -238,16 +238,80 @@ class EventStore:
             "processed_at": datetime.now(timezone.utc).isoformat() if terminal else None,
         }).eq("id", message["id"]).execute()
 
-    def recent_sender_count(self, sender_hash: str) -> int:
+    def recent_sender_count(self, sender_hash: str, minutes: int = 10) -> int:
         """Conta mensagens recentes para limitar abuso de forma compartilhada."""
 
-        since = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        since = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
         response = (
             self._get_client()
             .table("message_inbox")
             .select("id", count="exact")
             .eq("event_id", self.event_id())
             .eq("sender_hash", sender_hash)
+            .gte("created_at", since)
+            .execute()
+        )
+        return int(response.count or 0)
+
+    def recent_sender_audio_count(self, sender_hash: str, minutes: int = 60) -> int:
+        """Quantos áudios este número mandou na janela, inclusive o atual.
+
+        Cada áudio custa transcrição; a cota por número é o que impede um
+        celular só de gastar a conta do Whisper.
+        """
+
+        since = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+        response = (
+            self._get_client()
+            .table("message_inbox")
+            .select("id", count="exact")
+            .eq("event_id", self.event_id())
+            .eq("sender_hash", sender_hash)
+            .eq("message_type", "audio")
+            .gte("created_at", since)
+            .execute()
+        )
+        return int(response.count or 0)
+
+    def recent_event_count(self, minutes: int = 1) -> int:
+        """Mensagens de todos os números na janela: detecta inundação geral."""
+
+        since = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+        response = (
+            self._get_client()
+            .table("message_inbox")
+            .select("id", count="exact")
+            .eq("event_id", self.event_id())
+            .gte("created_at", since)
+            .execute()
+        )
+        return int(response.count or 0)
+
+    def block_inbox(self, message_id: str, reason: str) -> None:
+        """Marca a mensagem como bloqueada, guardando o motivo.
+
+        O schema só aceita os estados existentes, então o bloqueio é um
+        "ignored" com o motivo em last_error. É por esse prefixo que os
+        strikes de um número são contados.
+        """
+
+        self._get_client().table("message_inbox").update({
+            "processing_status": "ignored",
+            "processed_at": datetime.now(timezone.utc).isoformat(),
+            "last_error": f"bloqueado: {reason}"[:2000],
+        }).eq("id", message_id).execute()
+
+    def recent_blocked_count(self, sender_hash: str, minutes: int = 10) -> int:
+        """Quantas mensagens deste número foram bloqueadas por conteúdo na janela."""
+
+        since = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+        response = (
+            self._get_client()
+            .table("message_inbox")
+            .select("id", count="exact")
+            .eq("event_id", self.event_id())
+            .eq("sender_hash", sender_hash)
+            .like("last_error", "bloqueado: conteudo%")
             .gte("created_at", since)
             .execute()
         )

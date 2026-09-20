@@ -9,7 +9,25 @@ import time
 from typing import Any
 
 from event_store import EventStore
-from meta_whatsapp import MetaWhatsAppClient, download_media, graph_api_version
+from meta_whatsapp import MetaWhatsAppClient, fetch_media, graph_api_version
+from protecao import (
+    AUDIO_JANELA_MINUTOS,
+    AUDIO_MAX_BYTES,
+    AUDIO_MAX_POR_JANELA,
+    AUDIO_MAX_SEGUNDOS,
+    AVISO_AUDIO_GRANDE,
+    AVISO_AUDIO_LONGO,
+    AVISO_CONTEUDO_BLOQUEADO,
+    AVISO_COTA_AUDIO,
+    AVISO_SEM_FALA,
+    AVISO_SILENCIADO,
+    FLOOD_GLOBAL_POR_MINUTO,
+    JANELA_MINUTOS,
+    STRIKES_PARA_SILENCIAR,
+    degrau_do_remetente,
+    duracao_ogg_opus,
+    moderar_texto,
+)
 # O comportamento do bot vive no server para o simulador do painel usar
 # exatamente a mesma decisao que o WhatsApp recebe.
 from server import (
@@ -22,6 +40,8 @@ from server import (
     is_emoji_only,
     transcribe_audio,
     triar_mensagem,
+    triar_mensagem_sem_ia,
+    welcome_text,
 )
 
 logging.basicConfig(
@@ -36,6 +56,22 @@ logger = logging.getLogger("worker")
 
 _running = True
 
+# Tipos que o bot sabe o que fazer. Reação, figurinha e o que a Meta chama de
+# "unsupported" ficam de fora: responder "mande texto ou áudio" a quem só
+# reagiu com um joinha era bronca sem motivo e mais um envio por mensagem.
+TIPOS_COM_RESPOSTA = frozenset({
+    "text", "audio", "image", "video", "document", "location", "interactive",
+})
+TIPOS_DE_MIDIA = frozenset({"image", "video", "document", "location", "interactive"})
+
+AVISO_AUDIO_INDISPONIVEL = (
+    "🎤 Não consegui entender seu áudio agora. Pode tentar de novo ou escrever em texto?"
+)
+AVISO_SO_TEXTO_OU_AUDIO = (
+    "Por enquanto, envie sua mensagem em texto ou áudio 🎤 para conseguirmos "
+    "encaminhá-la corretamente."
+)
+
 
 def _stop(_signum: int, _frame: Any) -> None:
     """Solicita encerramento limpo ao receber SIGTERM do Coolify."""
@@ -44,72 +80,132 @@ def _stop(_signum: int, _frame: Any) -> None:
     _running = False
 
 
-def _transcribe_inbox_audio(message: dict[str, Any]) -> str | None:
-    """Baixa o áudio da Meta e transcreve com Whisper; None se indisponível."""
+def _transcribe_inbox_audio(message: dict[str, Any]) -> dict[str, Any]:
+    """Baixa o áudio da Meta e transcreve com Whisper.
+
+    Devolve {"texto": str | None, "motivo": str | None}. O motivo, quando
+    existe, é o que o participante precisa ouvir: "muito_grande",
+    "muito_longo", "sem_fala" ou "indisponivel". A duração é medida no
+    próprio arquivo antes de pagar a transcrição; o Whisper só confirma.
+    """
 
     media_id = message.get("media_id")
     if not media_id:
-        return None
-    audio = download_media(
+        return {"texto": None, "motivo": "indisponivel"}
+    media = fetch_media(
         str(media_id),
         os.getenv("META_ACCESS_TOKEN", ""),
         graph_api_version(),
+        max_bytes=AUDIO_MAX_BYTES,
     )
-    if not audio:
-        return None
+    if media.status == "muito_grande":
+        return {"texto": None, "motivo": "muito_grande"}
+    if not media.content:
+        return {"texto": None, "motivo": "indisponivel"}
+
+    duracao = duracao_ogg_opus(media.content)
+    if duracao is not None and duracao > AUDIO_MAX_SEGUNDOS:
+        return {"texto": None, "motivo": "muito_longo"}
+
     try:
-        return transcribe_audio(audio)
+        resultado = transcribe_audio(media.content, media.mime_type)
     except Exception as exc:  # noqa: BLE001 - transcrição nunca pode derrubar o worker
         logger.error("Falha na transcrição | erro=%s", type(exc).__name__)
-        return None
+        return {"texto": None, "motivo": "indisponivel"}
+    if not resultado:
+        return {"texto": None, "motivo": "indisponivel"}
+    # Formato que não é Ogg não tem a duração medida antes; o Whisper informa
+    # e o limite vale do mesmo jeito, com 1s de folga para arredondamento.
+    if (resultado.get("duracao") or 0) > AUDIO_MAX_SEGUNDOS + 1:
+        return {"texto": None, "motivo": "muito_longo"}
+    texto = (resultado.get("texto") or "").strip()
+    if not texto:
+        return {"texto": None, "motivo": "sem_fala"}
+    return {"texto": texto, "motivo": None}
+
+
+_AVISO_POR_MOTIVO = {
+    "muito_grande": AVISO_AUDIO_GRANDE,
+    "muito_longo": AVISO_AUDIO_LONGO,
+    "sem_fala": AVISO_SEM_FALA,
+    "indisponivel": AVISO_AUDIO_INDISPONIVEL,
+}
 
 
 def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
-    """Transforma uma mensagem persistida em feedback e resposta enfileirada."""
+    """Transforma uma mensagem persistida em feedback e resposta enfileirada.
+
+    A ordem das barreiras importa e é a mesma do simulador: tipo, limite por
+    número, cota de áudio, moderação, inundação geral e só então a triagem.
+    Cada bloqueio explica o motivo ao participante uma única vez.
+    """
 
     if not store.claim_inbox(message):
         return
     try:
+        message_id = str(message["id"])
         sender_hash = str(message.get("sender_hash") or "")
+        message_type = message.get("message_type")
+
+        # 1. Reação, figurinha e tipo desconhecido: nada a fazer, nada a dizer.
+        if message_type not in TIPOS_COM_RESPOSTA:
+            store.finish_inbox(message_id, "ignored")
+            return
+
         # Operador no comando: o chamado ainda entra no dashboard, mas quem
         # fala com o participante e a pessoa, nao o bot.
         atendimento_humano = store.conversation_mode(sender_hash) == "human"
+        pode_responder = not atendimento_humano
 
-        if not atendimento_humano and store.recent_sender_count(sender_hash) > 3:
-            if not atendimento_humano:
-                store.enqueue_text(
-                    message,
-                    "Você já enviou várias mensagens recentes. Aguarde alguns minutos antes de tentar novamente.",
-                )
-            store.finish_inbox(str(message["id"]), "ignored")
-            return
+        # 2. Degraus por número. Quem está falando com a equipe escreve à
+        # vontade; para os outros, o aviso sai uma vez em cada degrau.
+        if not atendimento_humano:
+            degrau = degrau_do_remetente(
+                store.recent_sender_count(sender_hash, JANELA_MINUTOS)
+            )
+            if degrau["aviso"]:
+                store.enqueue_text(message, degrau["aviso"])
+            pode_responder = degrau["responder"]
+            if not degrau["registrar"]:
+                store.block_inbox(message_id, "limite de mensagens")
+                logger.warning("Mensagem descartada por excesso do remetente")
+                return
+            # Quem já foi bloqueado por conteúdo várias vezes na janela está
+            # silenciado: nem chamado, nem resposta.
+            if store.recent_blocked_count(sender_hash, JANELA_MINUTOS) >= STRIKES_PARA_SILENCIAR:
+                store.block_inbox(message_id, "silenciado por strikes")
+                logger.warning("Mensagem descartada de remetente silenciado")
+                return
 
-        message_type = message.get("message_type")
         raw_content = str(message.get("content") or "")
         transcribed = False
 
-        if message_type == "audio":
-            transcript = _transcribe_inbox_audio(message)
-            if transcript:
-                raw_content = transcript
-                transcribed = True
-            else:
-                if not atendimento_humano:
-                    store.enqueue_text(
-                        message,
-                        "🎤 Não consegui entender seu áudio agora. "
-                        "Pode tentar de novo ou escrever em texto?",
-                    )
-                store.finish_inbox(str(message["id"]), "ignored")
-                return
-        elif message_type != "text":
-            if not atendimento_humano:
-                store.enqueue_text(
-                    message,
-                    "Por enquanto, envie sua mensagem em texto ou áudio 🎤 para conseguirmos encaminhá-la corretamente.",
-                )
-            store.finish_inbox(str(message["id"]), "ignored")
+        # 3. Imagem, vídeo e afins nunca são baixados: o bot pede texto ou áudio.
+        if message_type in TIPOS_DE_MIDIA:
+            if pode_responder:
+                store.enqueue_text(message, AVISO_SO_TEXTO_OU_AUDIO)
+            store.finish_inbox(message_id, "ignored")
             return
+
+        # 4. Áudio: cota por número, teto de tamanho e de duração, e só fala real.
+        if message_type == "audio":
+            if store.recent_sender_audio_count(sender_hash, AUDIO_JANELA_MINUTOS) > AUDIO_MAX_POR_JANELA:
+                if pode_responder:
+                    store.enqueue_text(message, AVISO_COTA_AUDIO)
+                store.block_inbox(message_id, "cota de audio")
+                return
+            resultado = _transcribe_inbox_audio(message)
+            motivo = resultado.get("motivo")
+            if motivo:
+                if pode_responder:
+                    store.enqueue_text(message, _AVISO_POR_MOTIVO[motivo])
+                if motivo in ("muito_grande", "muito_longo"):
+                    store.block_inbox(message_id, f"audio {motivo}")
+                else:
+                    store.finish_inbox(message_id, "ignored")
+                return
+            raw_content = str(resultado["texto"])
+            transcribed = True
 
         sector_code, content = _extract_sector(raw_content)
         sector = store.sector_by_code(sector_code)
@@ -121,28 +217,52 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 sector_code,
             )
 
+        # 5. Moderação: pornografia, ódio e assédio não viram chamado nem
+        # resposta criativa. Violência e emergência passam de propósito.
+        if content.strip():
+            moderacao = moderar_texto(content)
+            if moderacao["bloquear"]:
+                strikes = store.recent_blocked_count(sender_hash, JANELA_MINUTOS) + 1
+                store.block_inbox(message_id, f"conteudo {moderacao['motivo']}")
+                if pode_responder:
+                    store.enqueue_text(
+                        message,
+                        AVISO_SILENCIADO if strikes >= STRIKES_PARA_SILENCIAR
+                        else AVISO_CONTEUDO_BLOQUEADO,
+                    )
+                logger.warning(
+                    "Mensagem bloqueada pela moderação | motivo=%s strikes=%d",
+                    moderacao["motivo"], strikes,
+                )
+                return
+
+        # 6. Inundação geral: a IA é desligada, o chamado continua entrando.
+        ia_ligada = store.recent_event_count(1) <= FLOOD_GLOBAL_POR_MINUTO
+        if not ia_ligada:
+            logger.warning("Inundação em curso: IA desligada neste chamado")
+
         # A IA decide se isso e conversa ou relato; a lista de palavras do
-        # server so entra se ela estiver fora do ar.
-        triagem = triar_mensagem(content)
+        # server so entra se ela estiver fora do ar ou desligada.
+        triagem = triar_mensagem(content) if ia_ligada else triar_mensagem_sem_ia(content)
 
         if triagem["tipo"] == "conversa":
-            resposta = compose_smalltalk(content)
+            resposta = compose_smalltalk(content) if ia_ligada else welcome_text()
             if sector:
                 resposta += f"\n\n{_sector_prompt(sector)}"
-            if not atendimento_humano:
+            if pode_responder:
                 store.enqueue_text(message, resposta)
-            store.finish_inbox(str(message["id"]), "ignored")
+            store.finish_inbox(message_id, "ignored")
             logger.info("Conversa respondida sem abrir chamado")
             return
 
         if len(content) < 3 or is_emoji_only(content):
-            if not atendimento_humano:
+            if pode_responder:
                 store.enqueue_text(message, _sector_prompt(sector))
-            store.finish_inbox(str(message["id"]), "ignored")
+            store.finish_inbox(message_id, "ignored")
             return
 
         urgency, category, region = _classify(
-            content, sector, urgency=triagem["urgencia"]
+            content, sector, urgency=triagem["urgencia"], usar_ia=ia_ligada
         )
         feedback_id = store.create_feedback(
             message=message,
@@ -153,17 +273,17 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             topic=_topic(content, category, urgency),
             sector_id=str(sector["id"]) if sector else None,
         )
-        if not atendimento_humano:
+        if pode_responder:
             store.enqueue_text(
                 message,
                 _compose_reply(
                     content, category, urgency, sector, transcribed,
-                    known=triagem.get("ficha"),
+                    known=triagem.get("ficha"), usar_ia=ia_ligada,
                 ),
                 feedback_id,
             )
-        store.finish_inbox(str(message["id"]))
-        if atendimento_humano:
+        store.finish_inbox(message_id)
+        if not pode_responder:
             logger.info(
                 "Chamado registrado sem resposta automatica | prioridade=%s", urgency
             )
