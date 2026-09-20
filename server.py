@@ -413,9 +413,11 @@ def classificar_regiao(texto):
 
 # --- AI SENTIMENT CLASSIFICATION (PRIMARY) ---
 OPENAI_CLASSIFY_TIMEOUT = 15
-# Verificado na API em 19/09/2026: esta chave devolve 403 para gpt-5.6-luna.
-# gpt-5.4-mini responde e aceita tanto temperature quanto reasoning_effort.
-DEFAULT_OPENAI_MODEL = "gpt-5.4-mini"
+# Medido em 19/09/2026 com a chave do projeto tropicadelia: ela libera
+# gpt-5.6-luna e whisper-1, e devolve 403 para qualquer outro modelo. O piso
+# aqui existe porque variavel esquecida no Coolify nao pode matar a IA em
+# silencio: sem ela o bot degrada para os textos fixos sem erro visivel.
+DEFAULT_OPENAI_MODEL = "gpt-5.6-luna"
 
 
 def _openai_model() -> str:

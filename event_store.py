@@ -156,7 +156,14 @@ class EventStore:
 
         client = self._get_client()
         for status in statuses:
-            updates: dict[str, Any] = {"delivery_status": status.status}
+            # Falha relatada pela Meta DEPOIS do aceite e terminal: a mensagem
+            # ja saiu, reenviar so geraria copia na conversa do participante.
+            # Gravar "failed" aqui devolvia a linha para pending_outbox com o
+            # next_attempt_at no passado, sem backoff e sem teto de tentativas,
+            # e o worker reenviava em laco a cada segundo. "cancelled" fica
+            # fora da fila e o painel ja o mostra como "nao entregue".
+            estado = "cancelled" if status.status == "failed" else status.status
+            updates: dict[str, Any] = {"delivery_status": estado}
             if status.occurred_at:
                 updates[f"{status.status}_at"] = status.occurred_at
             if status.error:
