@@ -1456,7 +1456,12 @@ def relatorio():
 @app.route("/qrcode")
 @login_required
 def qrcode_page():
-    return render_template("qrcode.html")
+    # Numero publico do WhatsApp ja preenchido para a producao nao digitar a mao
+    # e nao errar. Trocar o numero = mudar a variavel no Coolify, sem tocar codigo.
+    # O default e o numero do Tuca na forma sem o nono digito, que e o wa_id que a
+    # Meta usa e a forma que o link wa.me abre o perfil certo.
+    whatsapp_number = os.getenv("WHATSAPP_PUBLIC_NUMBER", "554367270996")
+    return render_template("qrcode.html", whatsapp_number=whatsapp_number)
 
 @app.route("/telao")
 @login_required
@@ -2199,8 +2204,7 @@ def conversation_mode_route(conversation_id):
         try:
             EVENT_STORE.enqueue_operator_message(
                 conversation_id,
-                "👋 Aqui é a equipe da Tropicadelia assumindo a conversa. "
-                "Pode falar direto comigo!",
+                "👋 Aqui é a equipe da Tropicadelia assumindo a conversa.",
             )
         except Exception as e:
             logger.error("Falha ao avisar troca de atendimento: %s", type(e).__name__)

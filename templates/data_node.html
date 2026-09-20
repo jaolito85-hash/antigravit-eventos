@@ -2413,6 +2413,10 @@
                 const sc = statusMeta(e.status);
                 const thread = parseThread(e.message);
                 const onde = e.region && e.region !== 'N/A' ? e.region : (e.category || 'Geral');
+                const categoria = e.category || 'Geral';
+                // Sem localizacao real da planta, o "onde" cai na categoria e as
+                // duas pilulas ficam iguais. Nesse caso mostra so a categoria.
+                const mostraOnde = onde !== categoria;
 
                 // A mensagem original inteira, sem corte, e cada atualizacao
                 // que a pessoa mandou depois sobre o mesmo assunto.
@@ -2433,8 +2437,8 @@
                         <span class="ticket-id">#${e.id}</span>
                         ${seloEquipe}
                         <span class="ticket-pill" style="--tone:${tone}">${escHtml(e.urgency || 'Neutro')}</span>
-                        <span class="ticket-where"><i class="ri-map-pin-line"></i> ${escHtml(onde)}</span>
-                        <span class="ticket-where"><i class="ri-price-tag-3-line"></i> ${escHtml(e.category || 'Geral')}</span>
+                        ${mostraOnde ? `<span class="ticket-where"><i class="ri-map-pin-line"></i> ${escHtml(onde)}</span>` : ''}
+                        <span class="ticket-where"><i class="ri-price-tag-3-line"></i> ${escHtml(categoria)}</span>
                         <span class="ticket-time"><i class="ri-time-line"></i> ${escHtml(formatarTempo(e.timestamp))}</span>
                     </div>
 

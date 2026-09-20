@@ -113,6 +113,13 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
 
         sector_code, content = _extract_sector(raw_content)
         sector = store.sector_by_code(sector_code)
+        # QR com codigo que nao existe no banco nao pode passar silencioso: a
+        # regiao cairia na adivinhacao da IA em vez do setor do cartaz.
+        if sector_code and not sector:
+            logger.warning(
+                "QR com setor desconhecido | code=%s (cartaz com codigo errado?)",
+                sector_code,
+            )
 
         # A IA decide se isso e conversa ou relato; a lista de palavras do
         # server so entra se ela estiver fora do ar.
