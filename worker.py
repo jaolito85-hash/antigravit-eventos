@@ -19,6 +19,7 @@ from protecao import (
     AVISO_AUDIO_LONGO,
     AVISO_CONTEUDO_BLOQUEADO,
     AVISO_COTA_AUDIO,
+    AVISO_OFENSA,
     AVISO_SEM_FALA,
     AVISO_SILENCIADO,
     FLOOD_GLOBAL_POR_MINUTO,
@@ -217,23 +218,26 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 sector_code,
             )
 
+        def _bloquear_conteudo(motivo: str, aviso: str) -> None:
+            """Registra o strike, avisa uma vez e encerra a mensagem."""
+
+            strikes = store.recent_blocked_count(sender_hash, JANELA_MINUTOS) + 1
+            store.block_inbox(message_id, f"conteudo {motivo}")
+            if pode_responder:
+                store.enqueue_text(
+                    message,
+                    AVISO_SILENCIADO if strikes >= STRIKES_PARA_SILENCIAR else aviso,
+                )
+            logger.warning(
+                "Mensagem bloqueada por conteúdo | motivo=%s strikes=%d", motivo, strikes
+            )
+
         # 5. Moderação: pornografia, ódio e assédio não viram chamado nem
         # resposta criativa. Violência e emergência passam de propósito.
         if content.strip():
             moderacao = moderar_texto(content)
             if moderacao["bloquear"]:
-                strikes = store.recent_blocked_count(sender_hash, JANELA_MINUTOS) + 1
-                store.block_inbox(message_id, f"conteudo {moderacao['motivo']}")
-                if pode_responder:
-                    store.enqueue_text(
-                        message,
-                        AVISO_SILENCIADO if strikes >= STRIKES_PARA_SILENCIAR
-                        else AVISO_CONTEUDO_BLOQUEADO,
-                    )
-                logger.warning(
-                    "Mensagem bloqueada pela moderação | motivo=%s strikes=%d",
-                    moderacao["motivo"], strikes,
-                )
+                _bloquear_conteudo(str(moderacao["motivo"]), AVISO_CONTEUDO_BLOQUEADO)
                 return
 
         # 6. Inundação geral: a IA é desligada, o chamado continua entrando.
@@ -244,6 +248,13 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # A IA decide se isso e conversa ou relato; a lista de palavras do
         # server so entra se ela estiver fora do ar ou desligada.
         triagem = triar_mensagem(content) if ia_ligada else triar_mensagem_sem_ia(content)
+
+        # 7. Xingamento sem conteúdo: a moderação não pega (a pontuação de
+        # "vai tomar no cu" é igual à de um relato de agressão com palavrão),
+        # mas a triagem entende o sentido. Não ganha banter do Tuca.
+        if triagem["tipo"] == "ofensa":
+            _bloquear_conteudo("ofensa", AVISO_OFENSA)
+            return
 
         if triagem["tipo"] == "conversa":
             resposta = compose_smalltalk(content) if ia_ligada else welcome_text()

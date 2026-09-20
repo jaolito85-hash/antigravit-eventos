@@ -23,6 +23,8 @@ from meta_whatsapp import (
 )
 from protecao import (
     AVISO_CONTEUDO_BLOQUEADO,
+    AVISO_OFENSA,
+    e_xingamento_puro,
     filtrar_transcricao,
     moderar_texto,
     resposta_segura,
@@ -493,7 +495,9 @@ def _chat_completion_kwargs(messages, max_output_tokens: int, temperature: float
     return kwargs
 
 
-TIPOS_MENSAGEM = ("conversa", "relato")
+# "ofensa" é xingamento sem conteúdo sobre o evento: não vira chamado nem
+# resposta criativa, conta como strike. Palavrão junto com relato é relato.
+TIPOS_MENSAGEM = ("conversa", "relato", "ofensa")
 URGENCIAS = ("Critico", "Urgente", "Positivo", "Neutro")
 
 
@@ -533,7 +537,17 @@ def triar_mensagem_ia(texto, fichas=None):
             "do festival. \"show incrível\", \"amei o palco\" e \"a comida tá ótima\" "
             "são relato com urgencia Positivo.\n"
             "Cumprimento MAIS conteúdo é relato: \"bom dia, faltou cerveja\".\n"
-            "Na dúvida entre os dois, escolha relato.\n\n"
+            "tipo = ofensa quando a mensagem é SÓ xingamento, palavrão ou provocação "
+            "dirigida ao Tuca ou a ninguém, sem informar nada sobre o evento. Exemplos: "
+            "\"vai tomar no cu\", \"vai se foder\", \"seu bot de merda\", \"cala a boca\". "
+            "Palavrão JUNTO com conteúdo sobre o evento NÃO é ofensa, é relato: "
+            "\"o bar tá uma merda, sem cerveja\" é relato Urgente e \"filha da puta do "
+            "segurança me empurrou\" é relato Critico. Xingar alguém da equipe (segurança, "
+            "bar, atendente, staff) é reclamação de mau atendimento, e reclamação é relato "
+            "Urgente: \"esse segurança é um idiota\" é relato. Ofensa é só quando o alvo é "
+            "o Tuca, o festival em geral ou ninguém. Ofensa tem urgencia Neutro.\n"
+            "Na dúvida entre conversa e relato, escolha relato. Na dúvida entre ofensa "
+            "e relato, escolha relato.\n\n"
             "urgencia = Critico para emergência, violência, acidente ou risco à vida.\n"
             "urgencia = Urgente para problema ou reclamação que a operação precisa "
             "resolver, incluindo falta de item, fila, sujeira, quebra e atraso.\n"
@@ -662,6 +676,8 @@ def triar_mensagem_sem_ia(texto, fichas=None):
 
     if fichas is None:
         fichas = _fichas_ativas()
+    if e_xingamento_puro(texto):
+        return {"tipo": "ofensa", "urgencia": "Neutro", "ficha": None, "ficha_por": "gatilho"}
     return {
         "tipo": "conversa" if _is_greeting(texto) else "relato",
         "urgencia": classificar_sentimento(texto),
@@ -2115,6 +2131,15 @@ def _simular(content_raw, sector_code):
         }
 
     triagem = triar_mensagem(content)
+    if triagem["tipo"] == "ofensa":
+        return {
+            "reply": AVISO_OFENSA,
+            "kind": "bloqueado",
+            "explain": "A IA entendeu que é só xingamento, sem nada sobre o evento: não vira "
+                       "chamado, conta como strike e o bot responde com o aviso fixo.",
+            "sector": sector["name"] if sector else None,
+            "createsCard": False,
+        }
     if triagem["tipo"] == "conversa":
         return {
             "reply": compose_smalltalk(content),

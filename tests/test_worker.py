@@ -421,6 +421,37 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.blocked_reason, "conteudo sexual")
         self.assertEqual(store.responses, [protecao.AVISO_CONTEUDO_BLOQUEADO])
 
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "ofensa", "urgencia": "Neutro"})
+    def test_xingamento_sem_conteudo_nao_ganha_banter(self, _mock_ia):
+        """"Vai tomar no cu" passou pela moderacao e virou papo do Tuca."""
+
+        store = FakeStore()
+
+        process_inbox(store, _message(content="Vai tomar no cu"))
+
+        self.assertIsNone(store.feedback)
+        self.assertEqual(store.blocked_reason, "conteudo ofensa")
+        self.assertEqual(store.responses, [protecao.AVISO_OFENSA])
+
+    @mock.patch("server.triar_mensagem_ia", return_value=None)
+    def test_xingamento_puro_e_pego_pela_reserva_sem_ia(self, _mock_ia):
+        store = FakeStore()
+
+        process_inbox(store, _message(content="vai se foder"))
+
+        self.assertIsNone(store.feedback)
+        self.assertEqual(store.blocked_reason, "conteudo ofensa")
+
+    @mock.patch("server.triar_mensagem_ia", return_value=None)
+    def test_palavrao_com_relato_continua_relato(self, _mock_ia):
+        store = FakeStore()
+
+        process_inbox(store, _message(content="o bar ta uma merda, sem cerveja"))
+
+        self.assertEqual(store.finished, "processed")
+        self.assertEqual(store.feedback["urgency"], "Urgente")
+
     def test_terceiro_strike_avisa_que_silenciou(self):
         store = FakeStore(blocked=protecao.STRIKES_PARA_SILENCIAR - 1)
         self.moderar.return_value = BLOQUEADO

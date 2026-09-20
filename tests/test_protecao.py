@@ -89,6 +89,19 @@ class ModeracaoTests(unittest.TestCase):
         cliente.moderations.create.assert_not_called()
 
 
+class XingamentoPuroTests(unittest.TestCase):
+    def test_xingamento_sozinho(self):
+        for t in ("Vai tomar no cu", "vai se foder!!", "seu bot de merda", "cala a boca tucano",
+                  "Foda-se", "vtnc 😡", "filho da puta", "seu lixo"):
+            self.assertTrue(protecao.e_xingamento_puro(t), t)
+
+    def test_palavrao_com_conteudo_nao_e_xingamento(self):
+        for t in ("o bar ta uma merda, sem cerveja", "filha da puta do seguranca me empurrou",
+                  "banheiro nojento, que porcaria", "foda-se esse festival lixo, a fila nao anda",
+                  "falta cerveja", "oi"):
+            self.assertFalse(protecao.e_xingamento_puro(t), t)
+
+
 class FiltroDeSaidaTests(unittest.TestCase):
     def test_texto_comum_passa(self):
         self.assertTrue(resposta_segura("UHUUL 🔥 aproveita o show por mim!! 🎶"))

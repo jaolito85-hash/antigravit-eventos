@@ -82,6 +82,42 @@ AVISO_SILENCIADO = (
     "🚫 Suas mensagens foram bloqueadas por conteúdo ofensivo repetido. "
     "O Tuca é o canal de atendimento do festival."
 )
+AVISO_OFENSA = (
+    "Xingamento eu não levo para a equipe. Se você tiver um problema, elogio "
+    "ou dúvida sobre o festival, me conta que eu levo na hora."
+)
+
+
+# Xingamento puro, dirigido ao bot ou a ninguém, sem nada sobre o evento. É a
+# reserva da triagem por IA: a pontuação da moderação não separa "vai tomar no
+# cu" (0,74) de "filha da puta do segurança me empurrou" (0,80), que é relato
+# de agressão. O que separa é o sentido, e sem IA a lista curta cobre o óbvio.
+_XINGAMENTO_PURO = re.compile(
+    r"^[\W_]*(?:"
+    r"(?:vai|va|vah)\s+(?:tomar\s+no\s+cu|se\s+f[ou]der|te\s+f[ou]der|pro\s+inferno|a\s+merda|se\s+lascar)"
+    r"|foda-?\s?se|vsf|vtnc|fdp|pqp"
+    r"|cal[ae]\s+a\s+boca(?:\s+(?:tucano|bot|robo|seu\s+\w+))?"
+    r"|(?:seu|sua|esse|essa)\s+(?:bot|robo|tucano|bicho|passaro|merda|lixo|bosta|idiota|burro|otario|imbecil|animal)"
+    r"(?:\s+(?:de\s+)?(?:merda|bosta|lixo|idiota|burro|inutil|imprestavel))?"
+    r"|filh[oa]\s+da\s+puta|desgraca(?:do|da)?|arrombad[oa]|idiota|imbecil|otari[oa]|babaca|burro|lixo|merda|bosta"
+    r")[\W_]*$",
+    flags=re.IGNORECASE,
+)
+
+
+def e_xingamento_puro(texto: str) -> bool:
+    """Diz se a mensagem é só xingamento, sem informação sobre o evento."""
+
+    limpo = (texto or "").strip()
+    if not limpo or len(limpo) > 60:
+        return False
+    import unicodedata
+
+    sem_acento = "".join(
+        c for c in unicodedata.normalize("NFD", limpo.lower())
+        if unicodedata.category(c) != "Mn"
+    )
+    return bool(_XINGAMENTO_PURO.match(sem_acento))
 
 
 # ----------------------------------------------------------------------
