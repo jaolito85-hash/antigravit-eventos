@@ -108,7 +108,10 @@ class SimuladorTests(unittest.TestCase):
                 mock.patch.object(server, "_classify", return_value=("Neutro", "Estrutura & Espaço", "N/A")), \
                 mock.patch.object(server, "_compose_reply", return_value="resposta") as compor:
             r = server._simular("onde fica o sac?", None)
-        self.assertEqual(r["matched"], {"question": "Onde fica o SAC?", "id": "f2", "por": "ia"})
+        self.assertEqual(r["matched"], {
+            "question": "Onde fica o SAC?", "id": "f2", "por": "ia",
+            "kind": "faq", "image_url": None,
+        })
         self.assertIn("A IA escolheu a ficha", r["explain"])
         self.assertEqual(compor.call_args.kwargs["known"], FICHAS[1])
 

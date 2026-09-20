@@ -425,6 +425,69 @@
 
         .tab.on { background: var(--accent); color: #fff; }
 
+        /* Guia do evento: chips por tipo (line-up, comida, open bar, ativações). */
+        .chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .chip {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+        .chip small { font-weight: 600; opacity: 0.75; margin-left: 4px; }
+
+        .guia-a { white-space: pre-wrap; }
+
+        .guia-scope {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .guia-thumb {
+            display: block;
+            max-width: 160px;
+            max-height: 120px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-top: 9px;
+        }
+
+        .banner-preview {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .banner-preview img {
+            max-width: 160px;
+            max-height: 120px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .verdict-banner {
+            display: block;
+            max-width: 160px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-top: 8px;
+        }
+
         /* Faixa de publicação: o estado de "o que o participante recebe agora"
            fica sempre visível, em qualquer aba, porque é o que confunde. */
         .pub {
@@ -574,6 +637,7 @@
             <div class="cfg-body">
                 <div class="tabs" style="margin-bottom:17px">
                     <button class="tab on" id="tab-qa" onclick="verAba('qa')">Perguntas e respostas</button>
+                    <button class="tab" id="tab-guia" onclick="verAba('guia')">Guia do evento</button>
                     <button class="tab" id="tab-regras" onclick="verAba('regras')">Regras de negócio</button>
                     <button class="tab" id="tab-tom" onclick="verAba('tom')">Jeito de falar</button>
                     <button class="tab" id="tab-hist" onclick="verAba('hist')">Histórico</button>
@@ -614,6 +678,62 @@
                         <i class="ri-list-check-2"></i> Base atual (<span id="qa-count">0</span>)
                     </div>
                     <div class="qa-list" id="qa-list"></div>
+                </div>
+
+                <!-- Guia do evento: line-up, comida, open bar e ativações -->
+                <div id="aba-guia" class="hidden">
+                    <div class="field-hint" style="margin-bottom:13px">
+                        O que o público pergunta sobre programação, comida, bebida e ativações. A IA escolhe a ficha
+                        pelo sentido da pergunta e responde só o que foi perguntado. Se a ficha tiver banner, o Tuca
+                        manda a imagem junto.
+                    </div>
+                    <div class="chips" id="guia-chips">
+                        <button class="chip on" data-tipo="lineup">Line-up<small id="guia-n-lineup">0</small></button>
+                        <button class="chip" data-tipo="food">Comida<small id="guia-n-food">0</small></button>
+                        <button class="chip" data-tipo="bar">Open bar<small id="guia-n-bar">0</small></button>
+                        <button class="chip" data-tipo="activation">Ativações<small id="guia-n-activation">0</small></button>
+                    </div>
+                    <div class="field">
+                        <label for="g-titulo">Título</label>
+                        <input type="text" id="g-titulo" maxlength="300" placeholder="Ex: Line-up do Palco Tropical">
+                    </div>
+                    <div class="field">
+                        <label for="g-scope">Vale para (opcional)</label>
+                        <input type="text" id="g-scope" maxlength="120" placeholder="Ex: Lounge e Backstage Hype">
+                        <div class="field-hint">Setor ou pulseira a que essa informação se aplica. O bot avisa quando
+                            algo não vale para todo mundo.</div>
+                    </div>
+                    <div class="field">
+                        <label for="g-conteudo">Conteúdo</label>
+                        <textarea id="g-conteudo" rows="8" maxlength="4000"
+                            placeholder="15:05 às 15:35 | Ganhador do concurso&#10;15:40 às 16:10 | MC Carol de Niterói"></textarea>
+                        <div class="field-hint">Uma linha por item. Horários no formato 15:05 às 15:35 | Artista.
+                            Cardápio: um prato por linha, com preço quando houver.</div>
+                    </div>
+                    <div class="field">
+                        <label for="g-banner">Banner (opcional)</label>
+                        <input type="file" id="g-banner" accept="image/jpeg,image/png,image/webp" onchange="subirBanner(this)">
+                        <div class="field-hint">JPEG, PNG ou WebP até 5 MB. O Tuca envia a imagem junto da resposta
+                            dessa ficha.</div>
+                        <div class="banner-preview hidden" id="g-banner-preview">
+                            <img id="g-banner-img" alt="Banner da ficha">
+                            <button class="btn ghost" type="button" onclick="removerBanner()"><i
+                                    class="ri-close-line"></i> Remover banner</button>
+                        </div>
+                        <div class="field-hint hidden" id="g-banner-status"></div>
+                    </div>
+                    <div style="display:flex; gap:9px; margin-bottom:20px">
+                        <button class="btn primary" onclick="salvarGuia()" id="btn-salvar-guia"><i
+                                class="ri-save-line"></i> Salvar ficha</button>
+                        <button class="btn ghost hidden" onclick="cancelarGuia()" id="btn-cancelar-guia">Cancelar
+                            edição</button>
+                    </div>
+
+                    <div class="panel-title" style="font-size:0.85rem; margin-bottom:11px">
+                        <i class="ri-compass-3-line"></i> <span id="guia-titulo-lista">Line-up</span>
+                        (<span id="guia-count">0</span>)
+                    </div>
+                    <div class="qa-list" id="guia-list"></div>
                 </div>
 
                 <!-- Jeito de falar -->
@@ -713,13 +833,14 @@
             setTimeout(() => { t.className = 'toast'; }, 3200);
         }
 
-        const ABAS = ['qa', 'regras', 'tom', 'hist'];
+        const ABAS = ['qa', 'guia', 'regras', 'tom', 'hist'];
 
         function verAba(qual) {
             ABAS.forEach(nome => {
                 document.getElementById('aba-' + nome).classList.toggle('hidden', nome !== qual);
             });
             document.getElementById('tab-qa').classList.toggle('on', qual === 'qa');
+            document.getElementById('tab-guia').classList.toggle('on', qual === 'guia');
             document.getElementById('tab-regras').classList.toggle('on', qual === 'regras');
             document.getElementById('tab-tom').classList.toggle('on', qual === 'tom');
             document.getElementById('tab-hist').classList.toggle('on', qual === 'hist');
@@ -809,10 +930,16 @@
             if (data.kind === 'bloqueado') {
                 tags.push(`<span class="vtag" style="--tone:#ef4444">bloqueado pela moderação</span>`);
             }
+            // Ficha com banner: o participante recebe a imagem junto da resposta.
+            const banner = data.matched && data.matched.image_url ? String(data.matched.image_url) : '';
+            if (banner) {
+                tags.push(`<span class="vtag" style="--tone:#14b8a6">envia banner</span>`);
+            }
             tags.push(`<span class="vtag" style="--tone:${data.createsCard ? '#22c55e' : '#5a6274'}">${data.createsCard ? 'abre chamado' : 'sem chamado'}</span>`);
 
             div.innerHTML = '<div class="verdict-tags">' + tags.join('') + '</div>' +
-                '<i class="ri-lightbulb-line"></i> ' + esc(data.explain || '');
+                '<i class="ri-lightbulb-line"></i> ' + esc(data.explain || '') +
+                (banner ? `<img class="verdict-banner" src="${esc(banner)}" alt="Banner enviado com a resposta">` : '');
             stream.appendChild(div);
             stream.scrollTop = stream.scrollHeight;
         }
@@ -871,6 +998,9 @@
             } catch (err) {
                 console.error('Erro ao carregar base:', err);
             }
+            // Esta aba é só perguntas e respostas; line-up, comida, open bar e
+            // ativações moram na aba Guia do evento.
+            entries = entries.filter(e => !e.kind || e.kind === 'faq');
 
             document.getElementById('qa-count').textContent = entries.length;
             const box = document.getElementById('qa-list');
@@ -943,7 +1073,8 @@
                 answer,
                 keywords: document.getElementById('k').value,
                 priority: Number(document.getElementById('prio').value || 50),
-                active: true
+                active: true,
+                kind: 'faq'
             };
 
             try {
@@ -974,15 +1105,20 @@
                     body: JSON.stringify({
                         id: entry.id, question: entry.question, answer: entry.answer,
                         keywords: entry.keywords || [], priority: entry.priority,
-                        active: !entry.active
+                        active: !entry.active,
+                        // Preserva o que a ficha já tem: alternar não pode apagar
+                        // tipo, escopo nem banner.
+                        kind: entry.kind || 'faq', scope: entry.scope || null,
+                        image_url: entry.image_url || null
                     })
                 });
             } catch (err) {
                 aviso('Erro ao alterar.', true);
                 return;
             }
-            aviso(entry.active ? 'Pergunta desativada no rascunho.' : 'Pergunta ativada no rascunho.');
+            aviso(entry.active ? 'Ficha desativada no rascunho.' : 'Ficha ativada no rascunho.');
             carregarBase();
+            carregarGuia();
             carregarPublicacao();
         }
 
@@ -996,10 +1132,196 @@
                 aviso('Erro ao remover.', true);
                 return;
             }
-            aviso('Pergunta removida do rascunho.');
+            aviso('Ficha removida do rascunho.');
             carregarBase();
+            carregarGuia();
             carregarPublicacao();
         }
+
+        // ================= GUIA DO EVENTO =================
+        // Line-up, comida, open bar e ativações são fichas da mesma base, com
+        // um tipo. A aba mostra um tipo por vez, e o banner é opcional.
+        const TIPOS_GUIA = {
+            lineup: 'Line-up', food: 'Comida', bar: 'Open bar', activation: 'Ativações'
+        };
+        let tipoGuia = 'lineup';
+        let editandoGuia = null;
+        let bannerGuia = null;
+        let fichasGuia = [];
+
+        function verTipoGuia(tipo) {
+            if (!TIPOS_GUIA[tipo]) return;
+            tipoGuia = tipo;
+            document.querySelectorAll('#guia-chips .chip').forEach(c => {
+                c.classList.toggle('on', c.getAttribute('data-tipo') === tipo);
+            });
+            document.getElementById('guia-titulo-lista').textContent = TIPOS_GUIA[tipo];
+            if (editandoGuia) cancelarGuia();
+            renderGuia();
+        }
+
+        async function carregarGuia() {
+            let entries = [];
+            try {
+                const res = await fetch('/api/bot/knowledge');
+                entries = (await res.json()).entries || [];
+            } catch (err) {
+                console.error('Erro ao carregar guia:', err);
+            }
+            fichasGuia = entries.filter(e => TIPOS_GUIA[e.kind]);
+            Object.keys(TIPOS_GUIA).forEach(tipo => {
+                document.getElementById('guia-n-' + tipo).textContent =
+                    fichasGuia.filter(e => e.kind === tipo).length;
+            });
+            renderGuia();
+        }
+
+        function renderGuia() {
+            const lista = fichasGuia.filter(e => e.kind === tipoGuia);
+            document.getElementById('guia-count').textContent = lista.length;
+            const box = document.getElementById('guia-list');
+
+            if (!lista.length) {
+                box.innerHTML = '<p style="color:var(--text-dim); font-size:0.85rem">Nenhuma ficha de '
+                    + esc(TIPOS_GUIA[tipoGuia].toLowerCase()) + ' cadastrada ainda.</p>';
+                return;
+            }
+
+            box.innerHTML = lista.map(e => `
+                <div class="qa ${e.active ? '' : 'off'}">
+                    <div class="qa-q">${esc(e.question)}</div>
+                    ${e.scope ? `<div class="guia-scope"><i class="ri-map-pin-line"></i> Vale para: ${esc(e.scope)}</div>` : ''}
+                    <div class="qa-a guia-a">${esc(e.answer)}</div>
+                    ${e.image_url ? `<img class="guia-thumb" src="${esc(e.image_url)}" alt="Banner da ficha">` : ''}
+                    <div class="qa-actions">
+                        <button class="btn ghost" data-editar-guia="${esc(e.id)}"><i class="ri-pencil-line"></i> Editar</button>
+                        <button class="btn ghost" data-alternar-guia="${esc(e.id)}">
+                            <i class="ri-${e.active ? 'pause' : 'play'}-line"></i> ${e.active ? 'Desativar' : 'Ativar'}</button>
+                        <button class="btn danger" data-remover-guia="${esc(e.id)}"><i class="ri-delete-bin-line"></i></button>
+                    </div>
+                </div>`).join('');
+
+            // Handler ligado depois do innerHTML: título com apóstrofo não quebra.
+            const porId = {};
+            lista.forEach(e => { porId[e.id] = e; });
+            box.querySelectorAll('[data-editar-guia]').forEach(b => {
+                b.onclick = () => editarGuia(porId[b.getAttribute('data-editar-guia')]);
+            });
+            box.querySelectorAll('[data-alternar-guia]').forEach(b => {
+                b.onclick = () => alternar(porId[b.getAttribute('data-alternar-guia')]);
+            });
+            box.querySelectorAll('[data-remover-guia]').forEach(b => {
+                b.onclick = () => remover(porId[b.getAttribute('data-remover-guia')]);
+            });
+        }
+
+        function mostrarBanner(url) {
+            bannerGuia = url || null;
+            const preview = document.getElementById('g-banner-preview');
+            preview.classList.toggle('hidden', !bannerGuia);
+            document.getElementById('g-banner-img').src = bannerGuia || '';
+        }
+
+        async function subirBanner(input) {
+            const arquivo = input.files && input.files[0];
+            if (!arquivo) return;
+            const status = document.getElementById('g-banner-status');
+            if (arquivo.size > 5 * 1024 * 1024) {
+                aviso('O banner precisa ter até 5 MB.', true);
+                input.value = '';
+                return;
+            }
+            status.textContent = 'Enviando banner...';
+            status.classList.remove('hidden');
+            const form = new FormData();
+            form.append('file', arquivo);
+            try {
+                const res = await fetch('/api/bot/banner', { method: 'POST', body: form });
+                const data = await res.json();
+                if (!res.ok || !data.url) {
+                    aviso(data.error || 'Não foi possível enviar o banner.', true);
+                    input.value = '';
+                    return;
+                }
+                mostrarBanner(data.url);
+                aviso('Banner enviado. Salve a ficha para ele valer.');
+            } catch (err) {
+                aviso('Erro ao enviar o banner.', true);
+                input.value = '';
+            } finally {
+                status.classList.add('hidden');
+                status.textContent = '';
+            }
+        }
+
+        function removerBanner() {
+            mostrarBanner(null);
+            document.getElementById('g-banner').value = '';
+        }
+
+        function editarGuia(entry) {
+            if (!entry) return;
+            if (entry.kind !== tipoGuia) verTipoGuia(entry.kind);
+            editandoGuia = entry.id;
+            document.getElementById('g-titulo').value = entry.question;
+            document.getElementById('g-scope').value = entry.scope || '';
+            document.getElementById('g-conteudo').value = entry.answer;
+            mostrarBanner(entry.image_url || null);
+            document.getElementById('btn-salvar-guia').innerHTML = '<i class="ri-save-line"></i> Salvar alteração';
+            document.getElementById('btn-cancelar-guia').classList.remove('hidden');
+            verAba('guia');
+            document.getElementById('g-titulo').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function cancelarGuia() {
+            editandoGuia = null;
+            ['g-titulo', 'g-scope', 'g-conteudo'].forEach(id => { document.getElementById(id).value = ''; });
+            removerBanner();
+            document.getElementById('btn-salvar-guia').innerHTML = '<i class="ri-save-line"></i> Salvar ficha';
+            document.getElementById('btn-cancelar-guia').classList.add('hidden');
+        }
+
+        async function salvarGuia() {
+            const question = document.getElementById('g-titulo').value.trim();
+            const answer = document.getElementById('g-conteudo').value.trim();
+            const scope = document.getElementById('g-scope').value.trim();
+            if (question.length < 3) { aviso('Escreva o título.', true); return; }
+            if (!answer) { aviso('Escreva o conteúdo.', true); return; }
+
+            const body = {
+                id: editandoGuia,
+                question,
+                answer,
+                keywords: [],
+                priority: 60,
+                active: true,
+                kind: tipoGuia,
+                scope: scope || null,
+                image_url: bannerGuia
+            };
+
+            try {
+                const res = await fetch('/api/bot/knowledge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (!res.ok) { aviso(data.error || 'Não foi possível salvar.', true); return; }
+            } catch (err) {
+                aviso('Erro ao salvar.', true);
+                return;
+            }
+
+            aviso(editandoGuia ? 'Ficha atualizada no rascunho.' : 'Ficha cadastrada no rascunho.');
+            cancelarGuia();
+            carregarGuia();
+            carregarPublicacao();
+        }
+
+        document.querySelectorAll('#guia-chips .chip').forEach(c => {
+            c.onclick = () => verTipoGuia(c.getAttribute('data-tipo'));
+        });
 
         // ================= TOM DE VOZ =================
         async function carregarTom() {
@@ -1262,6 +1584,7 @@
             }
             aviso('Versão restaurada. O bot volta a ela em até ' + janelaSegundos + ' segundos.');
             carregarBase();
+            carregarGuia();
             carregarRegras();
             carregarTom();
             carregarPublicacao();
@@ -1292,6 +1615,7 @@
         restaurarConversa();
         carregarSetores();
         carregarBase();
+        carregarGuia();
         carregarRegras();
         carregarTom();
         carregarPublicacao();

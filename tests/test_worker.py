@@ -61,6 +61,9 @@ class FakeStore:
         self.response = (message, content, feedback_id)
         self.responses.append(content)
 
+    def enqueue_image(self, message, media_url, caption, feedback_id=None):
+        self.responses.append(("imagem", media_url, caption, feedback_id))
+
     def finish_inbox(self, _message_id, status="processed"):
         self.finished = status
 
@@ -480,6 +483,48 @@ class WorkerTests(unittest.TestCase):
 
         self.assertIsNone(store.feedback)
         self.assertEqual(store.responses, [])
+
+    @mock.patch("server.triar_mensagem_ia")
+    def test_ficha_do_guia_com_banner_manda_a_imagem_depois_do_texto(self, mock_ia):
+        ficha = {"id": "f9", "question": "Line-up do Palco Hype", "answer": "15:30 | Ricardo Farhat",
+                 "kind": "lineup", "image_url": "https://x.supabase.co/banners/hype.jpg"}
+        mock_ia.return_value = {"tipo": "relato", "urgencia": "Neutro", "ficha": ficha}
+        store = FakeStore()
+
+        process_inbox(store, _message(content="qual o line up do palco hype?"))
+
+        self.assertEqual(store.finished, "processed")
+        self.assertEqual(len(store.responses), 2)
+        self.assertIn("Ricardo Farhat", store.responses[0])
+        self.assertEqual(store.responses[1], ("imagem", ficha["image_url"], "Line-up do Palco Hype", 42))
+
+    @mock.patch("server.triar_mensagem_ia")
+    def test_elogio_nao_manda_banner(self, mock_ia):
+        ficha = {"id": "f9", "question": "Line-up", "answer": "x", "kind": "lineup", "image_url": "https://x/b.jpg"}
+        mock_ia.return_value = {"tipo": "relato", "urgencia": "Positivo", "ficha": ficha}
+        store = FakeStore()
+
+        process_inbox(store, _message(content="show incrivel"))
+
+        self.assertEqual(len(store.responses), 1)
+
+    def test_outbox_envia_imagem_pelo_link(self):
+        class FakeOutStore:
+            def claim_outbox(self, _m): return True
+            def mark_outbox_sent(self, mid, pid): self.sent = (mid, pid)
+            def fail_outbox(self, m, e): self.failed = e
+        store = FakeOutStore()
+        client = mock.MagicMock()
+        client.send_image.return_value = "wamid.1"
+
+        worker.process_outbox(store, client, {
+            "id": "o1", "recipient": "5543", "message_type": "image",
+            "media_url": "https://x/b.jpg", "content": "Line-up do Palco Hype",
+        })
+
+        client.send_image.assert_called_once_with("5543", "https://x/b.jpg", caption="Line-up do Palco Hype")
+        client.send_text.assert_not_called()
+        self.assertEqual(store.sent, ("o1", "wamid.1"))
 
     def test_inundacao_desliga_a_ia_mas_registra_o_chamado(self):
         store = FakeStore(per_minute=protecao.FLOOD_GLOBAL_POR_MINUTO + 1)

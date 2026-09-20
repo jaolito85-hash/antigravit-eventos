@@ -302,13 +302,35 @@ class MetaWhatsAppClient:
     def send_text(self, recipient: str, text: str) -> str:
         """Envia texto dentro da janela de atendimento e retorna o ID da Meta."""
 
-        payload = {
+        return self._enviar({
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
             "to": recipient,
             "type": "text",
             "text": {"preview_url": False, "body": text},
-        }
+        })
+
+    def send_image(self, recipient: str, link: str, caption: str = "") -> str:
+        """Envia uma imagem pública (banner) com legenda opcional.
+
+        A Meta baixa a imagem pela URL no momento do envio, por isso o banner
+        precisa estar num endereço público, como o bucket do Supabase.
+        """
+
+        imagem: dict[str, Any] = {"link": link}
+        if caption:
+            imagem["caption"] = caption[:1024]
+        return self._enviar({
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": recipient,
+            "type": "image",
+            "image": imagem,
+        })
+
+    def _enviar(self, payload: dict[str, Any]) -> str:
+        """Faz o POST em /messages e devolve o ID da Meta, ou levanta MetaAPIError."""
+
         headers = {
             "Authorization": f"Bearer {self._access_token}",
             "Content-Type": "application/json",

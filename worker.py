@@ -293,6 +293,14 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 ),
                 feedback_id,
             )
+            # Ficha do guia com banner (line-up, cardápio): a imagem vai logo
+            # depois do texto. Elogio e crítico não usam ficha, então não têm banner.
+            ficha = triagem.get("ficha") or {}
+            if ficha.get("image_url") and urgency not in ("Positivo", "Critico"):
+                store.enqueue_image(
+                    message, str(ficha["image_url"]),
+                    caption=str(ficha.get("question") or ""), feedback_id=feedback_id,
+                )
         store.finish_inbox(message_id)
         if not pode_responder:
             logger.info(
@@ -317,10 +325,17 @@ def process_outbox(
     if not store.claim_outbox(message):
         return
     try:
-        provider_message_id = client.send_text(
-            str(message["recipient"]),
-            str(message["content"]),
-        )
+        if message.get("message_type") == "image" and message.get("media_url"):
+            provider_message_id = client.send_image(
+                str(message["recipient"]),
+                str(message["media_url"]),
+                caption=str(message.get("content") or ""),
+            )
+        else:
+            provider_message_id = client.send_text(
+                str(message["recipient"]),
+                str(message["content"]),
+            )
         store.mark_outbox_sent(str(message["id"]), provider_message_id)
         logger.info("Resposta aceita pela Meta")
     except Exception as exc:  # noqa: BLE001 - provider failures must enter the outbox retry

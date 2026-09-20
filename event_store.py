@@ -15,6 +15,9 @@ from meta_whatsapp import IncomingMessage, MessageStatus, MetaAPIError
 
 logger = logging.getLogger(__name__)
 
+# Tipos de ficha da base: pergunta comum e as quatro do guia do evento.
+KNOWLEDGE_KINDS = ("faq", "lineup", "food", "bar", "activation")
+
 
 def _linha_de_erro(error: Exception) -> str:
     """Texto de falha para o painel: detalha o que é nosso e omite o resto.
@@ -434,6 +437,52 @@ class EventStore:
             .execute()
         )
 
+    def enqueue_image(
+        self,
+        message: dict[str, Any],
+        media_url: str,
+        caption: str,
+        feedback_id: int | None = None,
+    ) -> None:
+        """Enfileira um banner (imagem pública) para ir depois da resposta em texto.
+
+        Chave própria de idempotência: a resposta em texto usa `:reply`, e o
+        banner não pode derrubá-la nem ser derrubado por ela.
+        """
+
+        row = {
+            "event_id": self.event_id(),
+            "feedback_id": feedback_id,
+            "provider": "meta",
+            "channel_account_id": message["channel_account_id"],
+            "recipient": message["sender"],
+            "message_type": "image",
+            "content": (caption or "")[:1024],
+            "media_url": media_url[:500],
+            "idempotency_key": f"inbox:{message['id']}:banner",
+            "delivery_status": "queued",
+        }
+        (
+            self._get_client()
+            .table("outbound_messages")
+            .upsert(row, on_conflict="idempotency_key", ignore_duplicates=True)
+            .execute()
+        )
+
+    def upload_banner(self, content: bytes, mime_type: str) -> str:
+        """Sobe um banner para o bucket público e devolve a URL que a Meta vai buscar."""
+
+        import secrets
+
+        extensao = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}[mime_type]
+        nome = (
+            f"{self.event_id()}/"
+            f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(4)}.{extensao}"
+        )
+        storage = self._get_client().storage.from_("banners")
+        storage.upload(nome, content, {"content-type": mime_type})
+        return str(storage.get_public_url(nome)).split("?")[0]
+
     def replies_for_feedback(self, feedback_id: int) -> list[dict[str, Any]]:
         """O que já saiu para o participante por causa deste chamado.
 
@@ -556,7 +605,7 @@ class EventStore:
             response = (
                 self._get_client()
                 .table("bot_knowledge")
-                .select("id,question,answer,keywords,priority,active")
+                .select("id,question,answer,keywords,priority,active,kind,scope,image_url")
                 .eq("event_id", self.event_id())
                 .order("priority", desc=True)
                 .execute()
@@ -567,12 +616,15 @@ class EventStore:
         return list(response.data or [])
 
     def save_knowledge(self, entry: dict[str, Any]) -> dict[str, Any]:
-        """Cria ou atualiza uma pergunta e resposta."""
+        """Cria ou atualiza uma pergunta e resposta, ou uma ficha do guia."""
 
+        kind = str(entry.get("kind") or "faq").strip().lower()
+        if kind not in KNOWLEDGE_KINDS:
+            kind = "faq"
         row = {
             "event_id": self.event_id(),
             "question": str(entry.get("question") or "").strip()[:300],
-            "answer": str(entry.get("answer") or "").strip()[:1500],
+            "answer": str(entry.get("answer") or "").strip()[:4000],
             "keywords": [
                 str(k).strip().lower()[:80]
                 for k in (entry.get("keywords") or [])
@@ -580,6 +632,9 @@ class EventStore:
             ][:30],
             "priority": max(0, min(100, int(entry.get("priority") or 0))),
             "active": bool(entry.get("active", True)),
+            "kind": kind,
+            "scope": (str(entry.get("scope") or "").strip()[:120] or None),
+            "image_url": (str(entry.get("image_url") or "").strip()[:500] or None),
         }
         client = self._get_client()
         if entry.get("id"):
@@ -861,6 +916,9 @@ class EventStore:
                 "keywords": e.get("keywords") or [],
                 "priority": e.get("priority") or 0,
                 "active": e.get("active", True),
+                "kind": e.get("kind") if e.get("kind") in KNOWLEDGE_KINDS else "faq",
+                "scope": e.get("scope") or None,
+                "image_url": e.get("image_url") or None,
             }
             for e in (payload.get("knowledge") or [])
             if e.get("question") and e.get("answer")

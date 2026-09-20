@@ -11,10 +11,10 @@ from contextlib import contextmanager
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, session, redirect
 from dotenv import load_dotenv
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from collections import Counter, defaultdict
 from typing import Any
-from event_store import EventStore
+from event_store import KNOWLEDGE_KINDS, EventStore
 from meta_whatsapp import (
     MetaWhatsAppClient,
     graph_api_version,
@@ -39,11 +39,15 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Strict",
     SESSION_COOKIE_SECURE=os.getenv("FLASK_ENV") == "production",
-    # O webhook da Meta tem poucos KB e o painel só manda JSON pequeno. Sem
-    # teto, um POST anônimo gigante era lido inteiro na memória antes mesmo
-    # de a assinatura ser conferida.
-    MAX_CONTENT_LENGTH=1024 * 1024,
+    # Teto global de 6 MB por causa do upload de banner no painel. O webhook
+    # da Meta tem poucos KB e recebe um teto próprio de 1 MB na rota, antes de
+    # ler o corpo: sem isso um POST anônimo gigante era carregado inteiro na
+    # memória antes mesmo de a assinatura ser conferida.
+    MAX_CONTENT_LENGTH=6 * 1024 * 1024,
 )
+WEBHOOK_MAX_BYTES = 1024 * 1024
+BANNER_MAX_BYTES = 5 * 1024 * 1024
+BANNER_MIME = {"image/jpeg", "image/png", "image/webp"}
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -574,7 +578,11 @@ def triar_mensagem_ia(texto, fichas=None):
                 "EXATAMENTE ao que a pessoa perguntou ou precisa saber, ou 0 se nenhuma "
                 "responde. Julgue o sentido, não as palavras: \"onde fica o SAC\" não é "
                 "\"onde fica o festival\", e \"acabou o papel no banheiro\" não é pergunta "
-                "nenhuma. Na dúvida, 0."
+                "nenhuma. Pergunta sobre horário de show, quem toca agora ou depois, "
+                "line-up, cardápio, preço de comida, open bar, bebida inclusa ou ativação "
+                "casa com a ficha do guia correspondente, mesmo sem a pessoa dizer o nome "
+                "do palco ou do setor: aí escolha a ficha mais geral desse assunto. "
+                "Na dúvida, 0."
             )
         response = client.chat.completions.create(
             **_chat_completion_kwargs(
@@ -890,7 +898,22 @@ def _limpar_resposta(reply: str) -> str:
     return re.sub(r"[ \t]{2,}", " ", reply).strip()
 
 
-def generate_ai_response(text, category, urgency, sector_name=None, official_answer=None):
+GUIDE_KINDS = ("lineup", "food", "bar", "activation")
+# Brasil não tem horário de verão desde 2019; o deslocamento fixo evita
+# depender de base de fusos instalada no container.
+_FUSO_SAO_PAULO = timezone(timedelta(hours=-3))
+_DIAS_SEMANA = ("segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo")
+
+
+def _agora_sao_paulo() -> str:
+    """Hora local do festival, para a IA responder "quem toca agora"."""
+
+    agora = datetime.now(_FUSO_SAO_PAULO)
+    return f"{_DIAS_SEMANA[agora.weekday()]}, {agora.strftime('%H:%M')}"
+
+
+def generate_ai_response(text, category, urgency, sector_name=None, official_answer=None,
+                         official_kind=None):
     """Generates a fun response using AI, like a friend who works at the event"""
     api_key = os.getenv("OPENAI_API_KEY")
 
@@ -943,12 +966,31 @@ Spanish input → Spanish reply:
         # Informacao oficial cadastrada pela producao: o conteudo e obrigatorio,
         # o jeito de dizer fica com a IA.
         official_line = ''
-        if official_answer:
+        max_tokens = 120
+        if official_answer and official_kind in GUIDE_KINDS:
+            # Guia do evento: a ficha é uma tabela (line-up, cardápio). A IA
+            # responde o que foi perguntado a partir dela, com a hora atual
+            # para "quem toca agora", e só lista tudo se pediram tudo.
+            official_line = (
+                '\n\nOFFICIAL FESTIVAL GUIDE (every fact here is exact; never invent an '
+                f'artist, a time, a dish or a price that is not listed):\n"{official_answer}"'
+                f'\n\nCurrent local time at the festival: {_agora_sao_paulo()}. '
+                'Answer precisely what the participant asked from this guide: what is on '
+                'now or next, the time of a specific artist, whether a dish exists, a price. '
+                'If they asked for the whole schedule or the whole menu, list it in short '
+                'lines, one item per line, without emojis inside the list. If something is '
+                'not in the guide, say you do not have that information and suggest asking '
+                'the staff on site. You may write up to 8 short lines for this reply.'
+            )
+            max_tokens = 400
+        elif official_answer:
             official_line = (
                 '\n\nOFFICIAL ANSWER FROM THE FESTIVAL STAFF (you MUST convey this '
                 'information, keeping every fact exactly right, but say it in your own '
                 f'voice and in the participant language):\n"{official_answer}"'
             )
+            if len(official_answer) > 400:
+                max_tokens = 300
 
         # Tom de voz extra configurado no painel.
         persona = (_bot_config().get('settings') or {}).get('persona')
@@ -993,7 +1035,7 @@ Generate ONE creative, unique reply (do NOT copy the examples). Reply in the SAM
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": user_msg},
                 ],
-                max_output_tokens=120,
+                max_output_tokens=max_tokens,
                 temperature=0.9,
             )
         )
@@ -1528,6 +1570,7 @@ def _compose_reply(
             reply = generate_ai_response(
                 content, category, urgency, sector_name,
                 official_answer=(known or {}).get("answer"),
+                official_kind=(known or {}).get("kind"),
             )
             if reply:
                 return prefix + reply
@@ -1615,6 +1658,8 @@ def meta_webhook_verify():
 def meta_webhook():
     """Valida, normaliza e persiste; processamento pesado fica no worker."""
 
+    if (request.content_length or 0) > WEBHOOK_MAX_BYTES:
+        return jsonify({"error": "payload_too_large"}), 413
     raw_body = request.get_data(cache=True)
     if not verify_webhook_signature(
         raw_body,
@@ -2181,7 +2226,12 @@ def _simular(content_raw, sector_code):
         "sector": sector["name"] if sector else None,
         "topic": _topic(content, category, urgency),
         "matched": (
-            {"question": known["question"], "id": known.get("id"), "por": triagem.get("ficha_por", "ia")}
+            {
+                "question": known["question"], "id": known.get("id"),
+                "por": triagem.get("ficha_por", "ia"),
+                "kind": known.get("kind") or "faq",
+                "image_url": known.get("image_url"),
+            }
             if known else None
         ),
         "explain": explain,
@@ -2218,6 +2268,12 @@ def save_knowledge_route():
     if isinstance(keywords, str):
         keywords = [k.strip() for k in keywords.split(",")]
 
+    kind = str(payload.get("kind") or "faq").strip().lower()
+    if kind not in KNOWLEDGE_KINDS:
+        return jsonify({"error": "tipo de ficha desconhecido"}), 400
+    if len(answer) > 4000:
+        return jsonify({"error": "o conteúdo passa de 4000 caracteres"}), 400
+
     try:
         entry = EVENT_STORE.save_knowledge({
             "id": payload.get("id"),
@@ -2226,11 +2282,47 @@ def save_knowledge_route():
             "keywords": keywords or [],
             "priority": payload.get("priority", 50),
             "active": payload.get("active", True),
+            "kind": kind,
+            "scope": payload.get("scope"),
+            "image_url": payload.get("image_url"),
         })
     except Exception as e:
         logger.error("Falha ao salvar pergunta: %s", type(e).__name__)
         return jsonify({"error": "não foi possível salvar"}), 503
     return jsonify({"success": True, "entry": entry})
+
+
+@app.route("/api/bot/banner", methods=["POST"])
+@login_required
+def upload_banner_route():
+    """Sobe um banner (jpeg, png ou webp) e devolve a URL pública para a ficha."""
+
+    arquivo = request.files.get("file")
+    if arquivo is None or not arquivo.filename:
+        return jsonify({"error": "escolha uma imagem"}), 400
+    mime = (arquivo.mimetype or "").split(";")[0].strip().lower()
+    if mime not in BANNER_MIME:
+        return jsonify({"error": "use uma imagem JPEG, PNG ou WebP"}), 400
+    conteudo = arquivo.read(BANNER_MAX_BYTES + 1)
+    if not conteudo:
+        return jsonify({"error": "arquivo vazio"}), 400
+    if len(conteudo) > BANNER_MAX_BYTES:
+        return jsonify({"error": "a imagem passa de 5 MB"}), 400
+    # A Meta recusa imagem cujo conteúdo não bate com o tipo. Os primeiros
+    # bytes dizem o formato real, independente do que o navegador declarou.
+    assinaturas = {
+        "image/jpeg": (b"\xff\xd8\xff",),
+        "image/png": (b"\x89PNG",),
+        "image/webp": (b"RIFF",),
+    }
+    if not conteudo.startswith(assinaturas[mime]):
+        return jsonify({"error": "o arquivo não é uma imagem válida"}), 400
+    try:
+        url = EVENT_STORE.upload_banner(conteudo, mime)
+    except Exception as e:
+        logger.error("Falha ao subir banner: %s", type(e).__name__)
+        return jsonify({"error": "não foi possível subir a imagem"}), 503
+    return jsonify({"url": url})
 
 
 @app.route("/api/bot/knowledge/<entry_id>", methods=["DELETE"])
