@@ -76,9 +76,12 @@ class Telegram:
     def __init__(self, token: str) -> None:
         self._base = f"https://api.telegram.org/bot{token}"
 
-    def _chamar(self, metodo: str, timeout: int = 20, **dados: Any) -> Any:
+    def _chamar(self, metodo: str, espera: int = 20, **dados: Any) -> Any:
+        # O nome é "espera" e não "timeout" porque getUpdates manda um campo
+        # "timeout" para o Telegram; se os dois se chamassem igual, o Python
+        # recusava a chamada e o agente morria no primeiro ciclo.
         try:
-            resposta = requests.post(f"{self._base}/{metodo}", json=dados, timeout=timeout)
+            resposta = requests.post(f"{self._base}/{metodo}", json=dados, timeout=espera)
             corpo = resposta.json()
         except Exception as exc:  # noqa: BLE001 - rede oscila; o agente segue
             logger.error("Telegram %s falhou | erro=%s", metodo, type(exc).__name__)
@@ -95,7 +98,7 @@ class Telegram:
         dados: dict[str, Any] = {"timeout": 25, "allowed_updates": ["message", "callback_query"]}
         if offset is not None:
             dados["offset"] = offset
-        return self._chamar("getUpdates", timeout=35, **dados) or []
+        return self._chamar("getUpdates", espera=35, **dados) or []
 
     def enviar(
         self,
@@ -961,16 +964,22 @@ class AgenteTelegram:
             time.sleep(5)
 
     def laco_telegram(self) -> None:
+        # Este laço é o processo inteiro. Se ele morrer, o Docker reinicia o
+        # container, e o Coolify para o app todo depois de dez reinícios: o
+        # agente de operação derrubaria o Tuca. Por isso nada aqui escapa.
         offset: int | None = None
         while _running:
-            updates = self.tg.get_updates(offset)
-            if not updates:
-                if updates is None:
-                    time.sleep(5)
-                continue
-            for update in updates:
-                offset = int(update["update_id"]) + 1
-                self.tratar_update(update)
+            try:
+                updates = self.tg.get_updates(offset)
+                if not updates:
+                    time.sleep(2)
+                    continue
+                for update in updates:
+                    offset = int(update.get("update_id", 0)) + 1
+                    self.tratar_update(update)
+            except Exception as exc:  # noqa: BLE001 - o laço nunca pode morrer
+                logger.error("Laço do Telegram falhou | erro=%s", type(exc).__name__)
+                time.sleep(10)
 
 
 def main() -> None:
@@ -990,8 +999,13 @@ def main() -> None:
         logger.warning("TELEGRAM_CHAT_IDS vazio: só o comando /id responde, use-o para descobrir o id do grupo")
 
     store = EventStore()
-    if not store.healthcheck():
-        raise RuntimeError("Agente não conseguiu acessar o evento no Supabase")
+    # Sem banco o agente não morre: espera. Morrer em loop faria o Coolify
+    # parar o app inteiro depois de dez reinícios.
+    while _running and not store.healthcheck():
+        logger.error("Agente sem acesso ao evento no Supabase; tento de novo em 60s")
+        time.sleep(60)
+    if not _running:
+        return
 
     telegram = Telegram(token)
     eu = telegram.get_me()

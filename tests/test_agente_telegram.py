@@ -275,6 +275,44 @@ class TextosTests(unittest.TestCase):
         self.assertIn("sem amostra", texto)
 
 
+class ClienteTelegramTests(unittest.TestCase):
+    """O cliente HTTP do Telegram: foi um TypeError aqui que derrubou o app em 20/09."""
+
+    def test_get_updates_manda_o_timeout_longo_ao_telegram_e_espera_mais_na_rede(self):
+        resposta = mock.MagicMock()
+        resposta.json.return_value = {"ok": True, "result": [{"update_id": 7}]}
+        with mock.patch.object(telegram_agent.requests, "post", return_value=resposta) as post:
+            updates = telegram_agent.Telegram("tok").get_updates(3)
+        self.assertEqual(updates, [{"update_id": 7}])
+        chamada = post.call_args
+        self.assertEqual(chamada.kwargs["json"]["timeout"], 25)
+        self.assertEqual(chamada.kwargs["json"]["offset"], 3)
+        self.assertGreater(chamada.kwargs["timeout"], 25)
+
+    def test_rede_fora_devolve_lista_vazia_em_vez_de_excecao(self):
+        with mock.patch.object(telegram_agent.requests, "post", side_effect=OSError("rede")):
+            self.assertEqual(telegram_agent.Telegram("tok").get_updates(None), [])
+
+    def test_laco_sobrevive_a_excecao_e_para_no_sinal(self):
+        agente, tg = novo_agente()
+        chamadas = {"n": 0}
+
+        def get_updates(_offset):
+            chamadas["n"] += 1
+            if chamadas["n"] == 1:
+                raise TypeError("bug antigo")
+            telegram_agent._running = False
+            return [{"update_id": 1, "message": {"chat": {"id": -100, "type": "group"}, "text": "/ajuda"}}]
+
+        tg.get_updates = get_updates
+        telegram_agent._running = True
+        with mock.patch.object(telegram_agent.time, "sleep"):
+            agente.laco_telegram()
+        telegram_agent._running = True
+        self.assertEqual(chamadas["n"], 2)
+        self.assertIn("Tuca Operação", tg.enviadas[-1][1])
+
+
 class IAForaTests(unittest.TestCase):
     def test_sem_ia_o_texto_livre_recebe_a_ajuda(self):
         agente, tg = novo_agente()
