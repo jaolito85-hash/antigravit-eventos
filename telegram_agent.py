@@ -152,6 +152,94 @@ def _fatiar(texto: str) -> list[str]:
 
 
 # ----------------------------------------------------------------------
+# GitHub: a ponte com o agente da nuvem
+# ----------------------------------------------------------------------
+LABEL_ISSUE = "tuca-alerta"   # problema que o agente da nuvem investiga
+LABEL_PR = "tuca-agente"      # correção pronta, esperando aprovação no Telegram
+
+
+class GitHub:
+    """O que o agente precisa da API do GitHub: issue, PRs, merge, fechar."""
+
+    def __init__(self, token: str, repo: str) -> None:
+        self._repo = repo
+        self._headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+    def _chamar(self, metodo: str, caminho: str, **dados: Any) -> Any:
+        url = f"https://api.github.com/repos/{self._repo}{caminho}"
+        try:
+            resposta = requests.request(metodo, url, headers=self._headers, json=dados or None, timeout=20)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("GitHub %s %s falhou | erro=%s", metodo, caminho, type(exc).__name__)
+            return None
+        if resposta.status_code >= 300:
+            logger.error("GitHub %s %s recusou | http=%s", metodo, caminho, resposta.status_code)
+            return {"_erro": resposta.status_code, "_mensagem": str((resposta.json() or {}).get("message", ""))[:200] if resposta.content else ""}
+        return resposta.json() if resposta.content else {}
+
+    def criar_issue(self, titulo: str, corpo: str) -> int | None:
+        dados = self._chamar("POST", "/issues", title=titulo[:250], body=corpo[:60000], labels=[LABEL_ISSUE])
+        return int(dados["number"]) if dados and "number" in dados else None
+
+    def prs_abertos(self) -> list[dict[str, Any]]:
+        dados = self._chamar("GET", f"/pulls?state=open&per_page=30")
+        if not isinstance(dados, list):
+            return []
+        return [
+            {
+                "numero": int(pr["number"]),
+                "titulo": str(pr.get("title") or ""),
+                "corpo": str(pr.get("body") or ""),
+                "branch": str((pr.get("head") or {}).get("ref") or ""),
+                "url": str(pr.get("html_url") or ""),
+            }
+            for pr in dados
+            if any(lb.get("name") == LABEL_PR for lb in pr.get("labels") or [])
+        ]
+
+    def merge(self, numero: int, mensagem: str) -> tuple[bool, str]:
+        dados = self._chamar("PUT", f"/pulls/{numero}/merge", merge_method="squash", commit_title=mensagem[:200])
+        if dados and dados.get("merged"):
+            return True, str(dados.get("sha") or "")[:10]
+        if dados and "_erro" in dados:
+            return False, f"GitHub recusou o merge (HTTP {dados['_erro']}): {dados.get('_mensagem') or 'sem detalhe'}"
+        return False, "GitHub não respondeu ao merge."
+
+    def fechar_pr(self, numero: int, comentario: str) -> bool:
+        self._chamar("POST", f"/issues/{numero}/comments", body=comentario[:5000])
+        dados = self._chamar("PATCH", f"/pulls/{numero}", state="closed")
+        return bool(dados and dados.get("state") == "closed")
+
+
+def corpo_da_issue(achado: Achado, erros: dict[str, Any] | None) -> str:
+    """Issue que o agente da nuvem lê. Diagnóstico e contexto, nunca dado pessoal."""
+
+    partes = [
+        f"**Gravidade:** {achado.gravidade}",
+        f"**Chave da varredura:** `{achado.chave}`",
+        f"**Quando:** {hora_local(iso(agora()))} (São Paulo)",
+        "",
+        "## O que o agente do Telegram viu",
+        achado.detalhe,
+    ]
+    if achado.acao:
+        partes += ["", f"Correção do catálogo disponível no Telegram: `{achado.acao}`. Ela trata o sintoma; esta issue é para a causa."]
+    if erros:
+        partes += ["", "## Falhas recentes registradas no banco", "```json", json.dumps(erros, ensure_ascii=False, indent=1, default=str)[:6000], "```"]
+    partes += [
+        "",
+        "## Contrato",
+        "Leia `directives/prompt_agente_nuvem.md`. Se for bug ou configuração no código, abra um PR com a label "
+        f"`{LABEL_PR}` referenciando esta issue, com os testes passando. Se não for coisa de código, comente o diagnóstico e feche a issue.",
+    ]
+    return "\n".join(partes)
+
+
+# ----------------------------------------------------------------------
 # Textos prontos (comandos sem IA)
 # ----------------------------------------------------------------------
 AJUDA = (
@@ -165,6 +253,8 @@ AJUDA = (
     "/saude: app, worker, Meta e IA\n"
     "/verificar: varredura completa agora\n"
     "/alertas: últimos alertas e o que foi decidido\n"
+    "/prs: correções de código prontas, esperando aprovação\n"
+    "/aprovar N e /rejeitar N: decide o PR número N (ou use os botões)\n"
     "/limpar: esquece a conversa com a IA\n"
     "/id: mostra o id deste chat"
 )
@@ -485,17 +575,23 @@ class AgenteTelegram:
         registro: RegistroDeAlertas,
         chats_permitidos: set[str],
         chat_alertas: str | None,
+        github: GitHub | None = None,
     ) -> None:
         self.tg = telegram
         self.monitor = monitor
         self.registro = registro
         self.chats_permitidos = chats_permitidos
         self.chat_alertas = chat_alertas
+        self.github = github
         self.cerebro = Cerebro(self)
         self.username = ""
         self._lock = threading.Lock()
         self._criticos_vistos: deque[int] = deque(maxlen=500)
         self._vigia_desde = agora()
+        self._prs_vistos: set[int] = set()
+        # Depois de um merge, vigia o /health até o started_at mudar: é a
+        # prova de que o Coolify subiu a versão nova.
+        self._deploy_esperado: dict[str, Any] | None = None
 
     # --- autorização ---
     def permitido(self, chat_id: Any) -> bool:
@@ -582,6 +678,23 @@ class AgenteTelegram:
                 self.tg.enviar(chat_id, f"Varredura completa: {len(achados)} problema(s).\n{linhas}\nOs novos foram enviados com detalhe e botão.")
         elif comando == "alertas":
             self.tg.enviar(chat_id, texto_alertas(self.registro.recentes(10)))
+        elif comando == "prs":
+            if not self.github:
+                self.tg.enviar(chat_id, "Sem GITHUB_TOKEN no agente: não consigo ver os PRs.")
+            else:
+                prs = self.github.prs_abertos()
+                if not prs:
+                    self.tg.enviar(chat_id, "Nenhuma correção de código esperando aprovação.")
+                else:
+                    linhas = "\n".join(f"PR #{p['numero']}: {escapar(p['titulo'])}" for p in prs)
+                    self.tg.enviar(chat_id, f"<b>Correções prontas</b>\n{linhas}\n\nAprove com /aprovar N ou pelo botão da mensagem.")
+        elif comando in {"aprovar", "rejeitar"}:
+            if not argumento.isdigit():
+                self.tg.enviar(chat_id, f"Diga o número: /{comando} 12")
+            elif comando == "aprovar":
+                self._aprovar_pr(int(argumento), "comando", chat_id)
+            else:
+                self._rejeitar_pr(int(argumento), "comando", chat_id)
         elif comando == "limpar":
             self.cerebro.esquecer(chat_id)
             self.tg.enviar(chat_id, "Conversa esquecida.")
@@ -599,6 +712,16 @@ class AgenteTelegram:
             self.tg.responder_callback(cb_id, "Chat não autorizado.")
             return
         acao, _, alerta_id = dados.partition(":")
+        if acao in {"pr_ok", "pr_no"}:
+            if not alerta_id.isdigit():
+                self.tg.responder_callback(cb_id, "PR inválido.")
+                return
+            self.tg.responder_callback(cb_id, "Aprovando..." if acao == "pr_ok" else "Rejeitando...")
+            if acao == "pr_ok":
+                self._aprovar_pr(int(alerta_id), quem, chat_id, msg.get("message_id"))
+            else:
+                self._rejeitar_pr(int(alerta_id), quem, chat_id, msg.get("message_id"))
+            return
         alerta = self.registro.por_id(alerta_id) if alerta_id else None
         if not alerta:
             self.tg.responder_callback(cb_id, "Alerta não encontrado.")
@@ -653,7 +776,8 @@ class AgenteTelegram:
                 self._avisar(achado)
 
             for chave, alerta in abertos.items():
-                if chave in chaves:
+                # Anúncio de PR não é achado da varredura: fecha só por decisão.
+                if chave in chaves or chave.startswith("pr:"):
                     continue
                 try:
                     self.registro.fechar(str(alerta["id"]), "resolvido", "Sumiu na varredura seguinte.")
@@ -674,12 +798,33 @@ class AgenteTelegram:
             self.tg.enviar(self.chat_alertas, texto_alerta(achado))
             return
         alerta_id = str(alerta.get("id") or "")
-        enviado = self.tg.enviar(self.chat_alertas, texto_alerta(achado), botoes_alerta(alerta_id, achado.acao))
+        texto = texto_alerta(achado)
+        numero = self._abrir_issue(achado, alerta_id)
+        if numero:
+            texto += f"\n\n🛰 <i>Issue #{numero} aberta para o agente da nuvem investigar. Se for coisa de código, a correção chega aqui como PR para você aprovar.</i>"
+        enviado = self.tg.enviar(self.chat_alertas, texto, botoes_alerta(alerta_id, achado.acao))
         if enviado and alerta_id:
             try:
                 self.registro.anotar_mensagem(alerta_id, self.chat_alertas, enviado.get("message_id"))
             except Exception:  # noqa: BLE001
                 pass
+
+    def _abrir_issue(self, achado: Achado, alerta_id: str) -> int | None:
+        """Problema que pode ser bug vira issue para o agente da nuvem. Uma por alerta."""
+
+        if not self.github or not achado.investigar:
+            return None
+        try:
+            erros = self.monitor.erros(6, 10)
+        except Exception:  # noqa: BLE001 - a issue sai mesmo sem o anexo
+            erros = None
+        numero = self.github.criar_issue(f"[Tuca] {achado.titulo}", corpo_da_issue(achado, erros))
+        if numero and alerta_id:
+            try:
+                self.registro.anotar_issue(alerta_id, numero)
+            except Exception:  # noqa: BLE001
+                pass
+        return numero
 
     def vigiar_criticos(self) -> None:
         """Chamado crítico novo é avisado em um minuto, não em meia hora."""
@@ -698,6 +843,99 @@ class AgenteTelegram:
                 f"{escapar(c['mensagem'][:400])}\n<i>Alguém precisa assumir no painel.</i>",
             )
 
+    # --- correções de código: PR aprovado no Telegram ---
+    def vigiar_prs(self) -> None:
+        """PR com a label do agente da nuvem é anunciado uma vez, com botão."""
+
+        if not self.github or not self.chat_alertas:
+            return
+        for pr in self.github.prs_abertos():
+            numero = pr["numero"]
+            if numero in self._prs_vistos:
+                continue
+            self._prs_vistos.add(numero)
+            try:
+                if self.registro.por_chave(f"pr:{numero}"):
+                    continue  # já anunciado antes de um reinício do agente
+            except Exception:  # noqa: BLE001
+                pass
+            self._anunciar_pr(pr)
+
+    def _anunciar_pr(self, pr: dict[str, Any]) -> None:
+        numero = pr["numero"]
+        achado = Achado(f"pr:{numero}", "atencao", f"Correção pronta: PR #{numero}", pr["titulo"])
+        try:
+            self.registro.abrir(achado)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Não registrou anúncio do PR | erro=%s", type(exc).__name__)
+        corpo = pr["corpo"].strip()
+        texto = (
+            f"🛠 <b>Correção de código pronta: PR #{numero}</b>\n"
+            f"<b>{escapar(pr['titulo'])}</b>\n\n"
+            f"{escapar(corpo[:1200])}{'...' if len(corpo) > 1200 else ''}\n\n"
+            f"{escapar(pr['url'])}\n\n"
+            "<i>Aprovar faz o merge na main e o Coolify sobe a versão nova em alguns minutos. Eu confirmo aqui quando estiver no ar.</i>"
+        )
+        botoes = [[
+            {"text": "✅ Aprovar e subir", "callback_data": f"pr_ok:{numero}"},
+            {"text": "❌ Rejeitar", "callback_data": f"pr_no:{numero}"},
+        ]]
+        self.tg.enviar(self.chat_alertas, texto, botoes)
+
+    def _fechar_anuncio(self, numero: int, status: str, resultado: str, quem: str) -> None:
+        try:
+            alerta = self.registro.por_chave(f"pr:{numero}")
+            if alerta and alerta.get("status") == "aberto":
+                self.registro.fechar(str(alerta["id"]), status, resultado, quem)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Não fechou anúncio do PR | erro=%s", type(exc).__name__)
+
+    def _aprovar_pr(self, numero: int, quem: str, chat_id: Any, message_id: Any = None) -> None:
+        if not self.github:
+            self.tg.enviar(chat_id, "Sem GITHUB_TOKEN no agente: não consigo fazer o merge.")
+            return
+        with self._lock:
+            ok, detalhe = self.github.merge(numero, f"fix: PR #{numero} aprovado no Telegram por {quem}")
+        if not ok:
+            self.tg.enviar(chat_id, f"❌ Não consegui subir o PR #{numero}: {escapar(detalhe)}", responder_a=message_id)
+            return
+        self._fechar_anuncio(numero, "corrigido", f"Merge {detalhe} aprovado no Telegram", quem)
+        app = self.monitor._checar_app()
+        self._deploy_esperado = {"pr": numero, "started_at": app.get("no_ar_desde"), "desde": time.monotonic()}
+        self.tg.enviar(
+            chat_id,
+            f"✅ <b>PR #{numero} aprovado por {escapar(quem)}</b> e mergeado na main ({escapar(detalhe)}).\n"
+            "O Coolify está subindo a versão nova. Aviso quando o /health mudar.",
+            responder_a=message_id,
+        )
+        if message_id:
+            self.tg.editar(chat_id, message_id, f"🛠 <b>PR #{numero}</b> aprovado por {escapar(quem)} às {hora_local(iso(agora()))}.")
+
+    def _rejeitar_pr(self, numero: int, quem: str, chat_id: Any, message_id: Any = None) -> None:
+        if not self.github:
+            self.tg.enviar(chat_id, "Sem GITHUB_TOKEN no agente: não consigo fechar o PR.")
+            return
+        fechou = self.github.fechar_pr(numero, f"Rejeitado no Telegram por {quem}. Não vai para produção.")
+        self._fechar_anuncio(numero, "ignorado", "Rejeitado no Telegram", quem)
+        texto = f"❌ PR #{numero} rejeitado por {escapar(quem)}." + ("" if fechou else " Não consegui fechar no GitHub; feche por lá.")
+        self.tg.enviar(chat_id, texto, responder_a=message_id)
+        if message_id:
+            self.tg.editar(chat_id, message_id, f"🛠 <b>PR #{numero}</b> rejeitado por {escapar(quem)} às {hora_local(iso(agora()))}.")
+
+    def vigiar_deploy(self) -> None:
+        """Confirma no grupo quando a versão aprovada está no ar."""
+
+        esperado = self._deploy_esperado
+        if not esperado or not self.chat_alertas:
+            return
+        app = self.monitor._checar_app()
+        if app.get("ok") and app.get("no_ar_desde") and app.get("no_ar_desde") != esperado.get("started_at"):
+            self._deploy_esperado = None
+            self.tg.enviar(self.chat_alertas, f"🟢 <b>Versão nova no ar</b> (PR #{esperado['pr']}). App reiniciado às {app['no_ar_desde']}.")
+        elif time.monotonic() - esperado["desde"] > 20 * 60:
+            self._deploy_esperado = None
+            self.tg.enviar(self.chat_alertas, f"⚠️ Passaram 20 min e o /health não mudou depois do PR #{esperado['pr']}. Confira o deploy no Coolify.")
+
     # --- laços ---
     def laco_agendado(self) -> None:
         intervalo = max(1, int(os.getenv("MONITOR_INTERVAL_MIN", "30"))) * 60
@@ -715,10 +953,11 @@ class AgenteTelegram:
                     logger.error("Varredura falhou | erro=%s", type(exc).__name__)
             if vigia > 0 and agora_m >= proxima_vigia:
                 proxima_vigia = agora_m + vigia
-                try:
-                    self.vigiar_criticos()
-                except Exception as exc:  # noqa: BLE001
-                    logger.error("Vigia de críticos falhou | erro=%s", type(exc).__name__)
+                for vigia_fn in (self.vigiar_criticos, self.vigiar_prs, self.vigiar_deploy):
+                    try:
+                        vigia_fn()
+                    except Exception as exc:  # noqa: BLE001
+                        logger.error("%s falhou | erro=%s", vigia_fn.__name__, type(exc).__name__)
             time.sleep(5)
 
     def laco_telegram(self) -> None:
@@ -756,7 +995,12 @@ def main() -> None:
 
     telegram = Telegram(token)
     eu = telegram.get_me()
-    agente = AgenteTelegram(telegram, Monitor(store), RegistroDeAlertas(store), chats, chat_alertas)
+    github = None
+    if os.getenv("GITHUB_TOKEN", "").strip():
+        github = GitHub(os.getenv("GITHUB_TOKEN", "").strip(), os.getenv("GITHUB_REPO", "jaolito85-hash/antigravit-eventos"))
+    else:
+        logger.warning("GITHUB_TOKEN vazio: sem issue para a nuvem e sem aprovação de PR pelo Telegram")
+    agente = AgenteTelegram(telegram, Monitor(store), RegistroDeAlertas(store), chats, chat_alertas, github)
     agente.username = str(eu.get("username") or "")
     logger.info("Agente do Telegram iniciado | bot=@%s | chats=%d", agente.username, len(chats))
 

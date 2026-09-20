@@ -47,13 +47,51 @@ Os limites em minutos ficam em `MONITOR_*` no ambiente. O catálogo de correçõ
 é `CORRECOES` em `monitor.py`. Só existe o que está lá, e cada correção é um único
 update idempotente no banco.
 
+## Correção de código: o agente da nuvem e o botão de aprovar
+
+O agente do Telegram não escreve código. Quem escreve é o Guardião do Tuca, uma
+rotina do Claude Code na nuvem (modelo Opus), com o prompt em
+`directives/prompt_agente_nuvem.md`. O caminho inteiro, sem computador ligado:
+
+```
+varredura acha problema investigável (app_fora, worker_parado, mensagens_esgotadas,
+respostas_nao_entregues, ia_fora)
+        │
+        ▼
+agente do Telegram abre issue no GitHub com a label tuca-alerta
+(diagnóstico + últimas falhas, sem dado pessoal) e avisa o grupo
+        │
+        ▼
+a issue dispara a rotina na nuvem (webhook), que também roda de hora em hora
+por garantia. Ela investiga, corrige na branch tuca/<chave>-<issue>, roda os
+testes e abre o PR com a label tuca-agente. Ou comenta e fecha, se não for código.
+        │
+        ▼
+agente do Telegram vê o PR (vigia a cada minuto) e manda no grupo o resumo
+escrito para leigo, com [✅ Aprovar e subir] [❌ Rejeitar]
+        │
+        ▼
+aprovar = squash merge na main, com o nome de quem apertou no commit
+        │
+        ▼
+Coolify reconstrói e reinicia. O agente vigia o /health e avisa
+"🟢 Versão nova no ar" quando o started_at muda (ou reclama depois de 20 min).
+```
+
+Decisão registrada com o Joao em 20/09/2026: a aprovação humana no Telegram fica.
+O agente da nuvem nunca faz merge sozinho. É um toque no celular, e é o que
+separa um bug do agente de um festival inteiro sem resposta.
+
+Precisa de `GITHUB_TOKEN` no serviço `agente` (token fine-grained só deste
+repositório, com Issues, Pull requests e Contents em leitura e escrita). Sem ele,
+o agente do Telegram continua avisando e corrigindo o catálogo, mas não abre issue
+nem aprova PR.
+
 ## O que ele não faz, de propósito
 
-**Não muda código em produção.** Uma correção de código pedida e aplicada de dentro
-do Telegram sairia sem teste, sem revisão e sem deploy controlado, no meio do
-festival. O agente diagnostica e diz o que precisa mudar; a mudança é feita com
-Claude Code, testada, e sobe pelo Coolify. Se um problema aparecer com frequência,
-o caminho é transformá-lo em correção do catálogo, com teste.
+**Não corrige código sem alguém aprovar.** Nem o Telegram nem a nuvem fazem merge
+por conta própria. Se um problema aparecer com frequência e a correção for sempre a
+mesma, o caminho é transformá-lo em correção do catálogo, com teste.
 
 **Não mexe no cadastro do bot.** Texto de resposta, regra e tom são da tela Testar
 e Configurar, com rascunho e publicação. O agente só lê.
@@ -71,6 +109,10 @@ participante. O grupo do Telegram é uma superfície a mais, e a LGPD vale nela.
 5. No grupo, mande `/id`. O bot responde com o id (negativo). Coloque em
    `TELEGRAM_CHAT_IDS` no Coolify e faça deploy de novo.
 6. O bot avisa "Agente do Tuca no ar" no grupo. Mande `/saude` para conferir.
+7. Para a correção de código: no GitHub, Settings → Developer settings →
+   Fine-grained tokens → só o repositório `antigravit-eventos`, permissões
+   Issues, Pull requests e Contents em Read and write. Coloque em `GITHUB_TOKEN`
+   no Coolify. Mande `/prs` no grupo para conferir.
 
 Sem `TELEGRAM_BOT_TOKEN` o serviço fica parado em silêncio, sem derrubar o resto.
 

@@ -76,6 +76,9 @@ Siga as 3 camadas do `AGENTE.md`:
 - Agente no Telegram para a equipe: responde sobre chamados, erros e respostas do
   Tuca, varre o sistema de meia em meia hora, avisa o grupo e corrige o que está no
   catálogo quando alguém confirma no botão (veja `directives/agente_telegram.md`)
+- Guardião do Tuca: rotina do Claude Code na nuvem que investiga as issues
+  `tuca-alerta` e abre PR `tuca-agente`; o merge é aprovado por botão no Telegram
+  (prompt em `directives/prompt_agente_nuvem.md`)
 
 ## Rascunho e Publicação
 

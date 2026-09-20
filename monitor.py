@@ -93,6 +93,9 @@ class Achado:
     detalhe: str
     acao: str | None = None
     quantidade: int = 0
+    # Vale abrir issue para o agente da nuvem investigar: o problema pode ser
+    # bug ou configuração, não coisa que a sala de controle resolve na mão.
+    investigar: bool = False
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -573,6 +576,7 @@ class Monitor:
                 if "http" in app else f"Sem resposta: {app.get('erro')}"
             ) + "\nSem o app, a Meta não consegue entregar as mensagens do público e o webhook devolve erro. "
             "Confira o serviço web no Coolify e as variáveis exigidas pelo /health.",
+            investigar=True,
         )
 
     def _achado_worker(self) -> Achado | None:
@@ -590,6 +594,7 @@ class Monitor:
                 "reinicie-o no Coolify e confira o log de start (credenciais da Meta e Supabase)."
             ),
             quantidade=len(esperando),
+            investigar=True,
         )
 
     def _achado_presas(self) -> Achado | None:
@@ -625,6 +630,7 @@ class Monitor:
             ),
             acao="nova_chance_inbox",
             quantidade=len(esgotadas),
+            investigar=True,
         )
 
     def _achado_fila(self) -> Achado | None:
@@ -662,6 +668,7 @@ class Monitor:
             detalhe=" ".join(partes),
             acao="reenviar_cancelados" if reenviaveis else None,
             quantidade=len(canceladas),
+            investigar=True,
         )
 
     def _achado_criticos(self) -> Achado | None:
@@ -712,6 +719,7 @@ class Monitor:
                 "O Tuca continua no ar com as respostas fixas e a classificação por palavras-chave, "
                 "mas perde o jeito de gente. Confira a chave e o modelo liberado no projeto da OpenAI."
             ),
+            investigar=True,
         )
 
     # ------------------------------------------------------------------
@@ -814,6 +822,23 @@ class RegistroDeAlertas:
             .execute()
         )
         return list(response.data or [])
+
+    def por_chave(self, chave: str) -> dict[str, Any] | None:
+        """O alerta mais recente com essa chave, em qualquer status."""
+
+        response = (
+            self.store.table("agent_alerts")
+            .select("*")
+            .eq("event_id", self.store.event_id())
+            .eq("chave", chave)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        return (response.data or [None])[0]
+
+    def anotar_issue(self, alerta_id: str, numero: int) -> None:
+        self.store.table("agent_alerts").update({"github_issue": int(numero)}).eq("id", alerta_id).execute()
 
     def por_id(self, alerta_id: str) -> dict[str, Any] | None:
         response = (

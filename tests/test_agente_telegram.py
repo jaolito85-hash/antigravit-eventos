@@ -52,6 +52,13 @@ class RegistroFalso:
     def por_id(self, alerta_id):
         return self.linhas.get(alerta_id)
 
+    def por_chave(self, chave):
+        candidatos = [a for a in self.linhas.values() if a["chave"] == chave]
+        return candidatos[-1] if candidatos else None
+
+    def anotar_issue(self, alerta_id, numero):
+        self.linhas[alerta_id]["github_issue"] = numero
+
     def abrir(self, achado):
         self._seq += 1
         alerta = {
