@@ -511,7 +511,7 @@
             <div class="download-row">
                 <button class="download-btn primary" onclick="downloadQR()" id="downloadBtn" disabled>
                     <i class="ri-download-line"></i>
-                    Baixar QR Code
+                    Baixar QR (SVG)
                 </button>
                 <button class="download-btn secondary" onclick="downloadPoster()" id="posterBtn" disabled>
                     <i class="ri-image-line"></i>
@@ -532,6 +532,7 @@
     <script>
         let selectedColor = '#2979ff';
         let qrDataUrl = null;
+        let qrAtual = null;
 
         function selectColor(el) {
             document.querySelectorAll('.color-option').forEach(c => c.classList.remove('active'));
@@ -604,17 +605,22 @@
             // WhatsApp API URL
             const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
-            // Generate QR
-            const qr = qrcode(0, 'M');
+            // Nível H recupera 30% do código. É o degrau que segura o ganho de
+            // ponto do verniz quando a placa sai impressa em alto relevo.
+            const qr = qrcode(0, 'H');
             qr.addData(waUrl);
             qr.make();
+            qrAtual = qr;
 
             // Render
             const container = document.getElementById('qrcode-container');
             container.innerHTML = '';
 
             const img = document.createElement('img');
-            img.src = qr.createDataURL(6, 0);
+            // 24px de margem em células de 6px são os 4 módulos de zona de
+            // silêncio que a norma pede. Com margem zero o leitor perde o
+            // código assim que a arte encosta nele.
+            img.src = qr.createDataURL(6, 24);
             img.style.width = '200px';
             img.style.height = '200px';
             img.style.imageRendering = 'pixelated';
@@ -633,12 +639,52 @@
             generatePoster(eventName, message);
         }
 
+        // Monta o SVG do mesmo jeito que scripts/generate_qrcodes.py: path
+        // único, coordenadas inteiras e a zona de silêncio no viewBox. Path
+        // único porque a gráfica seleciona o código inteiro com um clique e
+        // copia para a camada de verniz.
+        function montaSvg(qr, ladoMm) {
+            const modulos = qr.getModuleCount();
+            const borda = 4;
+            const total = modulos + borda * 2;
+            const totalMm = total * (ladoMm / modulos);
+
+            let d = '';
+            for (let y = 0; y < modulos; y++) {
+                let x = 0;
+                while (x < modulos) {
+                    if (!qr.isDark(y, x)) { x++; continue; }
+                    const inicio = x;
+                    while (x < modulos && qr.isDark(y, x)) x++;
+                    const largura = x - inicio;
+                    d += `M${inicio} ${y}h${largura}v1h-${largura}z`;
+                }
+            }
+
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="${totalMm.toFixed(3)}mm" height="${totalMm.toFixed(3)}mm" viewBox="${-borda} ${-borda} ${total} ${total}">
+  <rect id="ZONA-DE-SILENCIO" x="${-borda}" y="${-borda}" width="${total}" height="${total}" fill="#FFFFFF"/>
+  <path id="QR-MODULOS" fill="#000000" fill-rule="nonzero" d="${d}"/>
+</svg>
+`;
+        }
+
         function downloadQR() {
-            if (!qrDataUrl) return;
+            if (!qrAtual) return;
+
+            // O nome do arquivo carrega o código do setor porque trocar duas
+            // placas de lugar não dá erro visível: o chamado chega no setor
+            // errado e o mapa da sala de controle mente.
+            const message = document.getElementById('autoMessage').value.trim();
+            const setor = (message.match(/^#SETOR:([A-Z0-9][A-Z0-9_-]*)/) || [])[1];
+            const nome = setor || document.getElementById('eventName').value.replace(/\s+/g, '-').toLowerCase();
+
+            const blob = new Blob([montaSvg(qrAtual, 120)], { type: 'image/svg+xml' });
             const a = document.createElement('a');
-            a.download = `qrcode-${document.getElementById('eventName').value.replace(/\s+/g, '-').toLowerCase()}.png`;
-            a.href = qrDataUrl;
+            a.download = `${nome}.svg`;
+            a.href = URL.createObjectURL(blob);
             a.click();
+            URL.revokeObjectURL(a.href);
         }
 
         function generatePoster(eventName, message) {

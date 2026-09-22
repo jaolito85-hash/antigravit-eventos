@@ -13,3 +13,6 @@ __pycache__/
 
 # Config local do Claude Code (caminhos da maquina, nao do deploy)
 .claude/
+
+# Arquivos gerados para a grafica, refeitos pelo scripts/generate_qrcodes.py
+out/
