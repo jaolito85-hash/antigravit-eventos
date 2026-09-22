@@ -428,6 +428,59 @@ class EventStore:
             raise RuntimeError("Supabase não retornou o feedback criado")
         return int(existing.data[0]["id"])
 
+    def attach_location(
+        self,
+        sender_hash: str,
+        lat: float,
+        lon: float,
+        janela_minutos: int = 60,
+    ) -> dict[str, Any] | None:
+        """Prende a coordenada ao chamado em aberto mais recente da pessoa.
+
+        A localização chega depois de o Tuca pedir, e sozinha não diz nada:
+        quem dá sentido a ela é o relato que veio antes. Por isso ela não abre
+        chamado próprio, ela completa um. Sem chamado recente, devolve None
+        para o worker perguntar o que está acontecendo.
+        """
+
+        if not sender_hash:
+            return None
+        desde = (
+            datetime.now(timezone.utc) - timedelta(minutes=janela_minutos)
+        ).isoformat()
+        client = self._get_client()
+        response = (
+            client.table("feedbacks")
+            .select("id,message,urgency,status,metadata")
+            .eq("event_id", self.event_id())
+            .eq("sender_hash", sender_hash)
+            .neq("status", "resolvido")
+            .gte("created_at", desde)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        linhas = list(response.data or [])
+        if not linhas:
+            return None
+
+        alvo = linhas[0]
+        agora = datetime.now(timezone.utc).isoformat()
+        metadata = dict(alvo.get("metadata") or {})
+        metadata["coords"] = {"lat": lat, "lon": lon}
+        metadata["coords_at"] = agora
+        (
+            client.table("feedbacks")
+            .update({"metadata": metadata, "updated_at": agora})
+            .eq("id", alvo["id"])
+            .execute()
+        )
+        return {
+            "id": int(alvo["id"]),
+            "urgency": alvo.get("urgency"),
+            "message": alvo.get("message"),
+        }
+
     def enqueue_text(
         self,
         message: dict[str, Any],

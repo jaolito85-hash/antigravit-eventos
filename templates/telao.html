@@ -1020,7 +1020,17 @@
             gap: 7px;
             white-space: nowrap;
             transition: 0.15s;
+            text-decoration: none;
         }
+
+        /* Localização enviada pela pessoa: verde, porque é a ação mais direta
+           que existe no chamado, andar até ela. */
+        .act.geo {
+            background: #22c55e;
+            color: #04120a;
+        }
+
+        .act.geo:hover { filter: brightness(1.1); }
 
         .act.talk {
             background: rgba(37, 211, 102, 0.16);
@@ -1571,6 +1581,15 @@
                     ? '<span><i class="ri-map-pin-line"></i> ' + esc(e.region) + '</span>'
                     : '';
 
+                // Localizacao mandada pela pessoa: no dia, e por ela que a
+                // equipe sai andando, entao vira botao e nao texto.
+                const geo = (e.coords && e.coords.lat != null)
+                    ? '<a class="act geo" target="_blank" rel="noopener noreferrer" ' +
+                      'href="https://www.google.com/maps?q=' +
+                      encodeURIComponent(e.coords.lat + ',' + e.coords.lon) + '">' +
+                      '<i class="ri-navigation-line"></i> Abrir localização no mapa</a>'
+                    : '';
+
                 return '<div class="sheet-item" style="--tone:' + color + '">' +
                     '<div class="sheet-item-top">' +
                     '<span class="sheet-item-tag">' + esc(e.urgency || 'Neutro') + '</span>' +
@@ -1581,6 +1600,7 @@
                     '<span><i class="ri-price-tag-3-line"></i> ' + esc(e.category || 'Geral') + '</span>' +
                     onde + '</div>' +
                     '<div class="sheet-item-actions">' +
+                    geo +
                     '<button class="act talk" onclick="openTalkByFeedback(' + e.id + ')">' +
                     '<i class="ri-whatsapp-line"></i> Conversar com quem enviou</button>' +
                     (acionavel

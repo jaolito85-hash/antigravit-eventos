@@ -891,6 +891,50 @@
             margin-bottom: 4px;
         }
 
+        /* Localização que a pessoa mandou pelo WhatsApp. Fica em destaque
+           porque é o que decide para onde a equipe anda. */
+        .ticket-geo {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 11px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(34, 197, 94, 0.09);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+        }
+
+        .ticket-geo-label {
+            font-size: 0.66rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.9px;
+            color: #4ade80;
+        }
+
+        .ticket-geo-coord {
+            font-family: 'Oxanium', monospace;
+            font-size: 0.78rem;
+            color: #c3cad6;
+        }
+
+        .ticket-geo a {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: #22c55e;
+            color: #04120a;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .ticket-geo a:hover { filter: brightness(1.1); }
+
         /* Resposta enviada ao participante */
         .ticket-reply {
             margin-top: 13px;
@@ -2432,10 +2476,32 @@
                           <i class="ri-user-voice-line"></i> equipe atende</span>`
                     : '';
 
+                // Localizacao que a pessoa mandou pelo WhatsApp. Vira link de
+                // mapa, que e o que a equipe abre no celular para ir ate ela.
+                const geo = (e.coords && e.coords.lat != null)
+                    ? `<div class="ticket-geo">
+                          <span class="ticket-geo-label"><i class="ri-map-pin-user-line"></i>
+                              Localização enviada pela pessoa</span>
+                          <span class="ticket-geo-coord">${escHtml(Number(e.coords.lat).toFixed(5))}, ${escHtml(Number(e.coords.lon).toFixed(5))}</span>
+                          <a href="https://www.google.com/maps?q=${encodeURIComponent(e.coords.lat + ',' + e.coords.lon)}"
+                             target="_blank" rel="noopener noreferrer">
+                             <i class="ri-navigation-line"></i> Abrir no mapa</a>
+                       </div>`
+                    : '';
+
+                // Pino lido da placa e fato, pino deduzido do texto e palpite
+                // bom. A sala de controle decide diferente em cada caso.
+                const seloOrigem = e.sectorSource && e.sectorSource !== 'qr'
+                    ? `<span class="ticket-pill" style="--tone:#fbbf24"
+                          title="O lugar foi deduzido do que a pessoa escreveu, não lido de um QR Code">
+                          <i class="ri-question-line"></i> lugar deduzido</span>`
+                    : '';
+
                 return `<div class="ticket" style="--tone:${tone}" data-ticket="${e.id}">
                     <div class="ticket-head">
                         <span class="ticket-id">#${e.id}</span>
                         ${seloEquipe}
+                        ${seloOrigem}
                         <span class="ticket-pill" style="--tone:${tone}">${escHtml(e.urgency || 'Neutro')}</span>
                         ${mostraOnde ? `<span class="ticket-where"><i class="ri-map-pin-line"></i> ${escHtml(onde)}</span>` : ''}
                         <span class="ticket-where"><i class="ri-price-tag-3-line"></i> ${escHtml(categoria)}</span>
@@ -2444,6 +2510,7 @@
 
                     <div class="ticket-msg">${escHtml(thread[0].text)}</div>
                     ${atualizacoes}
+                    ${geo}
 
                     <div data-replies="${e.id}">
                         <div class="ticket-pending"><i class="ri-loader-4-line"></i> Carregando a resposta enviada...</div>

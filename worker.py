@@ -64,7 +64,11 @@ _running = True
 TIPOS_COM_RESPOSTA = frozenset({
     "text", "audio", "image", "video", "document", "location", "interactive",
 })
-TIPOS_DE_MIDIA = frozenset({"image", "video", "document", "location", "interactive"})
+TIPOS_DE_MIDIA = frozenset({"image", "video", "document", "interactive"})
+
+# Quanto tempo depois do relato uma localização ainda é entendida como parte
+# dele. Uma hora cobre a pessoa que demora para achar o botão no WhatsApp.
+LOCALIZACAO_JANELA_MINUTOS = 60
 
 AVISO_AUDIO_INDISPONIVEL = (
     "🎤 Não consegui entender seu áudio agora. Pode tentar de novo ou escrever em texto?"
@@ -72,6 +76,18 @@ AVISO_AUDIO_INDISPONIVEL = (
 AVISO_SO_TEXTO_OU_AUDIO = (
     "Por enquanto, envie sua mensagem em texto ou áudio 🎤 para conseguirmos "
     "encaminhá-la corretamente."
+)
+AVISO_LOCALIZACAO_RECEBIDA = (
+    "📍 Localização recebida, obrigado! Já mandei para a equipe junto com o seu "
+    "chamado. Fica em um lugar visível se puder, que eles estão indo."
+)
+AVISO_LOCALIZACAO_SEM_CHAMADO = (
+    "📍 Recebi sua localização! Me conta em texto ou áudio 🎤 o que está "
+    "acontecendo aí, que eu levo na hora para a equipe."
+)
+AVISO_LOCALIZACAO_ILEGIVEL = (
+    "Não consegui ler essa localização. Pode mandar de novo pelo botão de "
+    "anexo do WhatsApp, ou me descrever uma referência bem visível?"
 )
 
 
@@ -134,6 +150,67 @@ _AVISO_POR_MOTIVO = {
 }
 
 
+def _coordenadas(conteudo: str) -> tuple[float, float] | None:
+    """Lê o "lat,lon" que o parse do webhook monta, ou devolve None.
+
+    Coordenada fora de faixa é descartada em vez de ir para o painel: pino em
+    lugar impossível faz a equipe andar para o nada.
+    """
+
+    partes = (conteudo or "").split(",")
+    if len(partes) != 2:
+        return None
+    try:
+        lat, lon = float(partes[0].strip()), float(partes[1].strip())
+    except ValueError:
+        return None
+    if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+        return None
+    return lat, lon
+
+
+def _tratar_localizacao(
+    store: EventStore,
+    message: dict[str, Any],
+    pode_responder: bool,
+    sender_hash: str,
+) -> None:
+    """Prende a localização ao chamado que a pessoa já abriu.
+
+    O Tuca pede localização no protocolo de emergência, então recusar a
+    resposta dela era o pior comportamento possível: ele pedia e devolvia
+    "envie em texto ou áudio".
+    """
+
+    message_id = str(message["id"])
+    coords = _coordenadas(str(message.get("content") or ""))
+    if not coords:
+        if pode_responder:
+            store.enqueue_text(message, AVISO_LOCALIZACAO_ILEGIVEL)
+        store.finish_inbox(message_id, "ignored")
+        logger.warning("Localizacao ilegivel descartada")
+        return
+
+    lat, lon = coords
+    alvo = store.attach_location(
+        sender_hash, lat, lon, janela_minutos=LOCALIZACAO_JANELA_MINUTOS
+    )
+    if pode_responder:
+        store.enqueue_text(
+            message,
+            AVISO_LOCALIZACAO_RECEBIDA if alvo else AVISO_LOCALIZACAO_SEM_CHAMADO,
+            alvo["id"] if alvo else None,
+        )
+    store.finish_inbox(message_id)
+    if alvo:
+        logger.info(
+            "Localizacao anexada ao chamado | id=%s prioridade=%s",
+            alvo["id"], alvo.get("urgency"),
+        )
+    else:
+        logger.info("Localizacao sem chamado recente: pedi o relato")
+
+
 def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
     """Transforma uma mensagem persistida em feedback e resposta enfileirada.
 
@@ -182,14 +259,20 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         raw_content = str(message.get("content") or "")
         transcribed = False
 
-        # 3. Imagem, vídeo e afins nunca são baixados: o bot pede texto ou áudio.
+        # 3. Localização: completa o chamado que a pessoa já abriu, em vez de
+        # ser recusada. É o Tuca que pede isso na emergência.
+        if message_type == "location":
+            _tratar_localizacao(store, message, pode_responder, sender_hash)
+            return
+
+        # 4. Imagem, vídeo e afins nunca são baixados: o bot pede texto ou áudio.
         if message_type in TIPOS_DE_MIDIA:
             if pode_responder:
                 store.enqueue_text(message, AVISO_SO_TEXTO_OU_AUDIO)
             store.finish_inbox(message_id, "ignored")
             return
 
-        # 4. Áudio: cota por número, teto de tamanho e de duração, e só fala real.
+        # 5. Áudio: cota por número, teto de tamanho e de duração, e só fala real.
         if message_type == "audio":
             if store.recent_sender_audio_count(sender_hash, AUDIO_JANELA_MINUTOS) > AUDIO_MAX_POR_JANELA:
                 if pode_responder:
@@ -233,7 +316,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 "Mensagem bloqueada por conteúdo | motivo=%s strikes=%d", motivo, strikes
             )
 
-        # 5. Moderação: pornografia, ódio e assédio não viram chamado nem
+        # 6. Moderação: pornografia, ódio e assédio não viram chamado nem
         # resposta criativa. Violência e emergência passam de propósito.
         if content.strip():
             moderacao = moderar_texto(content)
@@ -241,7 +324,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 _bloquear_conteudo(str(moderacao["motivo"]), AVISO_CONTEUDO_BLOQUEADO)
                 return
 
-        # 6. Inundação geral: a IA é desligada, o chamado continua entrando.
+        # 7. Inundação geral: a IA é desligada, o chamado continua entrando.
         ia_ligada = store.recent_event_count(1) <= FLOOD_GLOBAL_POR_MINUTO
         if not ia_ligada:
             logger.warning("Inundação em curso: IA desligada neste chamado")
@@ -258,7 +341,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             else triar_mensagem_sem_ia(content, setores=None if sector else _setores_ativos())
         )
 
-        # 7. Xingamento sem conteúdo: a moderação não pega (a pontuação de
+        # 8. Xingamento sem conteúdo: a moderação não pega (a pontuação de
         # "vai tomar no cu" é igual à de um relato de agressão com palavrão),
         # mas a triagem entende o sentido. Não ganha banter do Tuca.
         if triagem["tipo"] == "ofensa":
