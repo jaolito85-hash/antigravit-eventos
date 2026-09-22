@@ -10,7 +10,17 @@ import unicodedata
 from io import StringIO
 from contextlib import contextmanager
 from functools import wraps
-from flask import Flask, request, jsonify, render_template, session, redirect
+from flask import Flask, request, jsonify, render_template, session, redirect, Response
+from urllib.parse import quote
+from pdf_qrcode import pdf_producao, pdf_prova
+
+# Codificador do QR Code. Python puro, sem binário, mas se faltar no container
+# o painel perde só o botão de baixar o arquivo da gráfica: o webhook do
+# festival continua de pé, que é o que não pode cair.
+try:
+    import segno
+except ImportError:  # pragma: no cover - ausência tratada no endpoint
+    segno = None
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 from collections import Counter, defaultdict
@@ -1841,6 +1851,19 @@ def public_feedback(feedback):
     safe["name"] = "Anônimo"
     participant_hash = feedback.get("sender_hash")
     safe["participant"] = participant_hash[:12] if participant_hash else None
+
+    # A coordenada é o único pedaço do metadata que atravessa, porque é o
+    # motivo de ela existir: a pessoa mandou a localização para a equipe ir
+    # até ela. O resto do metadata continua fora.
+    meta = feedback.get("metadata") or {}
+    coords = meta.get("coords") if isinstance(meta, dict) else None
+    if isinstance(coords, dict) and coords.get("lat") is not None:
+        safe["coords"] = {"lat": coords.get("lat"), "lon": coords.get("lon")}
+        safe["coordsAt"] = meta.get("coords_at")
+    # Setor deduzido do texto é palpite bom, setor lido da placa é fato, e a
+    # sala de controle decide diferente em cada caso.
+    if isinstance(meta, dict) and meta.get("sector_source"):
+        safe["sectorSource"] = meta.get("sector_source")
     return safe
 
 
@@ -1975,6 +1998,89 @@ def qrcode_page():
     # Meta usa e a forma que o link wa.me abre o perfil certo.
     whatsapp_number = os.getenv("WHATSAPP_PUBLIC_NUMBER", "554367270996")
     return render_template("qrcode.html", whatsapp_number=whatsapp_number)
+
+
+# --- ARQUIVO DO QR CODE PARA A GRÁFICA ---
+
+# Lado do símbolo impresso, sem a margem branca. A 12 cm o código lê de longe
+# e de lado, que é como alguém escaneia placa no meio da multidão.
+LADO_DO_SIMBOLO_MM = 120.0
+MARCA_IMPRESSA = "Tuca | Tropicadelia 2026"
+
+
+def _qrcode_do_setor(codigo: str):
+    """Matriz do QR do setor e a geometria que vale para a planta inteira.
+
+    A margem branca é calculada sobre todos os setores, não sobre este: os
+    códigos têm comprimentos diferentes e caem em versões diferentes de QR,
+    e se cada placa saísse com um total diferente o designer teria 36 medidas
+    para montar a arte.
+    """
+
+    setores = _setores_ativos()
+    alvo = next((s for s in setores if s["code"] == codigo), None)
+    if not alvo:
+        return None
+
+    numero = os.getenv("WHATSAPP_PUBLIC_NUMBER", "554367270996")
+    modulos = []
+    escolhido = None
+    for setor in setores:
+        tag = quote(f"#SETOR:{setor['code']}", safe="")
+        url = f"https://wa.me/{numero}?text={tag}"
+        qr = segno.make(url, error="h", boost_error=False)
+        matriz = [[bool(m) for m in linha] for linha in qr.matrix]
+        modulo_mm = LADO_DO_SIMBOLO_MM / len(matriz)
+        modulos.append(modulo_mm)
+        if setor["code"] == codigo:
+            escolhido = (alvo, matriz, qr.version, url, modulo_mm)
+
+    return escolhido, 4 * max(modulos)
+
+
+@app.route("/api/qrcode/<codigo>/<tipo>.pdf")
+@login_required
+def api_qrcode_pdf(codigo, tipo):
+    """Entrega o arquivo que vai para a gráfica, em CMYK com preto K 100%.
+
+    Preto convertido de RGB vira preto rico, com tinta nos quatro canais, e em
+    QR Code qualquer desencontro de registro entre as chapas borra a borda do
+    módulo e o leitor perde o código. Por isso o PDF é montado aqui e não no
+    navegador: biblioteca de PDF em JavaScript não faz CMYK.
+    """
+
+    if segno is None:
+        return jsonify({"error": "Geracao de PDF indisponivel: falta o segno no servidor"}), 503
+    if tipo not in ("producao", "prova"):
+        return jsonify({"error": "Tipo deve ser producao ou prova"}), 404
+
+    codigo = (codigo or "").strip().upper()
+    try:
+        resultado = _qrcode_do_setor(codigo)
+    except Exception as e:  # noqa: BLE001 - sem setor o painel segue de pé
+        logger.error("Falha ao montar o PDF do QR | erro=%s", type(e).__name__)
+        return jsonify({"error": "Nao foi possivel gerar o arquivo"}), 500
+
+    if not resultado or not resultado[0]:
+        return jsonify({"error": "Setor nao encontrado ou inativo"}), 404
+
+    (setor, matriz, versao, url, modulo_mm), zona_mm = resultado
+
+    if tipo == "producao":
+        dados = pdf_producao(matriz, modulo_mm, zona_mm, codigo, url, MARCA_IMPRESSA)
+        nome = f"TUCA_QR_{codigo}_PRODUCAO.pdf"
+    else:
+        dados = pdf_prova(
+            matriz, modulo_mm, zona_mm, codigo, setor["name"], url, versao, MARCA_IMPRESSA
+        )
+        nome = f"TUCA_QR_{codigo}_PROVA_A4.pdf"
+
+    return Response(
+        dados,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
+
 
 @app.route("/telao")
 @login_required

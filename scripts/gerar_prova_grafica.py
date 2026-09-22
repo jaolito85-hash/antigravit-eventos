@@ -13,10 +13,10 @@ Uso:
 Sem --setor, escolhe o QR mais denso da planta: se o pior caso imprime e lê,
 todos os outros imprimem e leem.
 
-Depende de segno e reportlab (ferramentas de bancada, fora do requirements.txt
-do app porque não rodam em produção):
+O PDF sai do módulo `pdf_qrcode`, o mesmo que o painel usa: uma implementação
+só para o arquivo da bancada e o do botão nunca divergirem.
 
-    pip install segno reportlab
+    pip install segno
 """
 
 from __future__ import annotations
@@ -32,12 +32,10 @@ sys.path.insert(0, str(RAIZ))
 
 try:
     import segno
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.pdfgen import canvas
 except ImportError:
-    sys.exit("Faltam dependências. Rode: pip install segno reportlab")
+    sys.exit("Falta o segno. Rode: pip install segno")
 
+from pdf_qrcode import pdf_producao, pdf_prova  # noqa: E402
 from scripts.generate_qrcodes import (  # noqa: E402
     carrega_setores,
     monta_svg,
@@ -54,153 +52,6 @@ def matriz_do_qr(url: str) -> tuple[list[list[bool]], int]:
 
     qr = segno.make(url, error="h", boost_error=False)
     return [[bool(m) for m in linha] for linha in qr.matrix], qr.version
-
-
-def faixas(matriz: list[list[bool]]) -> list[tuple[int, int, int]]:
-    """Agrupa módulos escuros vizinhos de cada linha em um retângulo só.
-
-    Menos objetos no arquivo e, mais importante, sem a fresta de um micron
-    que o RIP às vezes deixa entre dois quadrados encostados.
-    """
-
-    saida = []
-    for y, linha in enumerate(matriz):
-        x = 0
-        while x < len(linha):
-            if not linha[x]:
-                x += 1
-                continue
-            inicio = x
-            while x < len(linha) and linha[x]:
-                x += 1
-            saida.append((inicio, y, x - inicio))
-    return saida
-
-
-def desenha_qr(c: canvas.Canvas, matriz, modulo_mm: float, x0: float, y0: float) -> None:
-    """Desenha o código em K 100%, com a origem no canto do símbolo.
-
-    O eixo y do PDF cresce para cima e o da matriz para baixo, então cada
-    linha é espelhada na hora de desenhar.
-    """
-
-    c.setFillColorCMYK(0, 0, 0, 1)
-    c.setStrokeColorCMYK(0, 0, 0, 1)
-    lado = len(matriz)
-    for x, y, largura in faixas(matriz):
-        c.rect(
-            x0 + x * modulo_mm * mm,
-            y0 + (lado - 1 - y) * modulo_mm * mm,
-            largura * modulo_mm * mm,
-            modulo_mm * mm,
-            stroke=0,
-            fill=1,
-        )
-
-
-def pdf_de_producao(destino: Path, matriz, modulo_mm: float, zona_mm: float, codigo: str, url: str) -> None:
-    """O arquivo que entra na arte: só o código, do tamanho real, mais nada."""
-
-    lado = len(matriz)
-    total_mm = lado * modulo_mm + 2 * zona_mm
-    c = canvas.Canvas(str(destino), pagesize=(total_mm * mm, total_mm * mm))
-    c.setTitle(f"QR do setor {codigo} | {MARCA}")
-    c.setAuthor(MARCA)
-    c.setSubject(f"{url} | correcao H | modulo {modulo_mm:.3f} mm")
-    c.setCreator(MARCA)
-
-    # Zona de silêncio: branco é ausência de tinta, ou seja, a cor do
-    # material. Por isso a especificação exige material branco embaixo do
-    # código, e não fundo colorido da arte.
-    c.setFillColorCMYK(0, 0, 0, 0)
-    c.rect(0, 0, total_mm * mm, total_mm * mm, stroke=0, fill=1)
-
-    desenha_qr(c, matriz, modulo_mm, zona_mm * mm, zona_mm * mm)
-    c.showPage()
-    c.save()
-
-
-def pdf_de_prova(
-    destino: Path, matriz, modulo_mm: float, zona_mm: float,
-    codigo: str, nome: str, url: str, versao: int,
-) -> None:
-    """A folha que a gráfica imprime agora para testarmos a leitura.
-
-    Leva régua de 100 mm porque o erro mais comum não é de arquivo: é alguém
-    mandar imprimir com "ajustar à página" e o código sair fora de escala.
-    Com a régua, uma trena resolve a dúvida em cinco segundos.
-    """
-
-    lado = len(matriz)
-    total_mm = lado * modulo_mm + 2 * zona_mm
-    largura_pg, altura_pg = A4
-
-    c = canvas.Canvas(str(destino), pagesize=A4)
-    c.setTitle(f"Prova de impressao | QR do setor {codigo} | {MARCA}")
-    c.setAuthor(MARCA)
-    c.setCreator(MARCA)
-
-    c.setFillColorCMYK(0, 0, 0, 1)
-    c.setFont("Helvetica-Bold", 13)
-    c.drawString(20 * mm, altura_pg - 20 * mm, "PROVA DE IMPRESSÃO")
-    c.setFont("Helvetica", 9.5)
-    c.drawString(20 * mm, altura_pg - 26 * mm, f"{MARCA}  |  setor {codigo}")
-    c.drawString(20 * mm, altura_pg - 31 * mm, nome)
-
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(20 * mm, altura_pg - 42 * mm, "IMPRIMIR EM 100%. NÃO AJUSTAR À PÁGINA.")
-
-    # O código em tamanho real, centralizado.
-    x0 = (largura_pg - total_mm * mm) / 2 + zona_mm * mm
-    y0 = altura_pg - 52 * mm - (total_mm - zona_mm) * mm
-    desenha_qr(c, matriz, modulo_mm, x0, y0)
-
-    # Régua de conferência: 100 mm exatos, com traço a cada 10.
-    regua_y = y0 - 12 * mm
-    regua_x = (largura_pg - 100 * mm) / 2
-    c.setLineWidth(0.6)
-    c.line(regua_x, regua_y, regua_x + 100 * mm, regua_y)
-    for i in range(11):
-        altura = 3.5 * mm if i % 5 == 0 else 2 * mm
-        c.line(regua_x + i * 10 * mm, regua_y, regua_x + i * 10 * mm, regua_y + altura)
-    c.setFont("Helvetica", 7.5)
-    for i, rotulo in ((0, "0"), (5, "50 mm"), (10, "100 mm")):
-        c.drawCentredString(regua_x + i * 10 * mm, regua_y + 5 * mm, rotulo)
-    c.setFont("Helvetica", 8)
-    c.drawCentredString(
-        largura_pg / 2, regua_y - 5 * mm,
-        "Esta régua tem 100 mm exatos. Se medir diferente, a impressão saiu fora de escala.",
-    )
-
-    texto = c.beginText(20 * mm, regua_y - 16 * mm)
-    texto.setLeading(11)
-    texto.setFont("Helvetica-Bold", 10)
-    texto.textLine("Especificação deste código")
-    texto.setFont("Helvetica", 9)
-    for linha in [
-        f"Lado do código: {lado * modulo_mm:.0f} mm    Com a margem branca: {total_mm:.1f} mm"
-        f"    Módulo: {modulo_mm:.2f} mm",
-        f"Correção de erro: H (30%)    Versão do QR: {versao}    Preto: K 100%, sem C, M ou Y",
-        "",
-        "Obrigatório na impressão final:",
-        "1. Acabamento FOSCO. O evento é à noite, sob refletor e lanterna de celular,",
-        "   e laminação brilhante devolve a luz na câmera e derruba a leitura.",
-        "2. Preto sobre branco, nunca invertido. A arte pode ser escura, o quadrado do QR não.",
-        "3. A margem branca ao redor do código é parte do arquivo. Nenhuma arte, moldura,",
-        "   furo de fixação ou corte pode entrar nela.",
-        "4. Não vetorizar nem redesenhar o código: ele já está em vetor.",
-        "5. Uso externo, sol e chuva a noite inteira. Vinil ou PVC, superfície plana.",
-        "",
-        "Como aprovamos: escaneando no escuro, iPhone e Android, de frente e a 45 graus,",
-        "a 30 cm e a 1 metro, dez tentativas. Passou nas dez, roda a tiragem.",
-    ]:
-        texto.textLine(linha)
-    texto.setFont("Helvetica", 7)
-    texto.textLine("")
-    texto.textLine(f"Destino do código: {url}")
-    c.drawText(texto)
-    c.showPage()
-    c.save()
 
 
 def escreve_png(destino: Path, matriz, zona_mm: float, dpi: int, modulo_mm: float) -> None:
@@ -315,8 +166,12 @@ def main() -> int:
     reserva = destino / f"{base}_reserva_{args.dpi}dpi.png"
     vetor = destino / f"{base}.svg"
 
-    pdf_de_producao(producao, matriz, modulo_mm, zona_mm, codigo, url)
-    pdf_de_prova(prova, matriz, modulo_mm, zona_mm, codigo, alvo["name"], url, versao)
+    producao.write_bytes(
+        pdf_producao(matriz, modulo_mm, zona_mm, codigo, url, MARCA)
+    )
+    prova.write_bytes(
+        pdf_prova(matriz, modulo_mm, zona_mm, codigo, alvo["name"], url, versao, MARCA)
+    )
     escreve_png(reserva, matriz, zona_mm, args.dpi, modulo_mm)
     vetor.write_text(
         monta_svg(

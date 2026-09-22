@@ -68,6 +68,12 @@ Siga as 3 camadas do `AGENTE.md`:
   como Sanitários e Bares. Quando não dá para cravar o setor, a triagem ainda
   devolve o grupo, então "o banheiro tá sem papel" não acende pino nenhum mas
   entra na conta de banheiros
+- Arquivo do QR Code para a gráfica, direto do painel: `/api/qrcode/<setor>/producao.pdf`
+  é o vetor que entra na arte e `/prova.pdf` é o A4 que a gráfica imprime para
+  o teste de leitura. O PDF é montado no servidor (`pdf_qrcode.py`, sem
+  dependência de biblioteca de PDF) porque o preto precisa ser **K 100% puro**:
+  preto convertido de RGB vira preto rico e o desencontro de registro entre as
+  chapas borra a borda do módulo
 - Telão da sala de controle (`/telao`) com a planta aérea 3D e alerta crítico em tela cheia
 - Mapa ao Vivo, dashboard com filtros, exportação CSV/JSON
 - Simulador do bot em `/tuca`: a produção conversa com o Tuca no navegador

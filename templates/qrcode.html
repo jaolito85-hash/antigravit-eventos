@@ -519,6 +519,25 @@
                 </button>
             </div>
 
+            <!-- Os dois arquivos que a gráfica usa. Saem do servidor, e não
+                 daqui, porque o preto precisa ser K 100% em CMYK e biblioteca
+                 de PDF no navegador só trabalha em RGB. -->
+            <div class="download-row" style="margin-top: 12px;">
+                <button class="download-btn secondary" onclick="baixarPdf('producao')" id="pdfProducaoBtn" disabled>
+                    <i class="ri-file-pdf-2-line"></i>
+                    PDF da gráfica
+                </button>
+                <button class="download-btn secondary" onclick="baixarPdf('prova')" id="pdfProvaBtn" disabled>
+                    <i class="ri-ruler-line"></i>
+                    Folha de prova A4
+                </button>
+            </div>
+            <p style="color: var(--text-dim); font-size: 0.75rem; margin-top: 8px; line-height: 1.5;">
+                O <strong>PDF da gráfica</strong> é o arquivo que entra na arte: vetor, tamanho real
+                e preto 100% K. A <strong>folha de prova</strong> é o A4 que a gráfica imprime para
+                testarmos a leitura antes da tiragem, já com a especificação e a régua de conferência.
+            </p>
+
             <div class="poster-card">
                 <div class="poster-title">Preview do Cartaz</div>
                 <canvas id="posterCanvas"></canvas>
@@ -550,6 +569,11 @@
             const sector = SECTORS.find(s => s.code === code);
             const label = document.getElementById('previewSector');
             if (label) label.textContent = sector ? sector.name : '';
+
+            // Os arquivos da gráfica dependem só do setor: o servidor monta o
+            // código de novo, não aproveita o que está desenhado na tela.
+            document.getElementById('pdfProducaoBtn').disabled = !code;
+            document.getElementById('pdfProvaBtn').disabled = !code;
         }
 
         async function loadSectors() {
@@ -667,6 +691,17 @@
   <path id="QR-MODULOS" fill="#000000" fill-rule="nonzero" d="${d}"/>
 </svg>
 `;
+        }
+
+        // Os arquivos da gráfica vêm prontos do servidor. O setor sai do
+        // select e não do texto digitado, porque é ele que existe na planta.
+        function baixarPdf(tipo) {
+            const setor = document.getElementById('sector').value;
+            if (!setor) {
+                alert('Selecione o setor da planta para gerar o arquivo da gráfica.');
+                return;
+            }
+            window.location.href = `/api/qrcode/${encodeURIComponent(setor)}/${tipo}.pdf`;
         }
 
         function downloadQR() {
