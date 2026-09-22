@@ -101,6 +101,35 @@ def carrega_setores_da_migration() -> list[dict[str, str]]:
     return sorted(setores, key=lambda s: s["code"])
 
 
+def zona_de_silencio(modulos_mm: list[float]) -> float:
+    """Zona de silêncio única em mm, dimensionada pelo caso mais exigente.
+
+    Os códigos de setor têm comprimentos diferentes e caem em versões
+    diferentes de QR, então o módulo muda de tamanho. Se a margem fosse
+    4 módulos em cada arquivo, cada placa sairia com um total diferente e o
+    designer teria 36 medidas para montar a arte. Dimensionada pelo maior
+    módulo, a margem nunca fica abaixo dos 4 módulos da norma e sobra de
+    margem só ajuda a leitura.
+
+    Vive aqui, e não em cada script, porque a prova que vai para a gráfica
+    precisa sair na mesma medida dos 36 arquivos finais.
+    """
+
+    return 4 * max(modulos_mm)
+
+
+def numero_do_ambiente(informado: str | None = None) -> str:
+    """O WhatsApp público que os QR Codes apontam, só dígitos e com DDI."""
+
+    numero = (informado or os.getenv("WHATSAPP_PUBLIC_NUMBER") or "").strip()
+    if not numero.isdigit():
+        sys.exit(
+            "WHATSAPP_PUBLIC_NUMBER ausente ou com caractere que não é dígito. "
+            "É o número que o participante vê, só dígitos, com DDI."
+        )
+    return numero
+
+
 def monta_url(numero: str, codigo: str) -> str:
     """Monta o wa.me exatamente como o participante vai enviar.
 
@@ -267,12 +296,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    numero = (args.numero or os.getenv("WHATSAPP_PUBLIC_NUMBER") or "").strip()
-    if not numero.isdigit():
-        sys.exit(
-            "WHATSAPP_PUBLIC_NUMBER ausente ou com caractere que não é dígito. "
-            "É o número que o participante vê, só dígitos, com DDI."
-        )
+    numero = numero_do_ambiente(args.numero)
 
     setores, origem = carrega_setores()
     if not setores:
@@ -306,12 +330,7 @@ def main() -> int:
         codificados.append((setor, url, qr, matriz, args.lado / len(matriz)))
 
     menor_modulo = min(c[4] for c in codificados)
-    maior_modulo = max(c[4] for c in codificados)
-
-    # Zona de silêncio única em milímetros, dimensionada pelo caso mais
-    # exigente. Nunca fica abaixo dos 4 módulos da norma, e margem sobrando
-    # só ajuda a leitura.
-    zona_mm = 4 * maior_modulo
+    zona_mm = zona_de_silencio([c[4] for c in codificados])
     total_mm = args.lado + 2 * zona_mm
 
     linhas = []
