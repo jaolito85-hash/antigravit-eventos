@@ -6,6 +6,7 @@ import csv
 import logging
 import re
 import secrets
+import unicodedata
 from io import StringIO
 from contextlib import contextmanager
 from functools import wraps
@@ -236,16 +237,20 @@ def update_feedback(feedback_id, updates):
 
 
 def get_config():
-    """Retorna categorias e regiões configuradas para o evento atual."""
+    """Retorna categorias e regiões configuradas para o evento atual.
+
+    As regiões saem dos setores ativos da planta, não de uma lista própria:
+    duas listas do mesmo lugar sempre divergem, e a que o mapa usa é a planta.
+    Desativar um setor some com ele do filtro sem ninguém editar nada.
+    """
     sb = get_supabase()
     if sb:
         try:
             event_id = EVENT_STORE.event_id()
             categories_resp = sb.table('config').select('*').eq('event_id', event_id).eq('type', 'category').execute()
-            regions_resp = sb.table('config').select('*').eq('event_id', event_id).eq('type', 'region').execute()
             return {
                 "categories": [{"name": c['name'], "color": c.get('color', '#8b5cf6')} for c in categories_resp.data],
-                "regions": [{"name": r['name']} for r in regions_resp.data]
+                "regions": [{"name": s["name"]} for s in _setores_ativos()]
             }
         except Exception as e:
             logger.error("Falha ao ler config no Supabase | erro=%s", type(e).__name__)
@@ -254,10 +259,9 @@ def get_config():
                 try:
                     event_id = EVENT_STORE.event_id()
                     categories_resp = sb.table('config').select('*').eq('event_id', event_id).eq('type', 'category').execute()
-                    regions_resp = sb.table('config').select('*').eq('event_id', event_id).eq('type', 'region').execute()
                     return {
                         "categories": [{"name": c['name'], "color": c.get('color', '#8b5cf6')} for c in categories_resp.data],
-                        "regions": [{"name": r['name']} for r in regions_resp.data]
+                        "regions": [{"name": s["name"]} for s in _setores_ativos()]
                     }
                 except Exception as e2:
                     logger.error("Reconexao com o Supabase falhou | erro=%s", type(e2).__name__)
@@ -415,48 +419,189 @@ def classificar_categoria(texto):
     # EXPERIÊNCIA GERAL (padrão)
     return 'Experiência Geral'
 
-def classificar_regiao(texto):
-    """Classifica região/local SEMPRE da mesma forma"""
-    texto_lower = texto.lower()
-    
-    # VIP & Camarotes
-    if any(p in texto_lower for p in ['camarote', 'vip', 'area vip', 'área vip', 'lounge']):
-        return 'VIP & Camarotes'
-    
-    # Estacionamento
-    if any(p in texto_lower for p in ['estacionamento', 'carro', 'moto', 'valet', 'estacionar']):
-        return 'Estacionamento'
-    
-    # Entrada Principal
-    if any(p in texto_lower for p in ['entrada', 'portao', 'portão', 'portaria', 'acesso', 'bilheteria']):
-        return 'Entrada Principal'
-    
-    # Área de Bares
-    if any(p in texto_lower for p in ['bar', 'bebida', 'cerveja', 'drink', 'chopp', 'copo']):
-        return 'Área de Bares'
-    
-    # Área do Palco
-    if any(p in texto_lower for p in ['palco', 'show', 'banda', 'dj', 'som', 'musica', 'música', 'artista']):
-        return 'Área do Palco'
-    
-    # Praça de Alimentação
-    if any(p in texto_lower for p in ['comida', 'lanche', 'alimentacao', 'alimentação', 'hamburguer', 'pizza', 'espetinho']):
-        return 'Praça de Alimentação'
-    
-    # Pista Central
-    if any(p in texto_lower for p in ['pista', 'grade', 'frente do palco', 'meio da pista']):
-        return 'Pista Central'
-    
-    # Banheiros
-    if any(p in texto_lower for p in ['banheiro', 'toalete', 'wc', 'mictorio', 'mictório', 'privada']):
-        return 'Banheiros'
-    
-    # Bistrô
-    if any(p in texto_lower for p in ['bistro', 'bistrô', 'restaurante']):
-        return 'Bistrô'
-    
-    # N/A (não identificado)
-    return 'N/A'
+def _setores_ativos() -> list[dict[str, Any]]:
+    """Os setores da planta, que são as regiões reais deste evento.
+
+    Região genérica ("Banheiros", "Área do Palco") não acende pino nenhum no
+    mapa, porque o mapa é a planta e a planta tem setor com coordenada. Aqui
+    a região é o setor, e a lista sai do banco para acompanhar a planta sem
+    ninguém lembrar de editar código.
+    """
+
+    try:
+        return EVENT_STORE.list_sectors()
+    except Exception as e:  # noqa: BLE001 - sem setor o bot segue, só não localiza
+        logger.error("Setores indisponíveis: %s", type(e).__name__)
+        return []
+
+
+# Como o público chama o lugar quando não usa o nome oficial da planta.
+# Serve ao caminho determinístico, que só entra com a IA fora do ar.
+_APELIDOS_SETOR = {
+    "banheiro": "sanitarios",
+    "banheiros": "sanitarios",
+    "bango": "sanitarios",
+    "wc": "sanitarios",
+    "toalete": "sanitarios",
+    "toilet": "sanitarios",
+    "mictorio": "sanitarios",
+    "privada": "sanitarios",
+    "enfermaria": "ambulatorio",
+    "posto medico": "ambulatorio",
+    "primeiros socorros": "ambulatorio",
+    "armario": "lockers",
+    "guarda volume": "lockers",
+    "achados": "sac",
+    "perdidos": "sac",
+    "catraca": "catracas",
+    "portao": "catracas",
+    "roleta": "catracas",
+    "tatuagem": "tattoo",
+    "feirinha": "feirinha",
+    "cadeirante": "pcd",
+    "deficiente": "pcd",
+    "excursao": "excursoes",
+    "onibus": "excursoes",
+}
+
+# Palavras que aparecem em quase todo nome de setor e por isso não distinguem
+# nada: casar por elas faria "bar" apontar para cinco lugares ao mesmo tempo.
+_PALAVRAS_VAGAS = frozenset({
+    "palco", "area", "espaco", "lounge", "acesso", "open", "exclusivo",
+    "oficial", "central", "principal", "saida", "entrada", "zona",
+})
+
+
+def _sem_acento(texto: str) -> str:
+    """Normaliza para comparar: o público escreve sem acento e em minúscula."""
+
+    return "".join(
+        c
+        for c in unicodedata.normalize("NFD", str(texto).lower())
+        if unicodedata.category(c) != "Mn"
+    )
+
+
+def _radicais(texto: str) -> set[str]:
+    """Quebra em radicais de 5 letras, que é o que faz plural casar com singular.
+
+    "femininos" e "feminino" viram o mesmo "femin", e sem isso metade dos
+    nomes da planta nunca casaria com o jeito que a pessoa escreve.
+    """
+
+    return {
+        p[:5] for p in re.split(r"[^a-z0-9]+", _sem_acento(texto)) if len(p) > 2
+    }
+
+
+def _termos_do_setor(setor: dict[str, Any]) -> set[str]:
+    """Radicais que identificam o setor, já sem as palavras vagas."""
+
+    nome = _sem_acento(setor.get("name") or "")
+    palavras = {p for p in re.split(r"[^a-z0-9]+", nome) if len(p) > 2}
+    return {p[:5] for p in palavras - _PALAVRAS_VAGAS}
+
+
+def grupo_do_setor(setor: dict[str, Any] | None) -> str | None:
+    """Tipo de lugar do setor: Sanitários, Bares, Palcos, e por aí.
+
+    Sai do metadata da planta, nunca de tabela no código: setor desativado
+    tem que sumir da conta sem ninguém editar duas listas.
+    """
+
+    if not setor:
+        return None
+    return (setor.get("metadata") or {}).get("group") or None
+
+
+def grupo_do_feedback(feedback: dict[str, Any]) -> str | None:
+    """Tipo de lugar de um chamado, para somar no relatório.
+
+    Com setor, o grupo sai da planta na hora de somar, e não do que foi
+    gravado: assim mudar a planta corrige o histórico inteiro em vez de
+    deixar metade da conta velha. Sem setor, vale o que a triagem guardou.
+    """
+
+    sector_id = feedback.get("sector_id")
+    if sector_id:
+        for setor in _setores_ativos():
+            if str(setor.get("id")) == str(sector_id):
+                return grupo_do_setor(setor)
+    return (feedback.get("metadata") or {}).get("place_group") or None
+
+
+def _grupos_ativos(setores: list[dict[str, Any]] | None = None) -> list[str]:
+    """Os tipos de lugar que existem na planta, em ordem estável.
+
+    Ordem estável porque a IA escolhe por número: lista embaralhada entre
+    duas chamadas faria a mesma mensagem cair em grupos diferentes.
+    """
+
+    if setores is None:
+        setores = _setores_ativos()
+    return sorted({g for g in (grupo_do_setor(s) for s in setores) if g})
+
+
+def identificar_grupo_por_texto(
+    texto: str, setores: list[dict[str, Any]]
+) -> str | None:
+    """Tipo de lugar quando não dá para cravar o setor.
+
+    Sai de graça do empate: "o banheiro tá sem papel" cabe em nove setores,
+    e os nove são Sanitários. O pino continua apagado, porque ninguém sabe
+    qual banheiro, mas a reclamação entra na conta de banheiros do relatório.
+    """
+
+    candidatos = _candidatos_por_texto(texto, setores)
+    if not candidatos:
+        return None
+    grupos = {grupo_do_setor(s) for s in candidatos}
+    if len(grupos) == 1:
+        return grupos.pop()
+    return None
+
+
+def _candidatos_por_texto(
+    texto: str, setores: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Setores que a mensagem pode estar citando, os melhores colocados."""
+
+    if not setores:
+        return []
+
+    alvo = _sem_acento(texto)
+    for apelido, oficial in _APELIDOS_SETOR.items():
+        if apelido in alvo:
+            alvo += " " + oficial
+
+    tokens = _radicais(alvo)
+    placar = []
+    for setor in setores:
+        termos = _termos_do_setor(setor)
+        if not termos:
+            continue
+        pontos = sum(1 for t in termos if t in tokens)
+        if pontos:
+            placar.append((pontos, setor))
+
+    if not placar:
+        return []
+    melhor = max(p[0] for p in placar)
+    return [s for pontos, s in placar if pontos == melhor]
+
+
+def identificar_setor_por_texto(
+    texto: str, setores: list[dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Acha na mensagem o setor da planta que a pessoa citou, sem IA.
+
+    Reserva para quando a IA está fora. Empate devolve nada de propósito:
+    "o banheiro tá sem papel" cabe em oito setores, e pino errado no mapa
+    manda a equipe para o lugar errado, o que é pior que chamado sem setor.
+    """
+
+    candidatos = _candidatos_por_texto(texto, setores)
+    return candidatos[0] if len(candidatos) == 1 else None
 
 # --- AI SENTIMENT CLASSIFICATION (PRIMARY) ---
 OPENAI_CLASSIFY_TIMEOUT = 15
@@ -505,7 +650,7 @@ TIPOS_MENSAGEM = ("conversa", "relato", "ofensa")
 URGENCIAS = ("Critico", "Urgente", "Positivo", "Neutro")
 
 
-def triar_mensagem_ia(texto, fichas=None):
+def triar_mensagem_ia(texto, fichas=None, setores=None):
     """Uma chamada decide o tipo, a urgência e a ficha da mensagem.
 
     Tipo separa conversa de relato, que é o que evita a fila de trabalho
@@ -526,6 +671,7 @@ def triar_mensagem_ia(texto, fichas=None):
         return None
 
     fichas = list(fichas or [])
+    setores = list(setores or [])
     try:
         system = (
             "Você tria mensagens de WhatsApp de um festival. "
@@ -567,6 +713,39 @@ def triar_mensagem_ia(texto, fichas=None):
             "escolha Urgente: errar para o lado da ajuda custa uma pergunta, errar para "
             "o lado da festa custa uma pessoa."
         )
+        if setores:
+            planta = "\n".join(
+                f"{i + 1}. {str(s.get('name') or '').strip()}"
+                f" [{(s.get('metadata') or {}).get('zone', '')}]"
+                for i, s in enumerate(setores)
+            )
+            system += (
+                "\n\nSETORES DA PLANTA: o evento é dividido nestes lugares:\n"
+                + planta
+                + "\n\nAcrescente ao JSON o campo \"setor\": o NÚMERO do setor de onde a "
+                "pessoa está falando, ou 0 se a mensagem não disser o lugar.\n"
+                "Escolha SÓ quando a mensagem apontar o lugar, pelo nome, pela zona ou "
+                "pelo que só existe ali. Na dúvida entre dois, responda 0: chamado sem "
+                "lugar a operação resolve perguntando, mas lugar errado manda a equipe "
+                "para o outro lado do festival.\n"
+                "\"o banheiro tá sem papel\" é 0, porque há vários banheiros. "
+                "\"o banheiro do palco tropical tá sem papel\" é o setor daquele banheiro. "
+                "Elogio a show e pergunta sobre line-up normalmente são 0, a não ser que "
+                "a pessoa diga onde está."
+            )
+            grupos = _grupos_ativos(setores)
+            if grupos:
+                system += (
+                    "\n\nTIPO DE LUGAR: " + ", ".join(
+                        f"{i + 1}={g}" for i, g in enumerate(grupos)
+                    )
+                    + "\nAcrescente ao JSON o campo \"lugar\": o NÚMERO do tipo de lugar "
+                    "de que a mensagem fala, ou 0 se ela não falar de lugar nenhum.\n"
+                    "Responda este campo MESMO quando o setor for 0: não saber qual dos "
+                    "nove banheiros é não impede saber que é banheiro, e é isso que faz "
+                    "o relatório fechar a conta no fim do evento.\n"
+                    "Elogio a show sem dizer onde é 0 aqui também."
+                )
         if fichas:
             lista = "\n".join(
                 f"{i + 1}. {str(f.get('question') or '').strip()}" for i, f in enumerate(fichas)
@@ -590,7 +769,7 @@ def triar_mensagem_ia(texto, fichas=None):
                     {"role": "system", "content": system},
                     {"role": "user", "content": texto},
                 ],
-                max_output_tokens=80,
+                max_output_tokens=120,
             )
         )
         bruto = (response.choices[0].message.content or "").strip()
@@ -622,11 +801,40 @@ def triar_mensagem_ia(texto, fichas=None):
             if 1 <= numero <= len(fichas):
                 ficha = fichas[numero - 1]
 
+        # O setor sai por número da lista fechada, nunca por nome escrito pela
+        # IA: o texto do público está dentro do prompt e nome livre viraria
+        # pino inventado no mapa da sala de controle.
+        setor = None
+        lugar = None
+        if setores:
+            try:
+                indice = int(dados.get("setor") or 0)
+            except (TypeError, ValueError):
+                indice = 0
+            if 1 <= indice <= len(setores):
+                setor = setores[indice - 1]
+
+            # O tipo de lugar sobrevive ao empate entre setores: o pino fica
+            # apagado, mas a reclamação entra na conta do relatório.
+            grupos = _grupos_ativos(setores)
+            try:
+                alvo = int(dados.get("lugar") or 0)
+            except (TypeError, ValueError):
+                alvo = 0
+            if 1 <= alvo <= len(grupos):
+                lugar = grupos[alvo - 1]
+            if setor:
+                lugar = grupo_do_setor(setor) or lugar
+
         logger.info(
-            "Triagem concluída | tipo=%s urgencia=%s ficha=%s",
+            "Triagem concluída | tipo=%s urgencia=%s ficha=%s setor=%s lugar=%s",
             tipo, escolhida, "sim" if ficha else "nenhuma",
+            setor.get("code") if setor else "nenhum", lugar or "nenhum",
         )
-        return {"tipo": tipo, "urgencia": escolhida, "ficha": ficha}
+        return {
+            "tipo": tipo, "urgencia": escolhida, "ficha": ficha,
+            "setor": setor, "lugar": lugar,
+        }
     except (ValueError, KeyError, TypeError):
         logger.warning("JSON inesperado na triagem, usando fallback")
         return None
@@ -657,24 +865,31 @@ def _fichas_ativas():
     return [e for e in entries if e.get("active", True)]
 
 
-def triar_mensagem(texto):
+def triar_mensagem(texto, localizar=False):
     """Triagem com IA e caminho determinístico de reserva.
 
     A IA decide tipo, urgência e qual ficha da base responde à mensagem. Com
     a IA fora, o tipo sai do vocabulário de cortesia, a urgência das
     palavras-chave e a ficha dos gatilhos cadastrados. É pior, mas ninguém
     fica sem resposta.
+
+    Com `localizar`, a mesma chamada também diz de que setor da planta a
+    pessoa está falando. Isso entra só quando o QR não trouxe o setor: quem
+    escaneou a placa já está localizado, e a lista dos 36 setores no prompt
+    não sai de graça.
     """
 
     fichas = _fichas_ativas()
-    resultado = triar_mensagem_ia(texto, fichas)
+    setores = _setores_ativos() if localizar else []
+    resultado = triar_mensagem_ia(texto, fichas, setores)
     if resultado:
         resultado["ficha_por"] = "ia"
+        resultado["setor_por"] = "ia" if resultado.get("setor") else None
         return resultado
-    return triar_mensagem_sem_ia(texto, fichas)
+    return triar_mensagem_sem_ia(texto, fichas, setores)
 
 
-def triar_mensagem_sem_ia(texto, fichas=None):
+def triar_mensagem_sem_ia(texto, fichas=None, setores=None):
     """Triagem só por vocabulário, palavras-chave e gatilhos cadastrados.
 
     É a reserva para a IA fora do ar e o caminho escolhido de propósito
@@ -685,12 +900,20 @@ def triar_mensagem_sem_ia(texto, fichas=None):
     if fichas is None:
         fichas = _fichas_ativas()
     if e_xingamento_puro(texto):
-        return {"tipo": "ofensa", "urgencia": "Neutro", "ficha": None, "ficha_por": "gatilho"}
+        return {
+            "tipo": "ofensa", "urgencia": "Neutro", "ficha": None,
+            "ficha_por": "gatilho", "setor": None, "setor_por": None, "lugar": None,
+        }
+    setores = setores or []
+    setor = identificar_setor_por_texto(texto, setores)
     return {
         "tipo": "conversa" if _is_greeting(texto) else "relato",
         "urgencia": classificar_sentimento(texto),
         "ficha": match_knowledge(texto, fichas),
         "ficha_por": "gatilho",
+        "setor": setor,
+        "setor_por": "texto" if setor else None,
+        "lugar": grupo_do_setor(setor) or identificar_grupo_por_texto(texto, setores),
     }
 
 
@@ -717,8 +940,7 @@ Texto: "{texto}"
 Responda APENAS em JSON com este formato exato:
 {{
   "categoria": "Segurança & Organização" | "Estrutura & Espaço" | "Alimentação & Bebidas" | "Programação & Atrações" | "Credenciamento & Ingressos" | "Experiência Geral",
-  "sentimento": "Positivo" | "Critico" | "Urgente" | "Neutro",
-  "regiao": "VIP & Camarotes" | "Estacionamento" | "Entrada Principal" | "Área de Bares" | "Área do Palco" | "Praça de Alimentação" | "Pista Central" | "Banheiros" | "Bistrô" | "N/A"
+  "sentimento": "Positivo" | "Critico" | "Urgente" | "Neutro"
 }}
 
 Regras:
@@ -749,11 +971,9 @@ Regras:
         # fechada, o valor é descartado: categoria e região vão para o
         # relatório e para os filtros do painel, nunca podem ser texto livre.
         categoria = dados.get("categoria")
-        regiao = dados.get("regiao")
         sentimento = dados.get("sentimento")
         return {
             "categoria": categoria if categoria in CATEGORIAS_VALIDAS else None,
-            "regiao": regiao if regiao in REGIOES_VALIDAS else None,
             "sentimento": sentimento if sentimento in URGENCIAS else None,
         }
     except Exception as e:
@@ -765,11 +985,9 @@ CATEGORIAS_VALIDAS = frozenset({
     "Segurança & Organização", "Estrutura & Espaço", "Alimentação & Bebidas",
     "Programação & Atrações", "Credenciamento & Ingressos", "Experiência Geral",
 })
-REGIOES_VALIDAS = frozenset({
-    "VIP & Camarotes", "Estacionamento", "Entrada Principal", "Área de Bares",
-    "Área do Palco", "Praça de Alimentação", "Pista Central", "Banheiros",
-    "Bistrô", "N/A",
-})
+
+# Não existe mais lista de região: a região é o setor da planta, e a planta
+# mora no banco. Ver identificar_setor_por_texto e a triagem.
 
 # --- CONFIGURAÇÃO DO BOT: O QUE ESTÁ NO AR E O QUE É RASCUNHO ---
 
@@ -1157,7 +1375,9 @@ def is_emoji_only(text):
 
 
 # --- AI REPORT SUMMARY ---
-def generate_report_summary(feedbacks, sentiment, categories, regions, total, participants):
+def generate_report_summary(
+    feedbacks, sentiment, categories, regions, total, participants, groups=None
+):
     """Gera resumo executivo do evento usando IA"""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -1176,6 +1396,13 @@ def generate_report_summary(feedbacks, sentiment, categories, regions, total, pa
         
         top_cat = max(categories.items(), key=lambda x: x[1])[0] if categories else 'N/A'
         top_region = max(regions.items(), key=lambda x: x[1])[0] if regions else 'N/A'
+
+        # Tipo de lugar é a leitura que o organizador usa para decidir o ano
+        # que vem: "Sanitários" manda contratar mais banheiro químico, e
+        # "Sanitários • Pista Norte 1" não manda nada sozinho.
+        groups = groups or {}
+        top_groups = sorted(groups.items(), key=lambda x: x[1], reverse=True)[:3]
+        resumo_grupos = ", ".join(f"{nome} ({qtd})" for nome, qtd in top_groups) or "N/A"
         
         prompt = f'''Você é um analista de eventos profissional. Gere um RESUMO EXECUTIVO do evento baseado nos dados abaixo.
 
@@ -1185,7 +1412,8 @@ DADOS DO EVENTO:
 - Satisfação: {positivo_pct}% positivo
 - Alertas: {critico_count} críticos, {urgente_count} urgentes
 - Categoria mais mencionada: {top_cat}
-- Região mais ativa: {top_region}
+- Setor mais ativo: {top_region}
+- Tipos de lugar com mais chamados: {resumo_grupos}
 - Distribuição: {dict(sentiment)}
 - Categorias: {dict(categories)}
 
@@ -1447,6 +1675,10 @@ def _classify(
 ) -> tuple[str, str, str]:
     """Classifica urgência, categoria e região com IA e fallback determinístico.
 
+    A região é o nome do setor da planta, venha ele do QR ou do texto. Sem
+    setor a região fica "N/A" de propósito: rótulo genérico não acende pino
+    no mapa e só enchia o relatório de linha que não leva a lugar nenhum.
+
     Com `usar_ia` desligado (inundação em curso) nenhuma chamada à OpenAI
     é feita: tudo sai das listas de palavras.
     """
@@ -1456,9 +1688,10 @@ def _classify(
         urgency = classificar_urgencia(content) if usar_ia else classificar_sentimento(content)
 
     category = classificar_categoria(content)
-    region = str(sector["name"]) if sector else classificar_regiao(content)
+    region = str(sector["name"]) if sector else "N/A"
 
-    # Categoria ambígua: a IA tenta enriquecer sem substituir o setor do QR.
+    # Categoria ambígua: a IA tenta enriquecer sem tocar no setor, que já foi
+    # resolvido antes daqui.
     if category == "Experiência Geral" and usar_ia:
         try:
             enriched = classificar_com_ia(content)
@@ -1466,8 +1699,6 @@ def _classify(
             enriched = None
         if enriched:
             category = enriched.get("categoria") or category
-            if not sector and enriched.get("regiao") not in (None, "N/A"):
-                region = enriched["regiao"]
 
     return urgency, category, region
 
@@ -1886,7 +2117,15 @@ def api_relatorio():
     # --- REGIONS ---
     regions = dict(Counter(f.get('region', 'N/A') for f in feedbacks if f.get('region') and f.get('region') != 'N/A'))
     regions = dict(sorted(regions.items(), key=lambda x: x[1], reverse=True))
-    
+
+    # --- GRUPOS (TIPO DE LUGAR) ---
+    # O corte que o organizador lê primeiro: "287 chamados em Sanitários".
+    # Não cabe em nenhum dos 36 setores nem em nenhuma das 6 categorias,
+    # porque banheiro não é assunto, é tipo de lugar.
+    groups = dict(Counter(g for g in map(grupo_do_feedback, feedbacks) if g))
+    groups = dict(sorted(groups.items(), key=lambda x: x[1], reverse=True))
+
+
     # --- TIMELINE (by hour) ---
     timeline = defaultdict(int)
     for ts in timestamps:
@@ -1957,13 +2196,16 @@ def api_relatorio():
     ]
 
     # --- AI SUMMARY ---
-    ai_summary = generate_report_summary(feedbacks, sentiment, categories, regions, total, participants)
+    ai_summary = generate_report_summary(
+        feedbacks, sentiment, categories, regions, total, participants, groups
+    )
     
     return jsonify({
         "stats": {"total": total, "participants": participants, "dateRange": date_range, "duration": duration, "perHour": per_hour},
         "sentiment": sentiment,
         "categories": categories,
         "regions": regions,
+        "groups": groups,
         "timeline": timeline,
         "topPositive": top_positive,
         "topNegative": top_negative,
@@ -2175,7 +2417,10 @@ def _simular(content_raw, sector_code):
             "createsCard": False,
         }
 
-    triagem = triar_mensagem(content)
+    # Sem QR, a triagem procura o setor no texto, igual ao worker. O
+    # simulador existe para a produção ver a decisão real, inclusive quando
+    # o lugar é deduzido em vez de lido da placa.
+    triagem = triar_mensagem(content, localizar=not sector)
     if triagem["tipo"] == "ofensa":
         return {
             "reply": AVISO_OFENSA,
@@ -2204,7 +2449,10 @@ def _simular(content_raw, sector_code):
             "createsCard": False,
         }
 
-    urgency, category, region = _classify(content, sector, urgency=triagem["urgencia"])
+    do_texto = triagem.get("setor") if not sector else None
+    urgency, category, region = _classify(
+        content, sector or do_texto, urgency=triagem["urgencia"]
+    )
     known = triagem.get("ficha") if urgency != "Positivo" else None
     reply = _compose_reply(content, category, urgency, sector, False, known=known)
 
@@ -2217,13 +2465,20 @@ def _simular(content_raw, sector_code):
     else:
         explain = "A IA não achou ficha cadastrada para isso: o bot responde no tom dele, sem inventar fato, e registra o chamado."
 
+    if do_texto:
+        explain += (
+            f' O QR não veio, mas a mensagem diz o lugar: o chamado foi para '
+            f'"{do_texto["name"]}" e o pino acende lá.'
+        )
+
     return {
         "reply": reply,
         "kind": "chamado",
         "urgency": urgency,
         "category": category,
         "region": region,
-        "sector": sector["name"] if sector else None,
+        "sector": (sector or do_texto)["name"] if (sector or do_texto) else None,
+        "sectorSource": "qr" if sector else (triagem.get("setor_por") if do_texto else None),
         "topic": _topic(content, category, urgency),
         "matched": (
             {

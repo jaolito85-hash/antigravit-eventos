@@ -59,6 +59,15 @@ Siga as 3 camadas do `AGENTE.md`:
 - Transcrição de áudio via OpenAI Whisper
 - Classificação de urgência, categoria e região por IA com fallback por palavras-chave
 - Roteamento determinístico por setor através da tag `#SETOR:CODIGO` do QR Code
+- Localização pelo texto quando o QR não veio: a triagem escolhe entre os 36
+  setores da planta, porque o QR só acompanha a primeira mensagem de quem
+  escaneou (áudio nunca carrega a tag, e ninguém volta na placa). Não existe
+  mais região genérica: a região é o setor, e o feedback guarda se o lugar foi
+  lido da placa ou deduzido do texto
+- Tipo de lugar (`metadata.group` do setor): os 9 grupos que o relatório soma,
+  como Sanitários e Bares. Quando não dá para cravar o setor, a triagem ainda
+  devolve o grupo, então "o banheiro tá sem papel" não acende pino nenhum mas
+  entra na conta de banheiros
 - Telão da sala de controle (`/telao`) com a planta aérea 3D e alerta crítico em tela cheia
 - Mapa ao Vivo, dashboard com filtros, exportação CSV/JSON
 - Simulador do bot em `/tuca`: a produção conversa com o Tuca no navegador

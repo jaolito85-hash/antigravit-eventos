@@ -36,6 +36,7 @@ from server import (
     _compose_reply,
     _extract_sector,
     _sector_prompt,
+    _setores_ativos,
     _topic,
     compose_smalltalk,
     is_emoji_only,
@@ -247,7 +248,15 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
 
         # A IA decide se isso e conversa ou relato; a lista de palavras do
         # server so entra se ela estiver fora do ar ou desligada.
-        triagem = triar_mensagem(content) if ia_ligada else triar_mensagem_sem_ia(content)
+        #
+        # Sem setor do QR, a mesma chamada tambem procura o lugar no texto. O
+        # QR so acompanha a primeira mensagem de quem escaneou: audio nunca
+        # carrega a tag, e ninguem volta na placa para escanear de novo.
+        triagem = (
+            triar_mensagem(content, localizar=not sector)
+            if ia_ligada
+            else triar_mensagem_sem_ia(content, setores=None if sector else _setores_ativos())
+        )
 
         # 7. Xingamento sem conteúdo: a moderação não pega (a pontuação de
         # "vai tomar no cu" é igual à de um relato de agressão com palavrão),
@@ -272,9 +281,15 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             store.finish_inbox(message_id, "ignored")
             return
 
+        # Setor achado no texto. Vale para o mapa e para o roteamento, mas
+        # nao muda o que o participante ouve: afirmar "voce esta no Palco
+        # Tropical" com base em deducao seria vender certeza que nao existe.
+        do_texto = triagem.get("setor") if not sector else None
+
         urgency, category, region = _classify(
-            content, sector, urgency=triagem["urgencia"], usar_ia=ia_ligada
+            content, sector or do_texto, urgency=triagem["urgencia"], usar_ia=ia_ligada
         )
+        localizado = sector or do_texto
         feedback_id = store.create_feedback(
             message=message,
             content=content,
@@ -282,7 +297,12 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             region=region,
             urgency=urgency,
             topic=_topic(content, category, urgency),
-            sector_id=str(sector["id"]) if sector else None,
+            sector_id=str(localizado["id"]) if localizado else None,
+            sector_source="qr" if sector else (triagem.get("setor_por") if do_texto else None),
+            # Com setor, o grupo sai dele na hora de somar, para não congelar
+            # a conta se a planta mudar. Sem setor, o tipo de lugar é tudo
+            # que se sabe e precisa ficar guardado.
+            place_group=None if localizado else triagem.get("lugar"),
         )
         if pode_responder:
             store.enqueue_text(

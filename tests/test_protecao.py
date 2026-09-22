@@ -185,14 +185,13 @@ class ServerProtecoesTests(unittest.TestCase):
         self.assertIsNone(server._celula_segura(None))
 
     def test_classificacao_por_ia_so_aceita_valores_da_lista(self):
-        """Injecao no texto nao pode virar HTML no relatorio via regiao."""
+        """Injecao no texto nao pode virar HTML no relatorio via categoria."""
 
         resposta = mock.MagicMock()
         resposta.choices = [mock.MagicMock()]
         resposta.choices[0].message.content = json.dumps({
-            "categoria": "Banheiros",
+            "categoria": "<img src=x onerror=alert(1)>",
             "sentimento": "Urgente",
-            "regiao": "<img src=x onerror=alert(1)>",
         })
         cliente = mock.MagicMock()
         cliente.chat.completions.create.return_value = resposta
@@ -200,7 +199,33 @@ class ServerProtecoesTests(unittest.TestCase):
                 mock.patch.object(server, "_openai_chat_client", return_value=cliente):
             r = server.classificar_com_ia("qualquer texto")
 
-        self.assertEqual(r, {"categoria": None, "regiao": None, "sentimento": "Urgente"})
+        self.assertEqual(r, {"categoria": None, "sentimento": "Urgente"})
+
+    def test_setor_da_triagem_so_sai_da_lista_fechada(self):
+        """Nome de setor escrito pela IA nao pode virar pino no mapa.
+
+        O texto do publico entra no prompt, entao a IA pode ser induzida a
+        devolver qualquer coisa. Setor vem por numero da lista, e numero fora
+        da faixa nao localiza ninguem.
+        """
+
+        setores = [
+            {"id": "1", "code": "PALCO-TROPICAL", "name": "Palco Tropical", "metadata": {}},
+        ]
+        for devolvido in ("<img src=x onerror=alert(1)>", "99", "-1", "0", "Setor Inventado"):
+            resposta = mock.MagicMock()
+            resposta.choices = [mock.MagicMock()]
+            resposta.choices[0].message.content = json.dumps({
+                "tipo": "relato",
+                "urgencia": "Urgente",
+                "setor": devolvido,
+            })
+            cliente = mock.MagicMock()
+            cliente.chat.completions.create.return_value = resposta
+            with mock.patch.object(server, "_openai_chat_client", return_value=cliente):
+                r = server.triar_mensagem_ia("qualquer texto", setores=setores)
+
+            self.assertIsNone(r["setor"], f"aceitou {devolvido!r} como setor")
 
     def test_texto_do_publico_entra_delimitado_e_saida_e_filtrada(self):
         resposta = mock.MagicMock()

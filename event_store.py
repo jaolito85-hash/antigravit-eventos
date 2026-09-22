@@ -360,8 +360,16 @@ class EventStore:
         urgency: str,
         topic: str,
         sector_id: str | None,
+        sector_source: str | None = None,
+        place_group: str | None = None,
     ) -> int:
-        """Cria um feedback 1:1 com a mensagem para manter rastreabilidade."""
+        """Cria um feedback 1:1 com a mensagem para manter rastreabilidade.
+
+        `sector_source` diz de onde veio o setor: "qr" quando a pessoa
+        escaneou a placa, "ia" ou "texto" quando ele foi deduzido do que ela
+        escreveu. A sala de controle precisa saber a diferença antes de mandar
+        equipe: pino lido é fato, pino deduzido é palpite bom.
+        """
 
         sentiment = (
             "Positivo"
@@ -387,6 +395,15 @@ class EventStore:
             "resolved_at": None,
             "source": "meta",
         }
+        extra = {}
+        if sector_source:
+            extra["sector_source"] = sector_source
+        # Tipo de lugar de quem não tem setor: é o que mantém a reclamação na
+        # conta do relatório mesmo sem pino no mapa.
+        if place_group:
+            extra["place_group"] = place_group
+        if extra:
+            row["metadata"] = extra
         response = (
             self._get_client()
             .table("feedbacks")

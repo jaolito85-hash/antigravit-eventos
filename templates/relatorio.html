@@ -900,13 +900,16 @@
             </div>
         </div>
 
-        <!-- REGIONS BREAKDOWN -->
+        <!-- TIPOS DE LUGAR -->
+        <!-- Nove linhas, não os 36 setores: "287 chamados em Sanitários" é o
+             número que o organizador leva para a reunião. O detalhe setor a
+             setor tem seção própria mais abaixo. -->
         <div class="section">
             <div class="section-header">
                 <i class="ri-map-pin-line"></i>
-                <h2 class="section-title">Regiões do Evento</h2>
+                <h2 class="section-title">Tipos de Lugar</h2>
             </div>
-            <div class="chart-card" id="regionsBreakdown">
+            <div class="chart-card" id="groupsBreakdown">
                 <!-- Filled by JS -->
             </div>
         </div>
@@ -1021,7 +1024,7 @@
         }
 
         function renderReport(data) {
-            const { stats, sentiment, categories, regions, timeline, topPositive, topNegative, topParticipants, aiSummary } = data;
+            const { stats, sentiment, categories, timeline, topPositive, topNegative, topParticipants, aiSummary } = data;
 
             // META
             document.getElementById('metaDate').textContent = stats.dateRange;
@@ -1166,19 +1169,22 @@
                 </div>`;
             }).join('') + '</div>';
 
-            // REGIONS BREAKDOWN
-            const regLabels = Object.keys(regions);
-            const regValues = Object.values(regions);
-            const regBreakdown = document.getElementById('regionsBreakdown');
+            // TIPOS DE LUGAR
+            const grupos = data.groups || {};
+            const grpLabels = Object.keys(grupos);
+            const grpValues = Object.values(grupos);
+            const grpBreakdown = document.getElementById('groupsBreakdown');
             const regColors = ['#2979ff', '#00e676', '#ffab40', '#b388ff', '#ff5252', '#5c9aff', '#ff80ab', '#00bcd4', '#ffd740'];
-            regBreakdown.innerHTML = '<div style="padding: 8px 0;">' + regLabels.map((reg, i) => {
-                const pct = stats.total > 0 ? Math.round(regValues[i] / stats.total * 100) : 0;
-                return `<div class="stat-row">
-                    <span class="stat-label">${escHtml(reg)}</span>
-                    <div class="stat-bar-bg"><div class="stat-bar" style="width:${pct}%; background:${regColors[i % regColors.length]};"></div></div>
-                    <span class="stat-count" style="color:${regColors[i % regColors.length]}">${regValues[i]}</span>
-                </div>`;
-            }).join('') + '</div>';
+            grpBreakdown.innerHTML = grpLabels.length
+                ? '<div style="padding: 8px 0;">' + grpLabels.map((grp, i) => {
+                    const pct = stats.total > 0 ? Math.round(grpValues[i] / stats.total * 100) : 0;
+                    return `<div class="stat-row">
+                        <span class="stat-label">${escHtml(grp)}</span>
+                        <div class="stat-bar-bg"><div class="stat-bar" style="width:${pct}%; background:${regColors[i % regColors.length]};"></div></div>
+                        <span class="stat-count" style="color:${regColors[i % regColors.length]}">${grpValues[i]}</span>
+                    </div>`;
+                }).join('') + '</div>'
+                : '<p style="color: var(--text-dim); padding: 20px;">Nenhuma mensagem trouxe o lugar de onde fala.</p>';
 
             // MACROZONAS DA PLANTA
             const zonesBox = document.getElementById('zonesBreakdown');
