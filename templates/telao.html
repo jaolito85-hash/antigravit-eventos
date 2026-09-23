@@ -427,16 +427,6 @@
             transition: width 0.2s, height 0.2s;
         }
 
-        /* Setor sem chamado aberto recua: com 36 pontos na planta, tratar
-           tranquilo e urgente do mesmo tamanho esconde justamente o urgente. */
-        .pin.is-quiet .pin-core {
-            width: 7px;
-            height: 7px;
-            border-width: 1px;
-            opacity: 0.5;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-        }
-
         .pin:hover { z-index: 6; }
         .pin:hover .pin-core { width: 17px; height: 17px; opacity: 1; }
 
@@ -506,8 +496,8 @@
             transition: opacity 0.25s;
         }
 
-        /* Só o pino em alerta mostra o nome sozinho, e o resto aparece quando o
-           mouse está nele. Antes o hover no quadro acendia os 36 de uma vez. */
+        /* Todo pino no mapa está em alerta, então o nome vem junto: o telefone
+           da produção toca antes de alguém chegar perto do mouse. */
         .pin.is-hot .pin-label { opacity: 1; }
         .pin:hover .pin-label { opacity: 1; z-index: 7; }
 
@@ -559,7 +549,6 @@
         /* A planta fica maior, então o pino acompanha, senão ele vira um ponto
            perdido no meio do mapa. */
         body.only-map .pin-core { width: 17px; height: 17px; }
-        body.only-map .pin.is-quiet .pin-core { width: 9px; height: 9px; }
         body.only-map .pin-label { font-size: 0.7rem; top: 24px; }
         body.only-map .pin-count { font-size: 0.64rem; left: 12px; }
 
@@ -610,6 +599,8 @@
         }
 
         .legend-swatch { width: 9px; height: 9px; border-radius: 50%; }
+
+        .legend-note { color: var(--dim); font-weight: 500; font-style: italic; }
 
         /* ===================== COLUNA DIREITA ===================== */
         .rail {
@@ -917,6 +908,29 @@
             color: var(--tone);
             display: block;
             line-height: 1;
+        }
+
+        /* O card do topo do modal também filtra a lista de baixo. O recorte
+           aberto fica aceso, para ninguém achar que a lista está incompleta. */
+        .sheet-num.is-filter {
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .sheet-num.is-filter:hover {
+            background: color-mix(in srgb, var(--tone) 24%, transparent);
+        }
+
+        .sheet-num.is-active {
+            background: color-mix(in srgb, var(--tone) 30%, transparent);
+            box-shadow: 0 0 0 2px var(--tone);
+        }
+
+        .sheet-back {
+            color: var(--accent);
+            cursor: pointer;
+            text-decoration: underline;
+            white-space: nowrap;
         }
 
         .sheet-num span {
@@ -1309,12 +1323,8 @@
                                     style="background: var(--red)"></span> Crítico</div>
                             <div class="legend-item"><span class="legend-swatch"
                                     style="background: var(--amber)"></span> Urgente</div>
-                            <div class="legend-item"><span class="legend-swatch"
-                                    style="background: var(--blue)"></span> Neutro</div>
-                            <div class="legend-item"><span class="legend-swatch"
-                                    style="background: var(--green)"></span> Elogio</div>
-                            <div class="legend-item"><span class="legend-swatch"
-                                    style="background: #64748b"></span> Tranquilo</div>
+                            <div class="legend-item legend-note">
+                                dúvida e elogio ficam no painel, o mapa acende só o que pede alguém</div>
                         </div>
                     </div>
                     <div class="zone-strip" id="zone-strip"></div>
@@ -1386,6 +1396,15 @@
             'ok': '#64748b'
         };
         const RANK = { 'Critico': 3, 'Crítico': 3, 'Urgente': 2, 'Neutro': 1, 'Positivo': 0, 'ok': -1 };
+
+        // ===== Regra do telão: só mostra o que precisa de alguém agora =====
+        // Decisão da produção em 23/09/2026, e vale em dois lugares: o pino na
+        // planta e a lista de chamados do setor. Com tudo aceso ao mesmo tempo,
+        // o crítico de verdade disputava a atenção com dúvida, elogio e setor
+        // parado, e quem olha o projetor de longe perdia o que importa.
+        // Esconder não é apagar: a conta continua nos cards do topo do modal, e
+        // um clique no card traz a lista daquele recorte.
+        const EM_ALERTA = ['Critico', 'Crítico', 'Urgente'];
 
         let SECTORS = [];
         let soundOn = false;
@@ -1529,20 +1548,66 @@
             document.getElementById('sheet').classList.add('show');
         }
 
-        function sheetNums(events) {
+        // Cada card do topo do modal é também um botão: ele conta um recorte e,
+        // quando o modal passa uma ação, mostra esse recorte na lista de baixo.
+        // Sem a ação (listas abertas pelos KPIs) ele segue sendo só número.
+        const SHEET_CORTES = {
+            alerta: {
+                teste: (e) => EM_ALERTA.includes(e.urgency),
+                nota: 'em alerta, do mais grave para o menos. Dúvida e elogio continuam contados nos cards acima.',
+                vazio: 'Nenhum chamado crítico ou urgente neste setor.<br>O que chegou de dúvida e elogio está nos cards acima.',
+            },
+            abertos: {
+                teste: (e) => (e.status || 'aberto') !== 'resolvido',
+                nota: 'em aberto, de qualquer prioridade.',
+                vazio: 'Nenhum chamado em aberto neste setor.',
+            },
+            Critico: {
+                teste: (e) => ['Critico', 'Crítico'].includes(e.urgency),
+                nota: 'com prioridade crítica.',
+                vazio: 'Nenhum chamado crítico neste setor.',
+            },
+            Urgente: {
+                teste: (e) => e.urgency === 'Urgente',
+                nota: 'com prioridade urgente.',
+                vazio: 'Nenhum chamado urgente neste setor.',
+            },
+            Positivo: {
+                teste: (e) => e.urgency === 'Positivo',
+                nota: 'de elogio.',
+                vazio: 'Nenhum elogio neste setor ainda.',
+            },
+            Neutro: {
+                teste: (e) => e.urgency === 'Neutro',
+                nota: 'de dúvida.',
+                vazio: 'Nenhuma dúvida neste setor ainda.',
+            },
+        };
+
+        function sheetNums(events, opts) {
             const abertos = events.filter(e => (e.status || 'aberto') !== 'resolvido').length;
             const conta = (u) => events.filter(e => (e.urgency || '') === u).length;
             const nums = [
-                { label: 'Em aberto', value: abertos, tone: abertos ? TONES['Urgente'] : TONES['ok'] },
-                { label: 'Crítico', value: conta('Critico'), tone: TONES['Critico'] },
-                { label: 'Urgente', value: conta('Urgente'), tone: TONES['Urgente'] },
-                { label: 'Elogios', value: conta('Positivo'), tone: TONES['Positivo'] },
-                { label: 'Dúvidas', value: conta('Neutro'), tone: TONES['Neutro'] },
+                { corte: 'abertos', label: 'Em aberto', value: abertos, tone: abertos ? TONES['Urgente'] : TONES['ok'] },
+                { corte: 'Critico', label: 'Crítico', value: conta('Critico'), tone: TONES['Critico'] },
+                { corte: 'Urgente', label: 'Urgente', value: conta('Urgente'), tone: TONES['Urgente'] },
+                { corte: 'Positivo', label: 'Elogios', value: conta('Positivo'), tone: TONES['Positivo'] },
+                { corte: 'Neutro', label: 'Dúvidas', value: conta('Neutro'), tone: TONES['Neutro'] },
             ];
-            return '<div class="sheet-nums">' + nums.map(n =>
-                '<div class="sheet-num" style="--tone:' + n.tone + '"><b>' + n.value +
-                '</b><span>' + n.label + '</span></div>'
-            ).join('') + '</div>';
+            // O clique nao vai no atributo: nome de recorte dentro de onclick
+            // exigiria escapar aspas, e e assim que este arquivo ja quebrou antes.
+            // Quem abre o modal liga os handlers por data-corte, como no renderZones.
+            const filtra = opts && opts.filtravel;
+            return '<div class="sheet-nums">' + nums.map(n => {
+                const classes = 'sheet-num' + (filtra ? ' is-filter' : '') +
+                    (filtra && opts.ativo === n.corte ? ' is-active' : '');
+                const gancho = filtra
+                    ? ' data-corte="' + n.corte + '" title="Ver estes chamados na lista"'
+                    : '';
+                return '<div class="' + classes + '"' + gancho +
+                    ' style="--tone:' + n.tone + '"><b>' + n.value + '</b>' +
+                    '<span>' + n.label + '</span></div>';
+            }).join('') + '</div>';
         }
 
         const STATUS_LABEL = {
@@ -1558,7 +1623,9 @@
         function sheetItems(events, opts) {
             if (!events.length) {
                 return '<div class="empty"><i class="ri-inbox-line"></i>' +
-                    'Nenhum chamado aqui ainda.<br>Quando alguém escanear o QR deste ponto, aparece nesta lista.</div>';
+                    ((opts && opts.vazio) ||
+                        'Nenhum chamado aqui ainda.<br>Quando alguém escanear o QR deste ponto, aparece nesta lista.') +
+                    '</div>';
             }
 
             const ordered = [...events].sort((a, b) => {
@@ -1569,8 +1636,10 @@
             });
 
             const cabecalho = '<div class="panel-note" style="margin-bottom:12px">' +
-                ordered.length + ' chamado' + (ordered.length === 1 ? '' : 's') +
-                ', do mais grave para o menos. Clique para conversar ou troque o status.</div>';
+                ((opts && opts.nota) ||
+                    ordered.length + ' chamado' + (ordered.length === 1 ? '' : 's') +
+                    ', do mais grave para o menos. Clique para conversar ou troque o status.') +
+                ((opts && opts.voltar) || '') + '</div>';
 
             return cabecalho + ordered.map(e => {
                 const color = tone(e.urgency);
@@ -1646,9 +1715,15 @@
         }
 
         // ---------- Detalhe de um setor ----------
-        async function openSheet(code) {
+        // O modal abre no recorte de alerta, o mesmo critério do pino na planta.
+        // Quem quiser a conversa de dúvida ou de elogio clica no card de cima.
+        let _sheetCorte = 'alerta';
+
+        async function openSheet(code, corte) {
             const sector = SECTORS.find(s => s.code === code);
             if (!sector) return;
+
+            _sheetCorte = corte || 'alerta';
 
             const team = sector.team ? String(sector.team).replace(/_/g, ' ') : null;
             const tags = [
@@ -1667,9 +1742,42 @@
 
             _sheetReload = async () => {
                 const events = await fetchEvents('?setor=' + encodeURIComponent(code));
-                sheetShell(esc(sector.name), tags, sheetNums(events), sheetItems(events), foot);
+                const recorte = SHEET_CORTES[_sheetCorte] || SHEET_CORTES.alerta;
+                const lista = events.filter(recorte.teste);
+                const voltar = _sheetCorte === 'alerta' ? '' :
+                    ' <span class="sheet-back" data-voltar>voltar ao crítico e urgente</span>';
+                sheetShell(esc(sector.name), tags,
+                    sheetNums(events, { ativo: _sheetCorte, filtravel: true }),
+                    sheetItems(lista, {
+                        nota: lista.length + ' chamado' + (lista.length === 1 ? '' : 's') +
+                            ' ' + recorte.nota,
+                        vazio: recorte.vazio,
+                        voltar: voltar,
+                    }),
+                    foot);
+                ligaCortes();
             };
+
             await _sheetReload();
+        }
+
+        // Clique num card do topo troca o recorte sem fechar o modal nem
+        // buscar de novo o setor: o _sheetReload já sabe qual setor está aberto.
+        function sheetCorte(corte) {
+            _sheetCorte = corte;
+            if (_sheetReload) _sheetReload();
+        }
+
+        // Os cliques dos cards são ligados depois do innerHTML, e não por
+        // onclick no atributo: o mesmo motivo do renderZones, nome dentro de
+        // atributo obriga a escapar aspas e já quebrou esta tela antes.
+        function ligaCortes() {
+            const caixa = document.getElementById('sheet-box');
+            caixa.querySelectorAll('.sheet-num[data-corte]').forEach(card => {
+                card.onclick = () => sheetCorte(card.getAttribute('data-corte'));
+            });
+            const volta = caixa.querySelector('[data-voltar]');
+            if (volta) volta.onclick = () => sheetCorte('alerta');
         }
 
         // ---------- Lista por prioridade, categoria ou tema ----------
@@ -1936,36 +2044,41 @@
                 : 'pontos de escuta ativos';
         }
 
+        // O mapa desenha só os setores em alerta (ver EM_ALERTA no topo).
         function renderMap(sectors) {
             const frame = document.getElementById('map-frame');
             frame.querySelectorAll('.pin').forEach(p => p.remove());
 
             const placed = sectors.filter(s => s.coord && s.coord.x != null && s.coord.y != null);
-            document.getElementById('map-note').textContent = placed.length
-                ? placed.length + ' setores mapeados'
-                : 'Nenhum setor com coordenada cadastrada';
+            const alertas = placed.filter(s => EM_ALERTA.includes(s.worst));
 
-            placed.forEach(sector => {
-                const color = tone(sector.worst === 'ok' ? 'ok' : sector.worst);
-                const hot = ['Critico', 'Crítico', 'Urgente'].includes(sector.worst);
+            const note = document.getElementById('map-note');
+            if (!placed.length) {
+                note.textContent = 'Nenhum setor com coordenada cadastrada';
+            } else if (!alertas.length) {
+                note.textContent = 'Nada em alerta · ' + placed.length + ' setores no radar';
+            } else {
+                note.textContent = (alertas.length === 1
+                    ? '1 setor pedindo alguém'
+                    : alertas.length + ' setores pedindo alguém') +
+                    ' · ' + placed.length + ' no radar';
+            }
+
+            alertas.forEach(sector => {
+                const color = tone(sector.worst);
                 const isCritical = ['Critico', 'Crítico'].includes(sector.worst);
 
-                // Sem chamado aberto o pino recua: com 36 pontos, o que importa
-                // é achar os poucos que precisam de alguém agora.
-                const quiet = !(sector.open > 0);
-
                 const pin = document.createElement('div');
-                pin.className = 'pin' + (hot ? ' is-hot' : '') + (isCritical ? ' is-critical' : '')
-                    + (quiet ? ' is-quiet' : '');
+                // Todo pino que sobrou é quente, então o nome do setor já nasce
+                // visível: quem está longe do projetor não tem mouse para passar.
+                pin.className = 'pin is-hot' + (isCritical ? ' is-critical' : '');
                 pin.style.left = sector.coord.x + '%';
                 pin.style.top = sector.coord.y + '%';
                 pin.style.setProperty('--pin', color);
 
-                // A onda pulsante fica reservada a urgente e crítico. Antes
-                // qualquer dúvida aberta pulsava, e 36 ondas escondem a planta.
-                const ring = hot
-                    ? '<div class="pin-ring' + (isCritical ? '' : ' slow') + '"></div>'
-                    : '';
+                // A onda pulsante acompanha a gravidade: rápida no crítico,
+                // lenta no urgente.
+                const ring = '<div class="pin-ring' + (isCritical ? '' : ' slow') + '"></div>';
                 const count = sector.open > 0
                     ? '<div class="pin-count" style="color:' + color + '">' + sector.open + '</div>'
                     : '';
