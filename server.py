@@ -2893,10 +2893,14 @@ def save_knowledge_route():
     payload = request.get_json(silent=True) or {}
     question = str(payload.get("question") or "").strip()
     answer = str(payload.get("answer") or "").strip()
+    imagem = str(payload.get("image_url") or "").strip()
     if len(question) < 3:
         return jsonify({"error": "escreva a pergunta"}), 400
-    if not answer:
-        return jsonify({"error": "escreva a resposta"}), 400
+    # Ficha só com imagem é resposta completa: a produção sobe a foto do
+    # line-up e o Tuca manda a foto. O texto continua obrigatório quando não
+    # há imagem, senão a ficha não responderia nada.
+    if not answer and not imagem:
+        return jsonify({"error": "escreva a resposta ou envie uma imagem"}), 400
 
     keywords = payload.get("keywords")
     if isinstance(keywords, str):

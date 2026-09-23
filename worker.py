@@ -111,6 +111,30 @@ AVISO_LOCALIZACAO_ILEGIVEL = (
 )
 
 
+def _so_imagem(ficha: dict[str, Any]) -> bool:
+    """A ficha responde com a foto e nada mais?
+
+    É o caso da produção que sobe o line-up do palco e não escreve nada: a
+    imagem já é a resposta inteira.
+    """
+
+    return not str(ficha.get("answer") or "").strip()
+
+
+def _cabecalho_do_banner(ficha: dict[str, Any]) -> str:
+    """A linha que vai antes da foto, em negrito, quando a produção escreveu uma.
+
+    O negrito é aplicado aqui e não pedido à produção: quem cadastra escreve
+    "Line-up do Palco Hype" e não precisa saber que asterisco formata no
+    WhatsApp. Se ela já formatou, fica como está.
+    """
+
+    texto = str(ficha.get("answer") or "").strip()
+    if not texto or "*" in texto:
+        return texto
+    return f"*{texto}*" if len(texto) <= 200 else texto
+
+
 def _stop(_signum: int, _frame: Any) -> None:
     """Solicita encerramento limpo ao receber SIGTERM do Coolify."""
 
@@ -428,23 +452,36 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             # que se sabe e precisa ficar guardado.
             place_group=None if localizado else triagem.get("lugar"),
         )
+        ficha = triagem.get("ficha") or {}
+        banner = str(ficha.get("image_url") or "").strip()
+        # Elogio e crítico não usam ficha: um não pergunta nada e o outro tem
+        # protocolo fixo, e banner no meio de uma emergência é ruído.
+        manda_banner = bool(banner) and urgency not in ("Positivo", "Critico")
+        cabecalho = _cabecalho_do_banner(ficha) if manda_banner else ""
+
         if pode_responder:
-            resposta = _compose_reply(
-                content, category, urgency, sector, transcribed,
-                known=triagem.get("ficha"), usar_ia=ia_ligada,
-            )
-            # Chamado que pede equipe e não tem lugar nenhum: o Tuca pergunta
-            # em vez de mandar a equipe procurar o festival inteiro.
-            if not localizado and urgency in URGENCIAS_QUE_PEDEM_EQUIPE:
-                resposta += f"\n\n{PERGUNTA_ONDE_ESTA}"
-            store.enqueue_text(message, resposta, feedback_id)
-            # Ficha do guia com banner (line-up, cardápio): a imagem vai logo
-            # depois do texto. Elogio e crítico não usam ficha, então não têm banner.
-            ficha = triagem.get("ficha") or {}
-            if ficha.get("image_url") and urgency not in ("Positivo", "Critico"):
+            # Ficha com imagem responde pela imagem: o texto cadastrado vira
+            # cabeçalho e sai literal, sem passar pela IA. A produção subiu a
+            # foto do line-up para o Tuca mandar a foto, e texto gerado antes
+            # dela seria enfeite que ninguém pediu. Sem texto, vai só a foto.
+            if not manda_banner:
+                resposta = _compose_reply(
+                    content, category, urgency, sector, transcribed,
+                    known=triagem.get("ficha"), usar_ia=ia_ligada,
+                )
+                # Chamado que pede equipe e não tem lugar nenhum: o Tuca pergunta
+                # em vez de mandar a equipe procurar o festival inteiro.
+                if not localizado and urgency in URGENCIAS_QUE_PEDEM_EQUIPE:
+                    resposta += f"\n\n{PERGUNTA_ONDE_ESTA}"
+                store.enqueue_text(message, resposta, feedback_id)
+            elif cabecalho:
+                # O cabeçalho sai literal, do jeito que a produção escreveu:
+                # aqui ela está escrevendo a resposta, não dando material para
+                # a IA reescrever.
+                store.enqueue_text(message, cabecalho, feedback_id)
+            if manda_banner:
                 store.enqueue_image(
-                    message, str(ficha["image_url"]),
-                    caption=str(ficha.get("question") or ""), feedback_id=feedback_id,
+                    message, banner, caption="", feedback_id=feedback_id,
                 )
         store.finish_inbox(message_id)
         if not pode_responder:

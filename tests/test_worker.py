@@ -495,7 +495,14 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.responses, [])
 
     @mock.patch("server.triar_mensagem_ia")
-    def test_ficha_do_guia_com_banner_manda_a_imagem_depois_do_texto(self, mock_ia):
+    def test_ficha_do_guia_com_banner_manda_o_cabecalho_e_a_imagem(self, mock_ia):
+        """Ficha com foto responde pela foto, e o texto vira cabeçalho literal.
+
+        Mudou em 23/09/2026: antes o texto passava pela IA e a legenda da
+        imagem repetia a pergunta. Agora o que a produção escreveu sai como
+        ela escreveu, em negrito, e a foto vem logo abaixo, limpa.
+        """
+
         ficha = {"id": "f9", "question": "Line-up do Palco Hype", "answer": "15:30 | Ricardo Farhat",
                  "kind": "lineup", "image_url": "https://x.supabase.co/banners/hype.jpg"}
         mock_ia.return_value = {"tipo": "relato", "urgencia": "Neutro", "ficha": ficha}
@@ -505,8 +512,22 @@ class WorkerTests(unittest.TestCase):
 
         self.assertEqual(store.finished, "processed")
         self.assertEqual(len(store.responses), 2)
-        self.assertIn("Ricardo Farhat", store.responses[0])
-        self.assertEqual(store.responses[1], ("imagem", ficha["image_url"], "Line-up do Palco Hype", 42))
+        self.assertEqual(store.responses[0], "*15:30 | Ricardo Farhat*")
+        self.assertEqual(store.responses[1], ("imagem", ficha["image_url"], "", 42))
+
+    @mock.patch("server.triar_mensagem_ia")
+    def test_ficha_so_com_foto_nao_manda_texto_nenhum(self, mock_ia):
+        """A produção sobe só a foto do line-up: o Tuca manda só a foto."""
+
+        ficha = {"id": "f10", "question": "Line-up do Palco Hype", "answer": "",
+                 "kind": "lineup", "image_url": "https://x.supabase.co/banners/hype.jpg"}
+        mock_ia.return_value = {"tipo": "relato", "urgencia": "Neutro", "ficha": ficha}
+        store = FakeStore()
+
+        process_inbox(store, _message(content="qual o line up do palco hype?"))
+
+        self.assertEqual(len(store.responses), 1)
+        self.assertEqual(store.responses[0], ("imagem", ficha["image_url"], "", 42))
 
     @mock.patch("server.triar_mensagem_ia")
     def test_elogio_nao_manda_banner(self, mock_ia):
