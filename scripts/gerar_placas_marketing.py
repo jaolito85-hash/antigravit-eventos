@@ -100,8 +100,18 @@ def main() -> int:
 
     numero = numero_do_ambiente(args.numero)
     destino = RAIZ / args.saida
+    # As pastas nascem vazias a cada geração. Sem isso, arquivo de uma
+    # rodada anterior fica para trás e viaja no pacote: aconteceu em
+    # 23/09/2026, quando a frase da placa mudou e as provas antigas
+    # continuaram lá, com o texto velho dentro do QR. Nome de arquivo igual
+    # é sobrescrito; o perigo é o que mudou de nome.
     for sub in (PASTA_PRONTOS, PASTA_SEGURAR, PASTA_PNG, PASTA_PROVA):
-        (destino / sub).mkdir(parents=True, exist_ok=True)
+        pasta = destino / sub
+        if pasta.exists():
+            for antigo in pasta.iterdir():
+                if antigo.is_file():
+                    antigo.unlink()
+        pasta.mkdir(parents=True, exist_ok=True)
 
     # Primeira passada: codifica todos antes de desenhar qualquer um, porque a
     # zona de silêncio sai do conjunto e não de cada código.
