@@ -73,6 +73,20 @@ class FaltaDeInsumoTest(unittest.TestCase):
         ):
             self.assertTrue(_FALTA_DE_INSUMO.search(texto), texto)
 
+    def test_reconhece_insumo_em_ingles_e_espanhol(self):
+        # Medido em 23/09: a lista era só em português, então "the bar has no
+        # ice" caía no texto de não promessa e o público estrangeiro nunca
+        # ouvia que a equipe estava repondo.
+        for texto in (
+            "the bar has no ice",
+            "we ran out of beer",
+            "there is no soap here",
+            "no hay papel en el bano",
+            "se acabo el hielo",
+            "sin agua",
+        ):
+            self.assertTrue(_FALTA_DE_INSUMO.search(texto), texto)
+
     def test_nao_confunde_outro_problema_com_insumo(self):
         # Fila, som e limpeza não entram: ninguém garantiu que resolve, então
         # o bot não pode prometer.
@@ -82,6 +96,8 @@ class FaltaDeInsumoTest(unittest.TestCase):
             "o banheiro está sujo",
             "o chão está escorregando",
             "demora muito pra ser atendido",
+            "the line is huge",
+            "the sound is bad",
         ):
             self.assertIsNone(_FALTA_DE_INSUMO.search(texto), texto)
 
