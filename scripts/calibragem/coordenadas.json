@@ -1,1 +1,254 @@
-{}
+{
+  "ACESSO-CENTRAL-LOUNGE": {
+    "x": 36.5,
+    "y": 50.4
+  },
+  "ACESSO-HYPE-BACKSTAGE": {
+    "x": 62.6,
+    "y": 34.3
+  },
+  "ACESSO-LOJINHA-LOUNGE": {
+    "x": 30.3,
+    "y": 61.9
+  },
+  "ACESSO-OPENFOOD-LOUNGE": {
+    "x": 42.1,
+    "y": 40.1
+  },
+  "AMB-CENTRAL-PISTA": {
+    "x": 15.8,
+    "y": 57.4
+  },
+  "AMB-TROPICAL-LOUNGE": {
+    "x": 53.1,
+    "y": 46.0
+  },
+  "AVANCO-CENTRAL-PISTA": {
+    "x": 33.9,
+    "y": 45.1
+  },
+  "BAR-BUD-TROPICAL-LOUNGE": {
+    "x": 47.0,
+    "y": 62.9
+  },
+  "BAR-BUD-TROPICAL-PISTA": {
+    "x": 27.5,
+    "y": 72.4
+  },
+  "BAR-COCOLEVE-HYPE-BACKSTAGE": {
+    "x": 65.9,
+    "y": 19.2
+  },
+  "BAR-COCOLEVE-HYPE-LOUNGE": {
+    "x": 55.7,
+    "y": 13.2
+  },
+  "BAR-DRINK-TROPICAL-LOUNGE-01": {
+    "x": 38.3,
+    "y": 57.2
+  },
+  "BAR-DRINK-TROPICAL-LOUNGE-02": {
+    "x": 43.2,
+    "y": 58.8
+  },
+  "BAR-GERAL-TROPICAL-LOUNGE": {
+    "x": 35.8,
+    "y": 92.5
+  },
+  "BAR-HYPE-BACKSTAGE": {
+    "x": 66.1,
+    "y": 21.2
+  },
+  "BAR-HYPE-LOUNGE": {
+    "x": 59.3,
+    "y": 15.5
+  },
+  "BAR-HYPE-PISTA": {
+    "x": 55.6,
+    "y": 26.3
+  },
+  "BAR-LAB-PISTA": {
+    "x": 20.8,
+    "y": 37.6
+  },
+  "BAR-REDBULL-HYPE-BACKSTAGE": {
+    "x": 66.6,
+    "y": 19.4
+  },
+  "BAR-REDBULL-HYPE-LOUNGE": {
+    "x": 37.4,
+    "y": 67.7
+  },
+  "BAR-REDBULL-LAB-PISTA": {
+    "x": 18.6,
+    "y": 36.6
+  },
+  "BAR-REDBULL-TROPICAL-PISTA": {
+    "x": 25.1,
+    "y": 63.1
+  },
+  "BAR-TROPICAL-PISTA-01": {
+    "x": 29.2,
+    "y": 64.9
+  },
+  "BAR-TROPICAL-PISTA-02": {
+    "x": 24.2,
+    "y": 75.3
+  },
+  "BAR-TROPICAL-PISTA-03": {
+    "x": 26.8,
+    "y": 92.3
+  },
+  "CAIXA-HYPE-PISTA": {
+    "x": 54.3,
+    "y": 25.7
+  },
+  "CAIXA-LAB-PISTA": {
+    "x": 18.7,
+    "y": 42.8
+  },
+  "CAIXA-PRACA-CENTRAL-PISTA": {
+    "x": 22.9,
+    "y": 50.4
+  },
+  "CAIXA-PRACA-LAB-PISTA": {
+    "x": 10.7,
+    "y": 48.1
+  },
+  "CAIXA-TROPICAL-PISTA": {
+    "x": 27.1,
+    "y": 64.7
+  },
+  "DESCANSO-DELEGA-HYPE-BACKSTAGE": {
+    "x": 63.5,
+    "y": 24.1
+  },
+  "DESCANSO-TROPICAL-LOUNGE": {
+    "x": 40.0,
+    "y": 67.4
+  },
+  "FEIRINHA-CENTRAL-PISTA": {
+    "x": 26.7,
+    "y": 45.4
+  },
+  "GARRA-TROPICAL-PISTA": {
+    "x": 21.4,
+    "y": 63.9
+  },
+  "LED-DESCANSO": {
+    "x": 24.2,
+    "y": 86.6
+  },
+  "LED-HYPE": {
+    "x": 60.4,
+    "y": 22.2
+  },
+  "LED-JOHN-ROGER": {
+    "x": 24.6,
+    "y": 57.6
+  },
+  "LED-LAB": {
+    "x": 9.6,
+    "y": 38.8
+  },
+  "LED-NY-LOUNGE": {
+    "x": 22.7,
+    "y": 70.6
+  },
+  "LED-TROPICAL": {
+    "x": 36.4,
+    "y": 78.1
+  },
+  "LOCKER-CENTRAL-LOUNGE": {
+    "x": 55.0,
+    "y": 49.7
+  },
+  "LOCKER-CENTRAL-PISTA": {
+    "x": 28.8,
+    "y": 36.1
+  },
+  "OPENFOOD-HYPE-BACKSTAGE": {
+    "x": 62.9,
+    "y": 29.2
+  },
+  "OPENFOOD-HYPE-LOUNGE": {
+    "x": 69.8,
+    "y": 25.7
+  },
+  "OPENFOOD-TROPICAL-LOUNGE-01": {
+    "x": 47.0,
+    "y": 40.1
+  },
+  "OPENFOOD-TROPICAL-LOUNGE-02": {
+    "x": 56.5,
+    "y": 42.6
+  },
+  "PCD-CENTRAL-PISTA": {
+    "x": 18.3,
+    "y": 56.4
+  },
+  "PRACA-CENTRAL-PISTA": {
+    "x": 22.9,
+    "y": 49.6
+  },
+  "PRACA-LAB-PISTA": {
+    "x": 10.9,
+    "y": 46.8
+  },
+  "WC-FEM-FEIRINHA-PISTA": {
+    "x": 33.1,
+    "y": 40.2
+  },
+  "WC-FEM-HYPE-BACKSTAGE": {
+    "x": 56.6,
+    "y": 33.0
+  },
+  "WC-FEM-HYPE-LOUNGE": {
+    "x": 68.2,
+    "y": 16.7
+  },
+  "WC-FEM-HYPE-PISTA": {
+    "x": 45.7,
+    "y": 23.9
+  },
+  "WC-FEM-OPENFOOD-LOUNGE": {
+    "x": 41.5,
+    "y": 43.1
+  },
+  "WC-FEM-TROPICAL-LOUNGE": {
+    "x": 51.8,
+    "y": 76.5
+  },
+  "WC-FEM-TROPICAL-PISTA": {
+    "x": 17.6,
+    "y": 63.2
+  },
+  "WC-MASC-FEIRINHA-PISTA": {
+    "x": 31.1,
+    "y": 39.3
+  },
+  "WC-MASC-HYPE-BACKSTAGE": {
+    "x": 58.1,
+    "y": 33.6
+  },
+  "WC-MASC-HYPE-LOUNGE": {
+    "x": 66.9,
+    "y": 15.6
+  },
+  "WC-MASC-HYPE-PISTA": {
+    "x": 47.3,
+    "y": 18.6
+  },
+  "WC-MASC-OPENFOOD-LOUNGE": {
+    "x": 39.2,
+    "y": 46.0
+  },
+  "WC-MASC-TROPICAL-LOUNGE": {
+    "x": 45.7,
+    "y": 70.5
+  },
+  "WC-MASC-TROPICAL-PISTA": {
+    "x": 17.1,
+    "y": 70.0
+  }
+}
