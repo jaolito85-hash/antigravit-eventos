@@ -1,0 +1,54 @@
+{
+  "BAR-BUD-TROPICAL-LOUNGE": {
+    "x": 52.6,
+    "y": 22.5
+  },
+  "BAR-BUD-TROPICAL-PISTA": {
+    "x": 42.1,
+    "y": 36.0
+  },
+  "BAR-COCOLEVE-HYPE-BACKSTAGE": {
+    "x": 47.3,
+    "y": 26.6
+  },
+  "BAR-COCOLEVE-HYPE-LOUNGE": {
+    "x": 56.1,
+    "y": 40.2
+  },
+  "BAR-DRINK-TROPICAL-LOUNGE-01": {
+    "x": 49.4,
+    "y": 25.8
+  },
+  "BAR-DRINK-TROPICAL-LOUNGE-02": {
+    "x": 50.3,
+    "y": 34.0
+  },
+  "BAR-GERAL-TROPICAL-LOUNGE": {
+    "x": 53.0,
+    "y": 31.5
+  },
+  "BAR-HYPE-BACKSTAGE": {
+    "x": 52.8,
+    "y": 43.6
+  },
+  "BAR-HYPE-LOUNGE": {
+    "x": 54.9,
+    "y": 41.3
+  },
+  "BAR-REDBULL-HYPE-LOUNGE": {
+    "x": 55.2,
+    "y": 29.0
+  },
+  "BAR-REDBULL-TROPICAL-PISTA": {
+    "x": 42.5,
+    "y": 41.1
+  },
+  "BAR-TROPICAL-PISTA-01": {
+    "x": 67.6,
+    "y": 27.1
+  },
+  "OPENFOOD-HYPE-LOUNGE": {
+    "x": 53.7,
+    "y": 17.4
+  }
+}

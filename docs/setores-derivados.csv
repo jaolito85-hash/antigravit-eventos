@@ -1,0 +1,66 @@
+﻿Código (vai no QR);Nome que a equipe vê;Tipo de lugar;Zona;Equipe que recebe;Texto da placa;Conferir
+WC-FEM-HYPE-PISTA;Sanitários Femininos Hype • Pista;Sanitários;Pista;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-MASC-HYPE-PISTA;Sanitários Masculinos Hype • Pista;Sanitários;Pista;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-FEM-HYPE-LOUNGE;Sanitários Femininos Hype • Tropical Lounge;Sanitários;Tropical Lounge;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-MASC-HYPE-LOUNGE;Sanitários Masculinos Hype • Tropical Lounge;Sanitários;Tropical Lounge;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-FEM-HYPE-BACKSTAGE;Sanitários Femininos Hype • Backstage Hype;Sanitários;Backstage Hype;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-MASC-HYPE-BACKSTAGE;Sanitários Masculinos Hype • Backstage Hype;Sanitários;Backstage Hype;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-FEM-TROPICAL-PISTA;Sanitários Femininos Tropical • Pista;Sanitários;Pista;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-MASC-TROPICAL-PISTA;Sanitários Masculinos Tropical • Pista;Sanitários;Pista;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-FEM-TROPICAL-LOUNGE;Sanitários Femininos Tropical • Tropical Lounge;Sanitários;Tropical Lounge;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-MASC-TROPICAL-LOUNGE;Sanitários Masculinos Tropical • Tropical Lounge;Sanitários;Tropical Lounge;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-FEM-FEIRINHA-PISTA;Sanitários Femininos Feirinha • Pista;Sanitários;Pista;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-MASC-FEIRINHA-PISTA;Sanitários Masculinos Feirinha • Pista;Sanitários;Pista;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-FEM-OPENFOOD-LOUNGE;Sanitários Femininos Open Food • Tropical Lounge;Sanitários;Tropical Lounge;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+WC-MASC-OPENFOOD-LOUNGE;Sanitários Masculinos Open Food • Tropical Lounge;Sanitários;Tropical Lounge;limpeza_higienizacao;Falta papel, sabonete ou a fila travou? Avise a equipe.;
+BAR-HYPE-PISTA;Bar Hype • Pista;Bares;Pista;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-HYPE-LOUNGE;Bar Hype • Tropical Lounge;Bares;Tropical Lounge;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-COCOLEVE-HYPE-LOUNGE;Bar Coco Leve Hype • Tropical Lounge;Bares;Tropical Lounge;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-REDBULL-HYPE-LOUNGE;Bar Red Bull Hype • Tropical Lounge;Bares;Tropical Lounge;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-HYPE-BACKSTAGE;Bar Hype • Backstage Hype;Bares;Backstage Hype;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-COCOLEVE-HYPE-BACKSTAGE;Bar Coco Leve Hype • Backstage Hype;Bares;Backstage Hype;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-REDBULL-HYPE-BACKSTAGE;Bar Red Bull Hype • Backstage Hype;Bares;Backstage Hype;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-LAB-PISTA;Bar LAB • Pista;Bares;Pista;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-REDBULL-LAB-PISTA;Bar Red Bull LAB • Pista;Bares;Pista;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-TROPICAL-PISTA-01;Bar Tropical 01 • Pista;Bares;Pista;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-TROPICAL-PISTA-02;Bar Tropical 02 • Pista;Bares;Pista;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-TROPICAL-PISTA-03;Bar Tropical 03 • Pista;Bares;Pista;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-BUD-TROPICAL-PISTA;Bar Budweiser Tropical • Pista;Bares;Pista;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-REDBULL-TROPICAL-PISTA;Bar Red Bull Tropical • Pista;Bares;Pista;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-DRINK-TROPICAL-LOUNGE-01;Bar Drinks Tropical 01 • Tropical Lounge;Bares;Tropical Lounge;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-DRINK-TROPICAL-LOUNGE-02;Bar Drinks Tropical 02 • Tropical Lounge;Bares;Tropical Lounge;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-BUD-TROPICAL-LOUNGE;Bar Budweiser Tropical • Tropical Lounge;Bares;Tropical Lounge;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+BAR-GERAL-TROPICAL-LOUNGE;Bar Geral Tropical • Tropical Lounge;Bares;Tropical Lounge;bar_insumos;Acabou o gelo, a bebida ou a fila travou? Avise na hora.;
+OPENFOOD-HYPE-LOUNGE;Open Food Hype • Tropical Lounge;Alimentação;Tropical Lounge;gastronomia_lounge;Demora, prato frio ou item em falta? Conte para a gente.;
+OPENFOOD-HYPE-BACKSTAGE;Open Food Hype • Backstage Hype;Alimentação;Backstage Hype;gastronomia_lounge;Demora, prato frio ou item em falta? Conte para a gente.;
+OPENFOOD-TROPICAL-LOUNGE-01;Open Food Tropical 01 • Tropical Lounge;Alimentação;Tropical Lounge;gastronomia_lounge;Demora, prato frio ou item em falta? Conte para a gente.;
+OPENFOOD-TROPICAL-LOUNGE-02;Open Food Tropical 02 • Tropical Lounge;Alimentação;Tropical Lounge;gastronomia_lounge;Demora, prato frio ou item em falta? Conte para a gente.;
+PRACA-CENTRAL-PISTA;Praça de Alimentação Central • Pista;Alimentação;Pista;operacao_praca;Demora, preço ou comida fria? Queremos saber agora.;
+PRACA-LAB-PISTA;Praça de Alimentação LAB • Pista;Alimentação;Pista;operacao_praca;Demora, preço ou comida fria? Queremos saber agora.;
+AMB-CENTRAL-PISTA;Ambulatório Central • Pista;Saúde;Pista;saude_emergencia;Emergência de saúde? Fale agora que acionamos a equipe.;
+AMB-TROPICAL-LOUNGE;Ambulatório Tropical • Tropical Lounge;Saúde;Tropical Lounge;saude_emergencia;Emergência de saúde? Fale agora que acionamos a equipe.;
+CAIXA-HYPE-PISTA;Caixa Hype • Pista;Caixas;Pista;operacao_caixas;Fila no caixa ou problema no pagamento? Avise aqui.;
+CAIXA-LAB-PISTA;Caixa LAB • Pista;Caixas;Pista;operacao_caixas;Fila no caixa ou problema no pagamento? Avise aqui.;
+CAIXA-TROPICAL-PISTA;Caixa Tropical • Pista;Caixas;Pista;operacao_caixas;Fila no caixa ou problema no pagamento? Avise aqui.;
+CAIXA-PRACA-CENTRAL-PISTA;Caixa Praça Central • Pista;Caixas;Pista;operacao_caixas;Fila no caixa ou problema no pagamento? Avise aqui.;
+CAIXA-PRACA-LAB-PISTA;Caixa Praça LAB • Pista;Caixas;Pista;operacao_caixas;Fila no caixa ou problema no pagamento? Avise aqui.;
+LED-TROPICAL;Telão Tropical;Telões;?;producao_artistica;Imagem travada, som ou telão apagado? Avise a produção.;sem zona no código, não soma em nenhuma macrozona do telão
+LED-HYPE;Telão Hype;Telões;?;producao_artistica;Imagem travada, som ou telão apagado? Avise a produção.;sem zona no código, não soma em nenhuma macrozona do telão
+LED-LAB;Telão LAB;Telões;?;producao_artistica;Imagem travada, som ou telão apagado? Avise a produção.;sem zona no código, não soma em nenhuma macrozona do telão
+LED-NY-LOUNGE;Telão NY Lounge • Tropical Lounge;Telões;Tropical Lounge;producao_artistica;Imagem travada, som ou telão apagado? Avise a produção.;código veio como «LED - NY LOUNGE» e foi normalizado
+LED-JOHN-ROGER;Telão John Roger;Telões;?;producao_artistica;Imagem travada, som ou telão apagado? Avise a produção.;"código veio como «LED - JOHN ROGER» e foi normalizado; sem zona no código, não soma em nenhuma macrozona do telão; «JOHN»: John Roger não aparece na planta de 12/09"
+LED-DESCANSO;Telão;Telões;?;producao_artistica;Imagem travada, som ou telão apagado? Avise a produção.;"código veio como «LED - DESCANSO» e foi normalizado; sem zona no código, não soma em nenhuma macrozona do telão; «DESCANSO» não é área nem marca conhecida"
+AVANCO-CENTRAL-PISTA;Avanço de Pulseira Central • Pista;Atendimento ao Público;Pista;sac_atendimento;Quer trocar ou fazer upgrade da pulseira? Fale com a gente.;«AVANCO»: supus avanço/upgrade de pulseira, confirmar
+PCD-CENTRAL-PISTA;Apoio PCD Central • Pista;Acessibilidade;Pista;acessibilidade;Precisa de apoio ou acessibilidade? Fale direto com a equipe.;
+FEIRINHA-CENTRAL-PISTA;Feirinha Central • Pista;Lojas e Feirinha;Pista;experiencia_marcas;Como está a experiência na feirinha? Conte para a gente.;
+LOCKER-CENTRAL-PISTA;Lockers Central • Pista;Atendimento ao Público;Pista;atendimento_lockers;Dúvida de disponibilidade ou problema no locker? Fale aqui.;
+LOCKER-CENTRAL-LOUNGE;Lockers Central • Tropical Lounge;Atendimento ao Público;Tropical Lounge;atendimento_lockers;Dúvida de disponibilidade ou problema no locker? Fale aqui.;
+GARRA-TROPICAL-PISTA;Garra Tropical • Pista;Ativações e Lazer;Pista;experiencia_marcas;Fila grande ou tudo tranquilo na ativação? Avise aqui.;«GARRA»: ativação? confirmar o que é e quem atende
+DESCANSO-TROPICAL-PISTA;Área de Descanso Tropical • Pista;Ativações e Lazer;Pista;bem_estar;Precisa de um lugar para sentar ou de água? Fale com a gente.;
+DESCANSO-NY-TROPICAL-PISTA;Área de Descanso NY Lounge Tropical • Pista;Ativações e Lazer;Pista;bem_estar;Precisa de um lugar para sentar ou de água? Fale com a gente.;
+DESCANSO-TROPICAL-LOUNGE;Área de Descanso Tropical • Tropical Lounge;Ativações e Lazer;Tropical Lounge;bem_estar;Precisa de um lugar para sentar ou de água? Fale com a gente.;
+DESCANSO-DELEGA-HYPE-BACKSTAGE;Área de Descanso Delegacia Hype • Backstage Hype;Ativações e Lazer;Backstage Hype;bem_estar;Precisa de um lugar para sentar ou de água? Fale com a gente.;«DELEGA»: pode ser delegação de artistas ou delegacia, muda a equipe
+ACESSO-OPENFOOD-LOUNGE;Acesso Open Food • Tropical Lounge;Entradas e Acessos;Tropical Lounge;portaria_ingressos;Fila na catraca ou problema com a pulseira? Avise aqui.;
+ACESSO-CENTRAL-LOUNGE;Acesso Central • Tropical Lounge;Entradas e Acessos;Tropical Lounge;portaria_ingressos;Fila na catraca ou problema com a pulseira? Avise aqui.;
+ACESSO-LOJINHA-LOUNGE;Acesso Lojinha • Tropical Lounge;Entradas e Acessos;Tropical Lounge;portaria_ingressos;Fila na catraca ou problema com a pulseira? Avise aqui.;
+ACESSO-HYPE-BACKSTAGE;Acesso Hype • Backstage Hype;Entradas e Acessos;Backstage Hype;portaria_vip;Fila na catraca ou problema com a pulseira? Avise aqui.;

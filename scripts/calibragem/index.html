@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calibragem da planta · Tropicadelia 2026</title>
+<style>
+    /* Sem fonte e sem biblioteca de fora: a ferramenta precisa abrir mesmo
+       sem internet, porque o uso dela é na véspera e às vezes no local. */
+    :root {
+        --bg: #0b0d14;
+        --painel: #141824;
+        --borda: #252b3d;
+        --texto: #e8ecf6;
+        --fraco: #8791ab;
+        --acento: #4f8cff;
+        --ok: #22c55e;
+        --alerta: #f59e0b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+        color: var(--texto);
+        font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--borda);
+        background: var(--painel);
+        flex-shrink: 0;
+    }
+
+    h1 { font-size: 15px; margin: 0; font-weight: 700; }
+    h1 span { color: var(--fraco); font-weight: 400; }
+
+    .progresso {
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+        padding: 5px 11px;
+        border: 1px solid var(--borda);
+        border-radius: 8px;
+    }
+
+    .barra {
+        flex: 1;
+        height: 6px;
+        border-radius: 4px;
+        background: #1e2434;
+        overflow: hidden;
+        min-width: 80px;
+    }
+
+    .barra span { display: block; height: 100%; background: var(--ok); width: 0; transition: width .2s; }
+
+    button {
+        font: inherit;
+        color: var(--texto);
+        background: #1c2233;
+        border: 1px solid var(--borda);
+        border-radius: 8px;
+        padding: 6px 12px;
+        cursor: pointer;
+    }
+
+    button:hover { border-color: var(--acento); }
+    button.primario { background: var(--acento); border-color: var(--acento); color: #04070f; font-weight: 700; }
+
+    main { flex: 1; display: flex; min-height: 0; }
+
+    /* ---------------- planta ---------------- */
+    #palco {
+        flex: 1;
+        overflow: auto;
+        position: relative;
+        background: #06080f;
+    }
+
+    #quadro {
+        position: relative;
+        width: 100%;
+        transform-origin: 0 0;
+        line-height: 0;
+    }
+
+    #planta { width: 100%; display: block; cursor: crosshair; }
+
+    .pino {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        z-index: 3;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .bola {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,.92);
+        background: var(--cor, #4f8cff);
+        box-shadow: 0 0 9px var(--cor, #4f8cff), 0 2px 5px rgba(0,0,0,.7);
+    }
+
+    .rotulo {
+        position: absolute;
+        left: 50%;
+        top: 15px;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        background: rgba(4,6,14,.9);
+        border: 1px solid var(--cor, #4f8cff);
+        border-radius: 5px;
+        padding: 2px 6px;
+        font-size: 10px;
+        font-weight: 600;
+        opacity: 0;
+        transition: opacity .15s;
+        pointer-events: none;
+    }
+
+    .pino:hover { z-index: 8; }
+    .pino:hover .rotulo, .pino.atual .rotulo { opacity: 1; }
+    .pino.atual .bola { outline: 3px solid #fff; outline-offset: 3px; }
+
+    /* Os 36 da planta que está no ar, só como referência de escala */
+    .pino.velho { z-index: 2; }
+    .pino.velho .bola {
+        width: 7px; height: 7px; border-width: 1px;
+        background: #5b6478; box-shadow: none; opacity: .75;
+    }
+
+    .mira {
+        position: absolute;
+        pointer-events: none;
+        z-index: 9;
+        border: 1px dashed rgba(79,140,255,.55);
+    }
+
+    /* ---------------- fila ---------------- */
+    aside {
+        width: 350px;
+        flex-shrink: 0;
+        border-left: 1px solid var(--borda);
+        background: var(--painel);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .busca { padding: 10px; border-bottom: 1px solid var(--borda); display: flex; gap: 8px; }
+
+    .busca input {
+        flex: 1;
+        font: inherit;
+        color: var(--texto);
+        background: #0f131e;
+        border: 1px solid var(--borda);
+        border-radius: 8px;
+        padding: 7px 10px;
+    }
+
+    #fila { flex: 1; overflow: auto; padding: 6px; }
+
+    .grupo {
+        font-size: 10px;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--fraco);
+        padding: 12px 8px 5px;
+        font-weight: 700;
+    }
+
+    .item {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 9px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+
+    .item:hover { background: #1a2031; }
+    .item.atual { background: #1d2740; border-color: var(--acento); }
+    .item.pronto .nome { color: var(--fraco); }
+
+    .marca { width: 9px; height: 9px; border-radius: 50%; background: var(--cor); flex-shrink: 0; }
+    .item.pronto .marca { box-shadow: 0 0 0 2px rgba(34,197,94,.5); }
+
+    .nome { flex: 1; min-width: 0; }
+    .nome b { display: block; font-weight: 600; font-size: 13px; }
+    .nome small { color: var(--fraco); font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .xy { font-size: 10px; color: var(--ok); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+    .aviso { color: var(--alerta); flex-shrink: 0; cursor: help; }
+
+    footer {
+        padding: 9px 12px;
+        border-top: 1px solid var(--borda);
+        color: var(--fraco);
+        font-size: 11px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    kbd {
+        background: #0f131e;
+        border: 1px solid var(--borda);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        padding: 1px 5px;
+        font: 11px/1 ui-monospace, monospace;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Calibragem da planta <span>· Tropicadelia 2026</span></h1>
+    <div class="progresso" id="progresso">0 / 0</div>
+    <div class="barra"><span id="barra"></span></div>
+    <button id="btn-zoom-menos" title="Diminuir">−</button>
+    <button id="btn-zoom-mais" title="Ampliar">+</button>
+    <button id="btn-referencia">Ocultar os 36 atuais</button>
+    <button class="primario" id="btn-migration">Baixar migration</button>
+</header>
+
+<main>
+    <div id="palco">
+        <div id="quadro">
+            <img id="planta" src="/planta.jpg" alt="Planta oficial da Tropicadelia 2026">
+        </div>
+    </div>
+
+    <aside>
+        <div class="busca">
+            <input id="busca" type="search" placeholder="Filtrar por nome ou código" autocomplete="off">
+            <button id="btn-pendentes" title="Mostrar só quem ainda não tem posição">Pendentes</button>
+        </div>
+        <div id="fila"></div>
+        <footer>
+            <span><kbd>clique</kbd> marca e avança</span>
+            <span><kbd>↑</kbd><kbd>↓</kbd> navega</span>
+            <span><kbd>Del</kbd> limpa</span>
+            <span id="salvo"></span>
+        </footer>
+    </aside>
+</main>
+
+<script>
+const CORES = {
+    'Sanitários': '#38bdf8',
+    'Bares': '#f59e0b',
+    'Alimentação': '#fb7185',
+    'Saúde': '#ef4444',
+    'Caixas': '#a78bfa',
+    'Telões': '#22d3ee',
+    'Entradas e Acessos': '#84cc16',
+    'Acessibilidade': '#e879f9',
+    'Atendimento ao Público': '#2dd4bf',
+    'Lojas e Feirinha': '#fbbf24',
+    'Ativações e Lazer': '#c084fc',
+};
+
+let SETORES = [];
+let COORDS = {};
+let REFERENCIA = [];
+let atual = null;
+let soPendentes = false;
+let mostrarReferencia = true;
+let zoom = 1;
+
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const cor = (grupo) => CORES[grupo] || '#4f8cff';
+
+async function carregar() {
+    const dados = await (await fetch('/api/dados')).json();
+    SETORES = dados.setores;
+    COORDS = dados.coordenadas || {};
+    REFERENCIA = dados.referencia || [];
+    atual = proximoPendente() || SETORES[0];
+    desenhar();
+}
+
+function proximoPendente(depoisDe) {
+    const i = depoisDe ? SETORES.findIndex(s => s.code === depoisDe.code) : -1;
+    return SETORES.slice(i + 1).find(s => !COORDS[s.code])
+        || SETORES.find(s => !COORDS[s.code])
+        || null;
+}
+
+// ---------- planta ----------
+function desenharPinos() {
+    const quadro = $('quadro');
+    quadro.querySelectorAll('.pino').forEach(p => p.remove());
+
+    if (mostrarReferencia) {
+        REFERENCIA.forEach(r => {
+            const pino = document.createElement('div');
+            pino.className = 'pino velho';
+            pino.style.left = r.coord.x + '%';
+            pino.style.top = r.coord.y + '%';
+            pino.title = 'Planta atual: ' + r.name;
+            pino.innerHTML = '<div class="bola"></div>';
+            quadro.appendChild(pino);
+        });
+    }
+
+    SETORES.forEach(s => {
+        const c = COORDS[s.code];
+        if (!c) return;
+        const pino = document.createElement('div');
+        pino.className = 'pino' + (atual && atual.code === s.code ? ' atual' : '');
+        pino.style.left = c.x + '%';
+        pino.style.top = c.y + '%';
+        pino.style.setProperty('--cor', cor(s.grupo));
+        pino.title = s.name + '  (' + s.code + ')';
+        pino.innerHTML = '<div class="bola"></div><div class="rotulo">' + esc(s.name) + '</div>';
+        pino.onclick = (ev) => { ev.stopPropagation(); selecionar(s.code); };
+        quadro.appendChild(pino);
+    });
+}
+
+async function marcar(x, y) {
+    if (!atual) return;
+    const resposta = await fetch('/api/coord', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: atual.code, x: x, y: y }),
+    });
+    if (!resposta.ok) { alert('Não consegui gravar essa coordenada.'); return; }
+    COORDS[atual.code] = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+    avisarSalvo(atual.name);
+    atual = proximoPendente(atual) || atual;
+    desenhar();
+}
+
+async function limpar() {
+    if (!atual || !COORDS[atual.code]) return;
+    await fetch('/api/limpar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: atual.code }),
+    });
+    delete COORDS[atual.code];
+    avisarSalvo('posição apagada');
+    desenhar();
+}
+
+function avisarSalvo(texto) {
+    const alvo = $('salvo');
+    alvo.textContent = '✓ ' + texto;
+    alvo.style.color = 'var(--ok)';
+    clearTimeout(avisarSalvo.timer);
+    avisarSalvo.timer = setTimeout(() => { alvo.textContent = ''; }, 2500);
+}
+
+$('planta').onclick = (ev) => {
+    const r = ev.target.getBoundingClientRect();
+    marcar((ev.clientX - r.left) / r.width * 100, (ev.clientY - r.top) / r.height * 100);
+};
+
+// ---------- fila ----------
+function desenharFila() {
+    const busca = $('busca').value.trim().toLowerCase();
+    const alvo = $('fila');
+    let grupoAtual = null;
+    let html = '';
+
+    SETORES.forEach(s => {
+        const pronto = !!COORDS[s.code];
+        if (soPendentes && pronto) return;
+        if (busca && !(s.code + ' ' + s.name).toLowerCase().includes(busca)) return;
+
+        if (s.grupo !== grupoAtual) {
+            grupoAtual = s.grupo;
+            html += '<div class="grupo">' + esc(grupoAtual || 'Sem grupo') + '</div>';
+        }
+        const c = COORDS[s.code];
+        html += '<div class="item' + (pronto ? ' pronto' : '') +
+            (atual && atual.code === s.code ? ' atual' : '') + '"' +
+            ' data-code="' + esc(s.code) + '" style="--cor:' + cor(s.grupo) + '">' +
+            '<span class="marca"></span>' +
+            '<span class="nome"><b>' + esc(s.name) + '</b><small>' + esc(s.code) + '</small></span>' +
+            (s.avisos && s.avisos.length
+                ? '<span class="aviso" title="' + esc(s.avisos.join(' · ')) + '">⚠</span>' : '') +
+            (c ? '<span class="xy">' + c.x + ' / ' + c.y + '</span>' : '') +
+            '</div>';
+    });
+
+    alvo.innerHTML = html || '<div class="grupo">Nada aqui com esse filtro</div>';
+    alvo.querySelectorAll('.item').forEach(el => {
+        el.onclick = () => selecionar(el.getAttribute('data-code'));
+    });
+}
+
+function selecionar(code) {
+    const achado = SETORES.find(s => s.code === code);
+    if (!achado) return;
+    atual = achado;
+    desenhar();
+    const el = document.querySelector('.item.atual');
+    if (el) el.scrollIntoView({ block: 'nearest' });
+}
+
+function desenhar() {
+    const total = SETORES.length;
+    const prontos = SETORES.filter(s => COORDS[s.code]).length;
+    $('progresso').textContent = prontos + ' / ' + total;
+    $('barra').style.width = total ? (prontos / total * 100) + '%' : '0';
+    document.title = prontos + '/' + total + ' · Calibragem da planta';
+    desenharPinos();
+    desenharFila();
+}
+
+// ---------- controles ----------
+function aplicarZoom(novo) {
+    zoom = Math.min(6, Math.max(1, novo));
+    $('quadro').style.transform = 'scale(' + zoom + ')';
+    $('quadro').style.width = (100 / zoom) + '%';
+}
+
+$('btn-zoom-mais').onclick = () => aplicarZoom(zoom + 0.5);
+$('btn-zoom-menos').onclick = () => aplicarZoom(zoom - 0.5);
+
+$('palco').addEventListener('wheel', (ev) => {
+    if (!ev.ctrlKey) return;      // roda sozinha continua rolando a página
+    ev.preventDefault();
+    aplicarZoom(zoom + (ev.deltaY < 0 ? 0.3 : -0.3));
+}, { passive: false });
+
+$('btn-referencia').onclick = () => {
+    mostrarReferencia = !mostrarReferencia;
+    $('btn-referencia').textContent = mostrarReferencia ? 'Ocultar os 36 atuais' : 'Mostrar os 36 atuais';
+    desenharPinos();
+};
+
+$('btn-pendentes').onclick = () => {
+    soPendentes = !soPendentes;
+    $('btn-pendentes').textContent = soPendentes ? 'Todos' : 'Pendentes';
+    desenharFila();
+};
+
+$('btn-migration').onclick = () => { window.location.href = '/api/migration'; };
+$('busca').oninput = desenharFila;
+
+document.addEventListener('keydown', (ev) => {
+    if (ev.target.tagName === 'INPUT') return;
+    const i = SETORES.findIndex(s => atual && s.code === atual.code);
+    if (ev.key === 'ArrowDown' && i < SETORES.length - 1) { ev.preventDefault(); selecionar(SETORES[i + 1].code); }
+    if (ev.key === 'ArrowUp' && i > 0) { ev.preventDefault(); selecionar(SETORES[i - 1].code); }
+    if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); limpar(); }
+});
+
+carregar();
+</script>
+</body>
+</html>
