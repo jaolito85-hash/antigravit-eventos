@@ -661,6 +661,23 @@
 
             // Generate poster preview
             generatePoster(eventName, message);
+
+            // Quando o setor está escolhido, o desenho passa a vir do servidor,
+            // que é quem sabe da janela da logo no centro. A biblioteca do
+            // navegador desenha o código sem ela, e painel mostrando uma coisa
+            // enquanto a gráfica recebe outra é o erro que só aparece com a
+            // tiragem pronta. Se o servidor não responder, fica o desenho
+            // local: melhor preview aproximado que tela vazia.
+            const setorEscolhido = document.getElementById('sector').value;
+            if (setorEscolhido) {
+                const doServidor = new Image();
+                doServidor.onload = () => {
+                    img.src = doServidor.src;
+                    qrDataUrl = doServidor.src;
+                    generatePoster(eventName, message);
+                };
+                doServidor.src = `/api/qrcode/${encodeURIComponent(setorEscolhido)}/preview.png`;
+            }
         }
 
         // Monta o SVG do mesmo jeito que scripts/generate_qrcodes.py: path

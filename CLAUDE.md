@@ -74,6 +74,15 @@ Siga as 3 camadas do `AGENTE.md`:
   dependência de biblioteca de PDF) porque o preto precisa ser **K 100% puro**:
   preto convertido de RGB vira preto rico e o desencontro de registro entre as
   chapas borra a borda do módulo
+- Logo no centro do QR (`logo_qrcode.py`): existindo `static/qr-logo.png`, as
+  placas saem com a logo numa janela de 30 mm; sem o arquivo, saem como sempre
+  saíram. A janela tem teto de 10% da área, medido por leitura real em imagem
+  degradada, porque o que a logo gasta é a correção de erro, que é a mesma
+  reserva que mantém a placa legível com risco e respingo. O módulo recusa
+  abrir janela sobre os alvos dos cantos, as trilhas de sincronismo e os alvos
+  de alinhamento, menos o do centro, que é exceção medida. O preview de
+  `/qrcode` vem de `/api/qrcode/<setor>/preview.png`, desenhado pelo servidor,
+  para a tela não mostrar um código diferente do que a gráfica recebe
 - Telão da sala de controle (`/telao`) com a planta aérea 3D e alerta crítico em tela cheia
 - Mapa ao Vivo, dashboard com filtros, exportação CSV/JSON
 - Simulador do bot em `/tuca`: a produção conversa com o Tuca no navegador

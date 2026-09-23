@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from functools import wraps
 from flask import Flask, request, jsonify, render_template, session, redirect, Response
 from urllib.parse import quote
+import logo_qrcode
 from pdf_qrcode import pdf_producao, pdf_prova
 
 # Codificador do QR Code. Python puro, sem binário, mas se faltar no container
@@ -2123,6 +2124,36 @@ def qrcode_page():
 LADO_DO_SIMBOLO_MM = 120.0
 MARCA_IMPRESSA = "Tuca | Tropicadelia 2026"
 
+# Logo do centro do QR. Ligar é salvar o arquivo, desligar é tirar do lugar:
+# enquanto não existir, as placas saem como sempre saíram. Fica assim, e não em
+# variável do Coolify, porque quem decide a logo é a produção, e o que ela
+# manda é um arquivo, não uma configuração.
+#
+# O caminho é montado a partir deste arquivo, e não do diretório de onde o
+# processo subiu. Relativo funciona rodando `python server.py` na raiz e falha
+# em silêncio com outro diretório de trabalho: o painel devolve 200, o arquivo
+# sai sem a logo e ninguém recebe erro nenhum.
+ARQUIVO_DA_LOGO = os.getenv(
+    "QR_LOGO",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "qr-logo.png"),
+)
+
+
+def _logo_do_qr(matriz: list[list[bool]], versao: int):
+    """Devolve (matriz com a janela aberta, logo) ou a matriz intacta e None.
+
+    A janela é aberta aqui, num lugar só, porque três saídas desenham o mesmo
+    código: o PDF da arte, a prova da gráfica e o preview do painel. Se cada
+    uma abrisse a sua, uma delas ficaria diferente na primeira mudança.
+    """
+
+    if not ARQUIVO_DA_LOGO or not os.path.isfile(ARQUIVO_DA_LOGO):
+        return matriz, None
+    logo = logo_qrcode.prepara(
+        ARQUIVO_DA_LOGO, len(matriz), versao, LADO_DO_SIMBOLO_MM
+    )
+    return logo_qrcode.abre_janela(matriz, logo.lado_modulos), logo
+
 
 def _qrcode_do_setor(codigo: str):
     """Matriz do QR do setor e a geometria que vale para a planta inteira.
@@ -2154,6 +2185,39 @@ def _qrcode_do_setor(codigo: str):
     return escolhido, 4 * max(modulos)
 
 
+@app.route("/api/qrcode/<codigo>/preview.png")
+@login_required
+def api_qrcode_preview(codigo):
+    """O desenho que o painel mostra, feito pelo mesmo código que faz o PDF.
+
+    O preview do navegador é montado por uma biblioteca que não sabe da janela
+    da logo. Com a logo ligada ele mostraria um código diferente do que a
+    gráfica recebe, e a hora de descobrir isso não é depois da tiragem.
+    """
+
+    if segno is None:
+        return jsonify({"error": "Geracao indisponivel: falta o segno no servidor"}), 503
+    codigo = (codigo or "").strip().upper()
+    try:
+        resultado = _qrcode_do_setor(codigo)
+        if not resultado or not resultado[0]:
+            return jsonify({"error": "Setor nao encontrado ou inativo"}), 404
+        (_, matriz, versao, _, _), _ = resultado
+        matriz, logo = _logo_do_qr(matriz, versao)
+        dados = logo_qrcode.png_do_codigo(matriz, logo)
+    except logo_qrcode.LogoInviavel as e:
+        return jsonify({"error": str(e)}), 422
+    except Exception as e:  # noqa: BLE001 - sem preview o painel segue de pé
+        logger.error("Falha ao montar o preview do QR | erro=%s", type(e).__name__)
+        return jsonify({"error": "Nao foi possivel gerar o preview"}), 500
+
+    # Sem cache: o arquivo da logo pode ser trocado entre dois cliques, e
+    # preview velho no navegador é o jeito mais fácil de aprovar a placa errada.
+    return Response(
+        dados, mimetype="image/png", headers={"Cache-Control": "no-store"}
+    )
+
+
 @app.route("/api/qrcode/<codigo>/<tipo>.pdf")
 @login_required
 def api_qrcode_pdf(codigo, tipo):
@@ -2173,21 +2237,28 @@ def api_qrcode_pdf(codigo, tipo):
     codigo = (codigo or "").strip().upper()
     try:
         resultado = _qrcode_do_setor(codigo)
+        if not resultado or not resultado[0]:
+            return jsonify({"error": "Setor nao encontrado ou inativo"}), 404
+        (setor, matriz, versao, url, modulo_mm), zona_mm = resultado
+        matriz, logo = _logo_do_qr(matriz, versao)
+    except logo_qrcode.LogoInviavel as e:
+        # Recusa explicada em vez de arquivo entregue: logo que não cabe sai
+        # em placa que lê na mesa e falha no escuro, e isso ninguém descobre
+        # olhando o PDF.
+        return jsonify({"error": str(e)}), 422
     except Exception as e:  # noqa: BLE001 - sem setor o painel segue de pé
         logger.error("Falha ao montar o PDF do QR | erro=%s", type(e).__name__)
         return jsonify({"error": "Nao foi possivel gerar o arquivo"}), 500
 
-    if not resultado or not resultado[0]:
-        return jsonify({"error": "Setor nao encontrado ou inativo"}), 404
-
-    (setor, matriz, versao, url, modulo_mm), zona_mm = resultado
-
     if tipo == "producao":
-        dados = pdf_producao(matriz, modulo_mm, zona_mm, codigo, url, MARCA_IMPRESSA)
+        dados = pdf_producao(
+            matriz, modulo_mm, zona_mm, codigo, url, MARCA_IMPRESSA, logo=logo
+        )
         nome = f"TUCA_QR_{codigo}_PRODUCAO.pdf"
     else:
         dados = pdf_prova(
-            matriz, modulo_mm, zona_mm, codigo, setor["name"], url, versao, MARCA_IMPRESSA
+            matriz, modulo_mm, zona_mm, codigo, setor["name"], url, versao,
+            MARCA_IMPRESSA, logo=logo,
         )
         nome = f"TUCA_QR_{codigo}_PROVA_A4.pdf"
 

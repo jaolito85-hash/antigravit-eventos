@@ -119,6 +119,13 @@ class EndpointDoPainelTests(unittest.TestCase):
         self.patch = mock.patch.object(server, "_setores_ativos", return_value=SETORES)
         self.patch.start()
         self.addCleanup(self.patch.stop)
+        # Sem logo, à força: o que esta classe protege é o arquivo base da
+        # gráfica, e ele não pode passar a depender de alguém ter deixado ou
+        # não um PNG na pasta static. A logo tem os testes dela em
+        # test_logo_qrcode.py.
+        sem_logo = mock.patch.object(server, "ARQUIVO_DA_LOGO", "")
+        sem_logo.start()
+        self.addCleanup(sem_logo.stop)
 
     def logado(self):
         with self.cliente.session_transaction() as sessao:
