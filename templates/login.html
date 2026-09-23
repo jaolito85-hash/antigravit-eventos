@@ -5,8 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entrar | Tuca · Tropicadelia 2026</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <!-- Fonte e ícones servidos do próprio domínio. No dia do evento a tela
+         não pode depender de CDN: folha de estilo de fora é render-blocking,
+         e CDN lento deixa a sala de controle sem imagem nenhuma.
+         Gerados por scripts/baixar_fontes.py. -->
+    <link href="/static/fontes.css" rel="stylesheet">
+    <link href="/static/remixicon.css" rel="stylesheet">
     <style>
         :root {
             --bg-body: #0a0a0f;
