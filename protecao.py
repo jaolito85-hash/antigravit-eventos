@@ -82,8 +82,11 @@ AVISO_SILENCIADO = (
     "🚫 Suas mensagens foram bloqueadas por conteúdo ofensivo repetido. "
     "O Tuca é o canal de atendimento do festival."
 )
+# Não diz "xingamento" porque o mesmo aviso atende investida sexual sobre
+# alguém do evento, que não é palavrão: dizer "xingamento" para quem escreveu
+# "quero transar com a atendente do bar" soa desajeitado e erra o motivo.
 AVISO_OFENSA = (
-    "Xingamento eu não levo para a equipe. Se você tiver um problema, elogio "
+    "Isso eu não levo para a equipe. Se você tiver um problema, elogio "
     "ou dúvida sobre o festival, me conta que eu levo na hora."
 )
 
