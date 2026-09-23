@@ -70,6 +70,12 @@ TIPOS_DE_MIDIA = frozenset({"image", "video", "document", "interactive"})
 # dele. Uma hora cobre a pessoa que demora para achar o botão no WhatsApp.
 LOCALIZACAO_JANELA_MINUTOS = 60
 
+# Por quanto tempo a placa escaneada ainda diz onde a pessoa está. Meia hora
+# cobre o caminho normal (escanear, ser cumprimentado, escrever o problema) e
+# não cobre a pessoa que escaneou no banheiro e reclama do bar duas horas
+# depois. Decidido com o João em 23/09/2026.
+QR_RECENTE_MINUTOS = 30
+
 AVISO_AUDIO_INDISPONIVEL = (
     "🎤 Não consegui entender seu áudio agora. Pode tentar de novo ou escrever em texto?"
 )
@@ -294,6 +300,11 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
 
         sector_code, content = _extract_sector(raw_content)
         sector = store.sector_by_code(sector_code)
+        if sector:
+            # A etiqueta fica guardada na mensagem, e não só neste chamado: ela
+            # costuma chegar sozinha, numa mensagem que vira cumprimento, e o
+            # relato de verdade vem na seguinte, já sem etiqueta nenhuma.
+            store.marcar_setor_do_inbox(message_id, str(sector["id"]))
         # QR com codigo que nao existe no banco nao pode passar silencioso: a
         # regiao cairia na adivinhacao da IA em vez do setor do cartaz.
         if sector_code and not sector:
@@ -369,10 +380,19 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # Tropical" com base em deducao seria vender certeza que nao existe.
         do_texto = triagem.get("setor") if not sector else None
 
+        # Terceira chance de saber onde a pessoa está: a placa que ela escaneou
+        # há pouco. Vale menos que a etiqueta desta mensagem e menos que o lugar
+        # citado no texto, e por isso entra por último. Sem isso, o caso normal
+        # (escanear, ser cumprimentado, e só então contar o problema) chegava
+        # sem lugar nenhum, e chamado sem lugar não acende pino no telão.
+        herdado = None
+        if not sector and not do_texto:
+            herdado = store.ultimo_setor_escaneado(sender_hash, QR_RECENTE_MINUTOS)
+
+        localizado = sector or do_texto or herdado
         urgency, category, region = _classify(
-            content, sector or do_texto, urgency=triagem["urgencia"], usar_ia=ia_ligada
+            content, localizado, urgency=triagem["urgencia"], usar_ia=ia_ligada
         )
-        localizado = sector or do_texto
         feedback_id = store.create_feedback(
             message=message,
             content=content,
@@ -381,7 +401,14 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             urgency=urgency,
             topic=_topic(content, category, urgency),
             sector_id=str(localizado["id"]) if localizado else None,
-            sector_source="qr" if sector else (triagem.get("setor_por") if do_texto else None),
+            # A origem nunca mente sobre a certeza: "qr" é a etiqueta desta
+            # mensagem, "qr_recente" é a placa que ela escaneou há pouco.
+            sector_source=(
+                "qr" if sector
+                else triagem.get("setor_por") if do_texto
+                else "qr_recente" if herdado
+                else None
+            ),
             # Com setor, o grupo sai dele na hora de somar, para não congelar
             # a conta se a planta mudar. Sem setor, o tipo de lugar é tudo
             # que se sabe e precisa ficar guardado.

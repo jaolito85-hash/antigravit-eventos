@@ -24,6 +24,8 @@ class FakeStore:
         self.blocked = blocked
         self.per_minute = per_minute
         self.rate_checked = False
+        self.inbox_marcado = None
+        self.setor_recente = None
 
     def claim_inbox(self, _message):
         return True
@@ -52,6 +54,14 @@ class FakeStore:
                 "metadata": {"cta": "Como está o som por aí?"},
             }
         return None
+
+    def marcar_setor_do_inbox(self, message_id, sector_id):
+        self.inbox_marcado = (message_id, sector_id)
+
+    def ultimo_setor_escaneado(self, _sender_hash, janela_minutos=30):
+        # Sem placa recente por padrao: a heranca de setor tem testes proprios
+        # em test_setor_herdado.py, e aqui ela so nao pode atrapalhar.
+        return self.setor_recente
 
     def create_feedback(self, **kwargs):
         self.feedback = kwargs

@@ -337,6 +337,76 @@ class EventStore:
         )
         return response.data[0] if response.data else None
 
+    def marcar_setor_do_inbox(self, message_id: str, sector_id: str) -> None:
+        """Guarda na mensagem o setor que veio na etiqueta do QR.
+
+        A mensagem que carrega `#SETOR:CODIGO` costuma ser só a etiqueta: a
+        pessoa escaneia a placa, o WhatsApp abre com o texto pronto e ela
+        envia. Essa mensagem vira cumprimento e não abre chamado, então o setor
+        morria ali. Guardado aqui, ele ainda serve para as mensagens seguintes,
+        que é onde o relato de verdade chega.
+        """
+
+        if not message_id or not sector_id:
+            return
+        (
+            self._get_client()
+            .table("message_inbox")
+            .update({"sector_id": sector_id})
+            .eq("id", message_id)
+            .execute()
+        )
+
+    def ultimo_setor_escaneado(
+        self, sender_hash: str, janela_minutos: int = 30
+    ) -> dict[str, Any] | None:
+        """A última placa que esta pessoa escaneou, se foi há pouco.
+
+        A janela é curta de propósito: no festival as pessoas andam, e setor
+        velho manda a equipe para onde alguém esteve, não para onde está. Sem
+        nada na janela devolve None, e o chamado segue sem lugar, que é melhor
+        que lugar errado.
+        """
+
+        if not sender_hash:
+            return None
+        desde = (
+            datetime.now(timezone.utc) - timedelta(minutes=janela_minutos)
+        ).isoformat()
+        response = (
+            self._get_client()
+            .table("message_inbox")
+            .select("sector_id")
+            .eq("event_id", self.event_id())
+            .eq("sender_hash", sender_hash)
+            .not_.is_("sector_id", "null")
+            .gte("created_at", desde)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        linhas = list(response.data or [])
+        if not linhas:
+            return None
+        return self.sector_by_id(str(linhas[0]["sector_id"]))
+
+    def sector_by_id(self, sector_id: str | None) -> dict[str, Any] | None:
+        """Setor ativo pelo id, para resolver o que ficou guardado na mensagem."""
+
+        if not sector_id:
+            return None
+        response = (
+            self._get_client()
+            .table("event_sectors")
+            .select("id,code,name,metadata")
+            .eq("event_id", self.event_id())
+            .eq("id", sector_id)
+            .eq("active", True)
+            .limit(1)
+            .execute()
+        )
+        return response.data[0] if response.data else None
+
     def list_sectors(self) -> list[dict[str, Any]]:
         """Lista os setores ativos com a metadata de posicionamento na planta."""
 

@@ -59,11 +59,17 @@ Siga as 3 camadas do `AGENTE.md`:
 - Transcrição de áudio via OpenAI Whisper
 - Classificação de urgência, categoria e região por IA com fallback por palavras-chave
 - Roteamento determinístico por setor através da tag `#SETOR:CODIGO` do QR Code
-- Localização pelo texto quando o QR não veio: a triagem escolhe entre os 36
-  setores da planta, porque o QR só acompanha a primeira mensagem de quem
-  escaneou (áudio nunca carrega a tag, e ninguém volta na placa). Não existe
-  mais região genérica: a região é o setor, e o feedback guarda se o lugar foi
-  lido da placa ou deduzido do texto
+- Localização em três degraus, porque a etiqueta `#SETOR:` só viaja na
+  primeira mensagem de quem escaneou (áudio nunca a carrega, e ninguém volta
+  na placa): vale a etiqueta desta mensagem; senão o setor citado no texto,
+  que a triagem escolhe entre os da planta; senão a última placa que a pessoa
+  escaneou nos últimos 30 minutos (`QR_RECENTE_MINUTOS` no worker). O terceiro
+  degrau existe porque o caminho normal é escanear, ser cumprimentado e só
+  então contar o problema: medido em 23/09/2026, a mensagem que traz a etiqueta
+  quase nunca é a que traz o relato. Não existe mais região genérica: a região
+  é o setor, e o feedback guarda em `sector_source` se o lugar foi lido da
+  placa (`qr`), deduzido do texto (`ia`) ou herdado da placa recente
+  (`qr_recente`)
 - Tipo de lugar (`metadata.group` do setor): os 9 grupos que o relatório soma,
   como Sanitários e Bares. Quando não dá para cravar o setor, a triagem ainda
   devolve o grupo, então "o banheiro tá sem papel" não acende pino nenhum mas
