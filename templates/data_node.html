@@ -21,8 +21,12 @@
     <meta name="apple-mobile-web-app-title" content="Tuca">
 
     <!-- Fonts & Libraries -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <!-- Fonte e ícones servidos do próprio domínio. No dia do evento a tela
+         não pode depender de CDN: folha de estilo de fora é render-blocking,
+         e CDN lento deixa a sala de controle sem imagem nenhuma.
+         Gerados por scripts/baixar_fontes.py. -->
+    <link href="/static/fontes.css" rel="stylesheet">
+    <link href="/static/remixicon.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {

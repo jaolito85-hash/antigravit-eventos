@@ -7,9 +7,12 @@
     <title>Tuca • Telão da Sala de Controle</title>
     <meta name="theme-color" content="#2979ff">
     <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Oxanium:wght@500;600;700;800&display=swap"
-        rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <!-- Fonte e ícones servidos do próprio domínio. No dia do evento a tela
+         não pode depender de CDN: folha de estilo de fora é render-blocking,
+         e CDN lento deixa a sala de controle sem imagem nenhuma.
+         Gerados por scripts/baixar_fontes.py. -->
+    <link href="/static/fontes.css" rel="stylesheet">
+    <link href="/static/remixicon.css" rel="stylesheet">
     <style>
         :root {
             --bg: #04040a;
