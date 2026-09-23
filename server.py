@@ -282,6 +282,44 @@ def get_config():
 
 # --- CLASSIFICATION FUNCTIONS (DETERMINISTIC - DO NOT CHANGE) ---
 
+# Itens cuja falta vira trabalho para a operação na hora. A lista é fechada de
+# propósito: "sem" sozinho pegaria "sem problema" e "sem fila", que não são
+# chamado nenhum.
+_ITENS_ESSENCIAIS = (
+    "papel higienico", "papel higiênico", "papel", "sabonete", "sabao", "sabão",
+    "agua", "água", "gelo", "copo", "copos", "cerveja", "chopp", "bebida",
+    "comida", "gas", "gás", "toalha", "descarga", "luz", "energia",
+)
+_FALTA_DE_ITEM = re.compile(
+    r"(?<!\w)(?:sem|nao tem|não tem|acabou o|acabou a|faltando)\s+(?:o |a )?(?:"
+    + "|".join(re.escape(i) for i in _ITENS_ESSENCIAIS)
+    + r")(?!\w)"
+)
+_PEDIDO_DE_REPOSICAO = re.compile(
+    r"(?<!\w)(?:repor|repoe|repõe|repoem|repõem|reposicao|reposição)(?!\w)"
+)
+
+
+def _contem_termo(texto_lower: str, termos) -> bool:
+    """Diz se alguma das palavras-chave aparece como palavra inteira.
+
+    Antes a busca era `palavra in texto`, e substring casa dentro de outra
+    palavra: "briga" casa em "o-briga-do", então "obrigado pela ajuda" era
+    classificado Critico e caía na categoria Segurança. Medido em 23/09/2026.
+    No telão, Critico abre o alerta em tela cheia, ou seja, um agradecimento
+    parava a sala de controle.
+
+    A borda não é \b porque a lista tem termos como "d+" e "10/10", em que o
+    último caractere não é de palavra: (?<!\w) e (?!\w) funcionam nos dois.
+    """
+
+    for termo in termos:
+        if re.search(r"(?<!\w)" + re.escape(termo) + r"(?!\w)", texto_lower):
+            return True
+    return False
+
+
+
 def classificar_sentimento(texto):
     """Classifica sentimento com gírias brasileiras"""
     texto_lower = texto.lower()
@@ -299,9 +337,8 @@ def classificar_sentimento(texto):
         'curti', 'curtindo', 'gostei', 'gostando', 'amando', 'to amando',
         'muito legal', 'legal demais', 'show de bola', 'nota 10', '10/10'
     ]
-    for palavra in palavras_positivas:
-        if palavra in texto_lower:
-            return 'Positivo'
+    if _contem_termo(texto_lower, palavras_positivas):
+        return 'Positivo'
     
     # CRÍTICO - emergências e violência
     palavras_criticas = [
@@ -325,9 +362,8 @@ def classificar_sentimento(texto):
         'explosão', 'incendio', 'incêndio', 'fogo', 'queimando', 'desabou',
         'desmoronou', 'afogando', 'afogado', 'afogamento'
     ]
-    for palavra in palavras_criticas:
-        if palavra in texto_lower:
-            return 'Critico'
+    if _contem_termo(texto_lower, palavras_criticas):
+        return 'Critico'
     
     # URGENTE - problemas que precisam atenção rápida
     # "falta cerveja" usa o presente; a lista antiga tinha só faltou/faltando
@@ -335,6 +371,18 @@ def classificar_sentimento(texto):
     if re.search(r"\bfalta(m)?\b", texto_lower):
         return 'Urgente'
     if re.search(r"\b(ta|tá|esta|está)\s+sem\b", texto_lower):
+        return 'Urgente'
+
+    # Falta de item essencial é Urgente mesmo sem verbo antes. Medido em
+    # 23/09/2026: "banheiro feminino sem papel higiênico em quase todas as
+    # cabines", que é a frase do próprio seed de demonstração, caía em Neutro,
+    # porque a regex acima exige "tá sem" e a lista abaixo tinha "sem cerveja"
+    # e "sem gelo", nunca "sem papel". Cinco de dez frases reais de falta de
+    # papel ficavam Neutro, e Neutro não acende pino no telão.
+    if re.search(_FALTA_DE_ITEM, texto_lower):
+        return 'Urgente'
+    # Pedido de reposição é o mesmo chamado dito pelo lado de quem resolve.
+    if re.search(_PEDIDO_DE_REPOSICAO, texto_lower):
         return 'Urgente'
 
     palavras_urgentes = [
@@ -359,9 +407,8 @@ def classificar_sentimento(texto):
         'zuado', 'uma bosta', 'uma merda', 'lixo', 'um lixo', 'demora',
         'demorando', 'atrasado', 'sem condição', 'sem condições'
     ]
-    for palavra in palavras_urgentes:
-        if palavra in texto_lower:
-            return 'Urgente'
+    if _contem_termo(texto_lower, palavras_urgentes):
+        return 'Urgente'
     
     # NEUTRO (padrão)
     return 'Neutro'
@@ -384,7 +431,7 @@ def classificar_categoria(texto):
         # Outros
         'perigo', 'perigoso', 'suspeito', 'arma', 'faca', 'guarda', 'policia', 'polícia'
     ]
-    if any(p in texto_lower for p in palavras_seguranca):
+    if _contem_termo(texto_lower, palavras_seguranca):
         return 'Segurança & Organização'
     
     # ESTRUTURA (banheiro, fila, instalações)
@@ -396,7 +443,7 @@ def classificar_categoria(texto):
         'lixo', 'sujeira', 'sujo', 'alagado', 'alagamento', 'poça',
         'escuro', 'iluminação', 'luz', 'quebrado', 'quebrou', 'pifou'
     ]
-    if any(p in texto_lower for p in palavras_estrutura):
+    if _contem_termo(texto_lower, palavras_estrutura):
         return 'Estrutura & Espaço'
     
     # ALIMENTAÇÃO
@@ -406,7 +453,7 @@ def classificar_categoria(texto):
         'bar', 'copo', 'garrafa', 'gelo', 'gelado', 'quente',
         'caro', 'preço', 'precos', 'absurdo o preço'
     ]
-    if any(p in texto_lower for p in palavras_alimentacao):
+    if _contem_termo(texto_lower, palavras_alimentacao):
         return 'Alimentação & Bebidas'
     
     # PROGRAMAÇÃO (show, música, etc)
@@ -415,7 +462,7 @@ def classificar_categoria(texto):
         'palco', 'som', 'audio', 'áudio', 'volume', 'alto', 'baixo demais',
         'atração', 'atracao', 'repertório', 'playlist', 'tocando'
     ]
-    if any(p in texto_lower for p in palavras_programacao):
+    if _contem_termo(texto_lower, palavras_programacao):
         return 'Programação & Atrações'
     
     # CREDENCIAMENTO
@@ -424,7 +471,7 @@ def classificar_categoria(texto):
         'ticket', 'qr code', 'qrcode', 'cadastro', 'nome na lista', 'lista vip',
         'credencial', 'credenciamento', 'acesso negado', 'não deixou entrar'
     ]
-    if any(p in texto_lower for p in palavras_credenciamento):
+    if _contem_termo(texto_lower, palavras_credenciamento):
         return 'Credenciamento & Ingressos'
     
     # EXPERIÊNCIA GERAL (padrão)
