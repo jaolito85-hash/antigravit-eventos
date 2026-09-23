@@ -1639,10 +1639,36 @@ def match_knowledge(content, entries=None):
 
 # --- COMPORTAMENTO DO BOT (usado pelo worker e pelo simulador) ---
 
+# A etiqueta é procurada em QUALQUER posição da mensagem, não só no começo.
+# A placa passou a mandar uma frase junto com o código (pedido do Lucas em
+# 23/09/2026: "só a tag fica bem estranho"), e com a âncora no início qualquer
+# palavra antes do código derrubaria o roteamento inteiro para a adivinhação.
 SECTOR_PATTERN = re.compile(
-    r"^\s*#SETOR:([A-Z0-9][A-Z0-9_-]{0,49})\s*(?:\r?\n|\|)?\s*",
+    r"#SETOR:([A-Z0-9][A-Z0-9_-]{0,49})",
     flags=re.IGNORECASE,
 )
+
+# A frase que viaja na mensagem pronta do QR, para a pessoa entender o que
+# está prestes a enviar. Ela sai do conteúdo antes da triagem: quem escreveu
+# foi a placa, não o participante, e deixá-la ali faria o nosso próprio texto
+# virar o relato dela. Mudar esta frase muda o QR de todas as placas, então
+# regerar os arquivos (scripts/gerar_placas_marketing.py) faz parte da mudança.
+TEXTO_DA_PLACA = "É só enviar 👉"
+
+_TEXTO_DA_PLACA_RE = (
+    re.compile(r"\s*".join(re.escape(p) for p in TEXTO_DA_PLACA.split()),
+               flags=re.IGNORECASE)
+    if TEXTO_DA_PLACA.strip() else None
+)
+
+
+def texto_do_qr(codigo: str) -> str:
+    """A mensagem inteira que o QR Code deixa pronta no WhatsApp."""
+
+    etiqueta = f"#SETOR:{codigo}"
+    if not TEXTO_DA_PLACA.strip():
+        return etiqueta
+    return f"{TEXTO_DA_PLACA} {etiqueta}"
 
 # Saudação e agradecimento não viram card: são conversa, não informação
 # operacional. A regra é de vocabulário, não de frase exata, porque no festival
@@ -1717,12 +1743,21 @@ WELCOME_MESSAGE = (
 )
 
 def _extract_sector(content: str) -> tuple[str | None, str]:
-    """Extrai o código do QR e devolve somente a mensagem do participante."""
+    """Extrai o código do QR e devolve somente a mensagem do participante.
 
-    match = SECTOR_PATTERN.match(content)
+    Tira do caminho a etiqueta e a frase impressa na placa: as duas foram
+    escritas por nós, não pela pessoa, e qualquer uma que sobre no conteúdo
+    faz a triagem classificar o nosso próprio texto como relato dela.
+    """
+
+    match = SECTOR_PATTERN.search(content or "")
     if not match:
-        return None, content.strip()
-    return match.group(1).upper(), content[match.end():].strip()
+        return None, (content or "").strip()
+
+    resto = content[: match.start()] + " " + content[match.end():]
+    if _TEXTO_DA_PLACA_RE is not None:
+        resto = _TEXTO_DA_PLACA_RE.sub(" ", resto)
+    return match.group(1).upper(), resto.strip()
 
 
 def welcome_text() -> str:
@@ -2161,7 +2196,11 @@ def qrcode_page():
     # O default e o numero do Tuca na forma sem o nono digito, que e o wa_id que a
     # Meta usa e a forma que o link wa.me abre o perfil certo.
     whatsapp_number = os.getenv("WHATSAPP_PUBLIC_NUMBER", "554367270996")
-    return render_template("qrcode.html", whatsapp_number=whatsapp_number)
+    return render_template(
+        "qrcode.html",
+        whatsapp_number=whatsapp_number,
+        texto_da_placa=TEXTO_DA_PLACA,
+    )
 
 
 # --- ARQUIVO DO QR CODE PARA A GRÁFICA ---
@@ -2220,8 +2259,8 @@ def _qrcode_do_setor(codigo: str):
     modulos = []
     escolhido = None
     for setor in setores:
-        tag = quote(f"#SETOR:{setor['code']}", safe="")
-        url = f"https://wa.me/{numero}?text={tag}"
+        texto = quote(texto_do_qr(str(setor["code"])), safe="")
+        url = f"https://wa.me/{numero}?text={texto}"
         qr = segno.make(url, error="h", boost_error=False)
         matriz = [[bool(m) for m in linha] for linha in qr.matrix]
         modulo_mm = LADO_DO_SIMBOLO_MM / len(matriz)

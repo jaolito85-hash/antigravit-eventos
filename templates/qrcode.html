@@ -444,7 +444,7 @@
 
             <div class="field">
                 <label>Mensagem automática</label>
-                <input type="text" id="autoMessage" placeholder="#SETOR:CODIGO" maxlength="120">
+                <input type="text" id="autoMessage" placeholder="#SETOR:CODIGO" maxlength="200">
                 <div class="field-hint">Aparece pronta no WhatsApp do participante. Mantenha a tag
                     <code>#SETOR:</code> na primeira linha para o roteamento funcionar.
                 </div>
@@ -549,6 +549,11 @@
     </div>
 
     <script>
+        // A frase que a placa manda junto com a etiqueta. Vem do servidor
+        // (server.TEXTO_DA_PLACA) para a tela nunca mostrar um texto e a placa
+        // impressa carregar outro.
+        const TEXTO_DA_PLACA = {{ texto_da_placa | tojson }};
+
         let selectedColor = '#2979ff';
         let qrDataUrl = null;
         let qrAtual = null;
@@ -565,7 +570,11 @@
         // e o pin correspondente nunca acende no mapa da planta.
         function updateAutoMessage() {
             const code = document.getElementById('sector').value;
-            document.getElementById('autoMessage').value = code ? `#SETOR:${code}` : '';
+            // O mesmo texto que a placa impressa manda, vindo do servidor
+            // (server.texto_do_qr). Painel e placa mostrando mensagens
+            // diferentes é o jeito mais fácil de aprovar uma e imprimir outra.
+            document.getElementById('autoMessage').value =
+                code ? `${TEXTO_DA_PLACA} #SETOR:${code}`.trim() : '';
             const sector = SECTORS.find(s => s.code === code);
             const label = document.getElementById('previewSector');
             if (label) label.textContent = sector ? sector.name : '';
@@ -622,7 +631,7 @@
             if (!eventName) { alert('Informe o nome do evento!'); return; }
             if (!phone) { alert('Informe o número do WhatsApp!'); return; }
             if (!message) { alert('Selecione o setor da planta!'); return; }
-            if (!message.startsWith('#SETOR:')) {
+            if (!message.includes('#SETOR:')) {
                 if (!confirm('A mensagem não começa com #SETOR:. O feedback vai chegar sem setor e o pin não acende no mapa. Gerar assim mesmo?')) return;
             }
 

@@ -86,22 +86,34 @@ class TestaDesenhoDoSvg(unittest.TestCase):
 
 
 class TestaUrlDoSetor(unittest.TestCase):
-    def test_url_carrega_a_tag_que_o_webhook_le(self):
-        url = monta_url(NUMERO, "WC-PISTA-NORTE-1")
-        self.assertEqual(
-            url,
-            f"https://wa.me/{NUMERO}?text=%23SETOR%3AWC-PISTA-NORTE-1",
-        )
-
-    def test_tag_do_qr_casa_com_o_padrao_do_servidor(self):
+    def test_url_leva_a_etiqueta_e_a_frase_da_placa(self):
         from urllib.parse import parse_qs, urlparse
 
-        # O mesmo regex que o server.py usa para resolver o setor sem IA.
-        padrao = re.compile(r"^\s*#SETOR:([A-Z0-9][A-Z0-9_-]{0,49})\s*(?:\r?\n|\|)?\s*")
+        from server import TEXTO_DA_PLACA
+
+        url = monta_url(NUMERO, "WC-PISTA-NORTE-1")
+        self.assertTrue(url.startswith(f"https://wa.me/{NUMERO}?text="))
+        texto = parse_qs(urlparse(url).query)["text"][0]
+        self.assertIn("#SETOR:WC-PISTA-NORTE-1", texto)
+        self.assertIn(TEXTO_DA_PLACA, texto)
+
+    def test_o_servidor_le_de_volta_o_que_o_qr_manda(self):
+        """Usa o parser do server, e não uma cópia dele.
+
+        A versão antiga deste teste repetia o regex aqui dentro. Quando o
+        server passou a aceitar a etiqueta em qualquer posição da mensagem, a
+        cópia continuou exigindo que ela viesse no começo: o teste passava a
+        reprovar justamente a mudança que as placas precisavam.
+        """
+
+        from urllib.parse import parse_qs, urlparse
+
+        from server import _extract_sector
+
         texto = parse_qs(urlparse(monta_url(NUMERO, "PCD-PLATAFORMA-TROPICAL")).query)["text"][0]
-        achado = padrao.match(texto)
-        self.assertIsNotNone(achado)
-        self.assertEqual(achado.group(1), "PCD-PLATAFORMA-TROPICAL")
+        codigo, conteudo = _extract_sector(texto)
+        self.assertEqual(codigo, "PCD-PLATAFORMA-TROPICAL")
+        self.assertEqual(conteudo, "", "a frase da placa não pode virar chamado")
 
     def test_correcao_h_sobra_folga_para_o_verniz(self):
         # H recupera 30%. Se algum código de setor crescer a ponto de derrubar

@@ -70,11 +70,16 @@ TIPOS_DE_MIDIA = frozenset({"image", "video", "document", "interactive"})
 # dele. Uma hora cobre a pessoa que demora para achar o botão no WhatsApp.
 LOCALIZACAO_JANELA_MINUTOS = 60
 
-# Por quanto tempo a placa escaneada ainda diz onde a pessoa está. Meia hora
-# cobre o caminho normal (escanear, ser cumprimentado, escrever o problema) e
-# não cobre a pessoa que escaneou no banheiro e reclama do bar duas horas
-# depois. Decidido com o João em 23/09/2026.
-QR_RECENTE_MINUTOS = 30
+# Por quanto tempo a placa escaneada ainda diz onde a pessoa está. Cinco
+# minutos cobrem o caminho normal, que é escanear, ser cumprimentado e
+# escrever o problema, e não cobrem quem já andou para outro canto: o Lucas
+# pediu essa janela em 23/09/2026 porque "a rotatividade é gigante". Passou
+# disso, o chamado entra sem lugar e o Tuca pergunta onde a pessoa está.
+QR_RECENTE_MINUTOS = 5
+
+# As urgências em que faltar o lugar atrapalha de verdade. São as mesmas que
+# acendem pino no telão: sem elas o chamado não vira deslocamento de equipe.
+URGENCIAS_QUE_PEDEM_EQUIPE = ("Critico", "Crítico", "Urgente")
 
 AVISO_AUDIO_INDISPONIVEL = (
     "🎤 Não consegui entender seu áudio agora. Pode tentar de novo ou escrever em texto?"
@@ -91,6 +96,15 @@ AVISO_LOCALIZACAO_SEM_CHAMADO = (
     "📍 Recebi sua localização! Me conta em texto ou áudio 🎤 o que está "
     "acontecendo aí, que eu levo na hora para a equipe."
 )
+# Quando o chamado pede equipe e ninguém sabe onde é, perguntar é melhor que
+# adivinhar. Vai junto da resposta, e só aí: em elogio e dúvida seria mais um
+# papel na mão de quem só queria conversar.
+PERGUNTA_ONDE_ESTA = (
+    "📍 Só me diz *onde você está*? Pode ser a referência mais próxima (o bar, o "
+    "banheiro, o palco) ou sua localização pelo clipe 📎 do WhatsApp. Sem isso a "
+    "equipe sai procurando."
+)
+
 AVISO_LOCALIZACAO_ILEGIVEL = (
     "Não consegui ler essa localização. Pode mandar de novo pelo botão de "
     "anexo do WhatsApp, ou me descrever uma referência bem visível?"
@@ -415,14 +429,15 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             place_group=None if localizado else triagem.get("lugar"),
         )
         if pode_responder:
-            store.enqueue_text(
-                message,
-                _compose_reply(
-                    content, category, urgency, sector, transcribed,
-                    known=triagem.get("ficha"), usar_ia=ia_ligada,
-                ),
-                feedback_id,
+            resposta = _compose_reply(
+                content, category, urgency, sector, transcribed,
+                known=triagem.get("ficha"), usar_ia=ia_ligada,
             )
+            # Chamado que pede equipe e não tem lugar nenhum: o Tuca pergunta
+            # em vez de mandar a equipe procurar o festival inteiro.
+            if not localizado and urgency in URGENCIAS_QUE_PEDEM_EQUIPE:
+                resposta += f"\n\n{PERGUNTA_ONDE_ESTA}"
+            store.enqueue_text(message, resposta, feedback_id)
             # Ficha do guia com banner (line-up, cardápio): a imagem vai logo
             # depois do texto. Elogio e crítico não usam ficha, então não têm banner.
             ficha = triagem.get("ficha") or {}

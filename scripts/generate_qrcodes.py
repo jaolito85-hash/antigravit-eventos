@@ -137,7 +137,9 @@ def monta_url(numero: str, codigo: str) -> str:
     rotear o chamado sem depender da IA.
     """
 
-    return f"https://wa.me/{numero}?text={quote(f'#SETOR:{codigo}', safe='')}"
+    from server import texto_do_qr
+
+    return f"https://wa.me/{numero}?text={quote(texto_do_qr(codigo), safe='')}"
 
 
 def monta_svg(
