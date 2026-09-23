@@ -57,11 +57,26 @@ class ComposicaoTests(unittest.TestCase):
 
 
 class CriticoTests(unittest.TestCase):
-    def test_critico_pede_referencia_e_nao_manda_andar(self):
+    def test_critico_pede_localizacao_e_referencia(self):
         texto = server._reply("Critico")
+        self.assertIn("localização", texto.lower())
         self.assertIn("ponto de referência", texto)
-        self.assertIn("o que está vestindo", texto)
+
+    def test_critico_nao_manda_a_pessoa_andar(self):
+        # Nem até um posto ("procure agora"), nem para longe ("afaste-se"):
+        # o fallback é o mesmo texto para quem está em perigo e para quem está
+        # cuidando de alguém desmaiado, e a bateria de 22/09 mostrou que
+        # mandar se afastar era a pior instrução no segundo caso. A orientação
+        # de movimento passou a ser da IA, que conhece o caso concreto.
+        texto = server._reply("Critico")
         self.assertNotIn("procure agora", texto)
+        self.assertNotIn("afaste-se", texto.lower())
+
+    def test_critico_nao_pergunta_a_roupa_no_texto_fixo(self):
+        # Perguntar a roupa só faz sentido em assédio ou pessoa perdida, e o
+        # texto fixo não sabe qual é o caso. A IA recebe essa condição no
+        # protocolo; o fallback genérico não pergunta.
+        self.assertNotIn("vestindo", server._reply("Critico"))
 
 
 if __name__ == "__main__":
