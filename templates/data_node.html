@@ -27,7 +27,10 @@
          Gerados por scripts/baixar_fontes.py. -->
     <link href="/static/fontes.css" rel="stylesheet">
     <link href="/static/remixicon.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js 4.5.1, servido daqui e com a versão congelada. De fora, o
+         script no head trava a tela se o CDN travar, e "npm/chart.js" sem
+         versão traz sempre a última publicada. -->
+    <script src="/static/js/chart.min.js"></script>
     <style>
         :root {
             --bg-body: #050507;

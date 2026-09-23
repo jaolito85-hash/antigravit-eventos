@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Traz as fontes e os ícones para dentro de `static/`, para o Tuca não
-depender de internet externa para desenhar a tela.
+"""Traz para dentro de `static/` tudo que as telas carregavam de fora: as
+fontes, os ícones e as bibliotecas JavaScript.
 
 Por que isso existe: as telas carregavam a fonte do Google e os ícones do
 jsdelivr por `<link rel="stylesheet">`, que é render-blocking. O navegador não
@@ -8,10 +8,15 @@ pinta nada enquanto esse CSS não chega. No dia do evento, na rede do parque com
 vinte mil pessoas, um CDN lento deixa a sala de controle olhando para uma tela
 branca, e não existe plano B para isso às onze da noite.
 
-Depois de rodar, `static/fontes.css` e `static/remixicon.css` servem tudo do
-próprio domínio, e os arquivos `.woff2` ficam em `static/fonts/`.
+O mesmo vale para o `<script src>`: no `<head>` ele bloqueia o resto do
+carregamento, então CDN travado trava a tela inteira, e `npm/chart.js` sem
+versão ainda traz o risco de uma atualização quebrar os gráficos sozinha, sem
+ninguém ter mexido em nada.
 
-    python scripts/baixar_fontes.py
+Depois de rodar, `static/fontes.css`, `static/remixicon.css` e `static/js/`
+servem tudo do próprio domínio, com os `.woff2` em `static/fonts/`.
+
+    python scripts/baixar_externos.py
 
 Rodar de novo é seguro: baixa por cima. Só precisa de internet na hora de
 rodar, nunca depois.
@@ -28,6 +33,7 @@ from urllib.request import Request, urlopen
 RAIZ = Path(__file__).resolve().parent.parent
 STATIC = RAIZ / "static"
 FONTS = STATIC / "fonts"
+JS = STATIC / "js"
 
 FAMILIAS = (
     "https://fonts.googleapis.com/css2"
@@ -35,6 +41,17 @@ FAMILIAS = (
     "&family=Oxanium:wght@500;600;700;800&display=swap"
 )
 REMIXICON_CSS = "https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
+
+# Versão fixa de propósito. O painel carregava `npm/chart.js`, que sempre serve
+# a última publicada: uma versão nova poderia mudar o comportamento dos
+# gráficos da noite para o dia, sem commit nenhum no meio. A 4.5.1 é a que o
+# CDN estava entregando em 23/09/2026, então congelar nela não muda nada hoje.
+BIBLIOTECAS = {
+    "chart.min.js": "https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js",
+    "qrcode.min.js": (
+        "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"
+    ),
+}
 REMIXICON_FONTE = "https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.woff2"
 
 # Sem isso o Google devolve a versão antiga, em .ttf, muito mais pesada.
@@ -133,18 +150,38 @@ def icones() -> None:
     (STATIC / "remixicon.css").write_text(css, encoding="utf-8")
 
 
+def bibliotecas() -> None:
+    """Baixa os .js e confere que cada um veio inteiro.
+
+    Arquivo de JavaScript truncado não dá erro visível no download: ele chega,
+    grava, e só falha na hora em que a tela tenta usar. Por isso a conferência
+    é pelo tamanho e pelo fim do arquivo, antes de alguém depender dele.
+    """
+
+    for nome, url in BIBLIOTECAS.items():
+        conteudo = baixa(url)
+        if len(conteudo) < 10_000:
+            sys.exit(f"{nome} veio com {len(conteudo)} bytes, pequeno demais.")
+        (JS / nome).write_bytes(conteudo)
+        print(f"  {nome}: {len(conteudo) / 1024:.0f} KB")
+
+
 def main() -> int:
     FONTS.mkdir(parents=True, exist_ok=True)
+    JS.mkdir(parents=True, exist_ok=True)
     print("Baixando as fontes do Google...")
     quantos = fontes_do_google()
     print(f"  {quantos} arquivos .woff2")
     print("Baixando os ícones do remixicon...")
     icones()
+    print("Baixando as bibliotecas JavaScript...")
+    bibliotecas()
 
     total = sum(f.stat().st_size for f in FONTS.glob("*.woff2"))
     print(f"\nstatic/fonts/: {len(list(FONTS.glob('*.woff2')))} arquivos, "
           f"{total / 1024:.0f} KB")
     print("static/fontes.css e static/remixicon.css prontos.")
+    print(f"static/js/: {len(list(JS.glob('*.js')))} arquivos")
     print("\nAgora os templates precisam apontar para eles em vez do CDN.")
     return 0
 
