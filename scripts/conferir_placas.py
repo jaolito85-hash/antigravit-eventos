@@ -137,7 +137,7 @@ def main() -> int:
         texto = unquote(conteudo)
         if f"#SETOR:{codigo}" not in texto:
             falhas.append((png.name, f"aponta para outro setor: {texto}"))
-        if "wa.me/" not in texto:
+        if "api.whatsapp.com/send" not in texto and "wa.me/" not in texto:
             falhas.append((png.name, f"não abre o WhatsApp: {texto}"))
         if texto in vistos:
             falhas.append((png.name, f"código idêntico ao de {vistos[texto]}"))

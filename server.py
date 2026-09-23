@@ -1670,6 +1670,23 @@ def texto_do_qr(codigo: str) -> str:
         return etiqueta
     return f"{TEXTO_DA_PLACA} {etiqueta}"
 
+
+def url_do_qr(numero: str, codigo: str) -> str:
+    """O endereço que vai dentro do QR, apontando direto para o WhatsApp.
+
+    Não é wa.me, e isso foi medido em 23/09/2026: o wa.me responde 302 para
+    este mesmo endereço e, na conversão, troca qualquer emoji do texto por
+    "�" (U+FFFD). O 👉 da placa chegava quebrado na mensagem da pessoa.
+    Direto aqui o texto passa intacto e some um salto de redirecionamento,
+    que é onde um celular com só o WhatsApp Business instalado ficava indo
+    e voltando sem abrir a conversa.
+    """
+
+    return (
+        f"https://api.whatsapp.com/send?phone={numero}"
+        f"&text={quote(texto_do_qr(codigo), safe='')}"
+    )
+
 # Saudação e agradecimento não viram card: são conversa, não informação
 # operacional. A regra é de vocabulário, não de frase exata, porque no festival
 # a pessoa escreve "oi tudo bem", "salve galera", "boa noite pessoal".
@@ -2259,8 +2276,7 @@ def _qrcode_do_setor(codigo: str):
     modulos = []
     escolhido = None
     for setor in setores:
-        texto = quote(texto_do_qr(str(setor["code"])), safe="")
-        url = f"https://wa.me/{numero}?text={texto}"
+        url = url_do_qr(numero, str(setor["code"]))
         qr = segno.make(url, error="h", boost_error=False)
         matriz = [[bool(m) for m in linha] for linha in qr.matrix]
         modulo_mm = LADO_DO_SIMBOLO_MM / len(matriz)

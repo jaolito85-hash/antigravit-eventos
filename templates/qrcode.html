@@ -641,7 +641,10 @@
             }
 
             // WhatsApp API URL
-            const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+            // Direto no api.whatsapp.com: o wa.me responde 302 para cá e troca
+            // emoji por "\uFFFD" na conversão. Medido em 23/09/2026.
+            const waUrl = `https://api.whatsapp.com/send?phone=${phone}`
+                + `&text=${encodeURIComponent(message)}`;
 
             // Nível H recupera 30% do código. É o degrau que segura o ganho de
             // ponto do verniz quando a placa sai impressa em alto relevo.

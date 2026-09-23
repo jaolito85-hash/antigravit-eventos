@@ -46,7 +46,7 @@ except ImportError:
 import logo_qrcode
 import pdf_qrcode
 from generate_qrcodes import especificacao, numero_do_ambiente
-from server import texto_do_qr
+from server import url_do_qr
 
 SETORES_JSON = RAIZ / "scripts" / "calibragem" / "setores.json"
 ARQUIVO_DA_LOGO = RAIZ / "static" / "qr-logo.png"
@@ -117,7 +117,7 @@ def main() -> int:
     # zona de silêncio sai do conjunto e não de cada código.
     codificados = []
     for setor in setores:
-        url = f"https://wa.me/{numero}?text={quote(texto_do_qr(setor['code']), safe='')}"
+        url = url_do_qr(numero, setor["code"])
         qr = segno.make(url, error="h", boost_error=False)
         matriz = [[bool(m) for m in linha] for linha in qr.matrix]
         codificados.append((setor, url, qr.version, matriz, args.lado / len(matriz)))

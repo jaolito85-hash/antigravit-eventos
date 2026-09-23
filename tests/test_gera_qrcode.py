@@ -92,7 +92,11 @@ class TestaUrlDoSetor(unittest.TestCase):
         from server import TEXTO_DA_PLACA
 
         url = monta_url(NUMERO, "WC-PISTA-NORTE-1")
-        self.assertTrue(url.startswith(f"https://wa.me/{NUMERO}?text="))
+        # Direto no api.whatsapp.com, e não no wa.me: medido em 23/09/2026, o
+        # wa.me responde 302 para cá e troca emoji do texto por "�" na
+        # conversão. O 👉 da placa chegava quebrado na mensagem da pessoa.
+        self.assertTrue(url.startswith("https://api.whatsapp.com/send?phone=" + NUMERO))
+        self.assertNotIn("wa.me", url)
         texto = parse_qs(urlparse(url).query)["text"][0]
         self.assertIn("#SETOR:WC-PISTA-NORTE-1", texto)
         self.assertIn(TEXTO_DA_PLACA, texto)
