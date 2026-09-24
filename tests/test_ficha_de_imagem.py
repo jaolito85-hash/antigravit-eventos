@@ -102,7 +102,10 @@ class FormatoDaRespostaTests(unittest.TestCase):
             p = mock.patch.object(server, alvo, lambda *a, **k: None)
             p.start()
             self.addCleanup(p.stop)
-        p = mock.patch.object(worker, "compose_smalltalk", lambda _c: "OI")
+        p = mock.patch.object(
+            worker, "compose_smalltalk",
+            lambda _c, ja_falou=False, usar_ia=True, historico="": "OI",
+        )
         p.start()
         self.addCleanup(p.stop)
         p = mock.patch.object(worker, "moderar_texto", return_value=LIBERADO)

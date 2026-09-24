@@ -76,5 +76,40 @@ class PalavraInteiraTests(unittest.TestCase):
                 self.assertEqual(classificar_sentimento(frase), "Critico")
 
 
+class ElogioNaoEscondeEmergenciaTests(unittest.TestCase):
+    """Palavra de elogio não pode ganhar de briga, fogo ou mal-estar.
+
+    "show" e "bom" estavam no começo da lista. Com a IA fora, "o show pegou
+    fogo" e "bom dia, tem briga" viravam Positivo: o telão comemorava em vez
+    de alarmar.
+    """
+
+    def test_emergencia_com_elogio_na_frase_e_critica(self):
+        for frase in (
+            "o show pegou fogo",
+            "bom dia, tem briga aqui",
+            "amei o palco mas uma menina desmaiou",
+            "tô surtando",
+            "não consigo respirar",
+        ):
+            with self.subTest(frase=frase):
+                self.assertEqual(classificar_sentimento(frase), "Critico")
+
+    def test_problema_com_elogio_na_frase_e_urgente(self):
+        for frase in (
+            "o show tá incrível mas a fila tá enorme",
+            "que bom, acabou a cerveja",
+            "não tô bem",
+            "tô com medo",
+        ):
+            with self.subTest(frase=frase):
+                self.assertEqual(classificar_sentimento(frase), "Urgente")
+
+    def test_elogio_puro_continua_positivo(self):
+        for frase in ("show incrível", "que bom o som", "amei demais"):
+            with self.subTest(frase=frase):
+                self.assertEqual(classificar_sentimento(frase), "Positivo")
+
+
 if __name__ == "__main__":
     unittest.main()

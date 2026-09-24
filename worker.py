@@ -34,6 +34,7 @@ from protecao import (
 from server import (
     _classify,
     _compose_reply,
+    _is_greeting,
     _extract_sector,
     _sector_prompt,
     _setores_ativos,
@@ -43,7 +44,6 @@ from server import (
     transcribe_audio,
     triar_mensagem,
     triar_mensagem_sem_ia,
-    welcome_text,
 )
 
 logging.basicConfig(
@@ -133,6 +133,32 @@ def _cabecalho_do_banner(ficha: dict[str, Any]) -> str:
     if not texto or "*" in texto:
         return texto
     return f"*{texto}*" if len(texto) <= 200 else texto
+
+
+def _contexto(store: EventStore, sender_hash: str, atual: str) -> str:
+    """As últimas falas, para a IA entender continuação e não se apresentar de novo.
+
+    Sem isso cada mensagem nasce do zero: "cadê você?" depois do oi vira
+    outra apresentação. A mensagem atual sai da lista, ela já vai no prompt.
+    """
+
+    buscar = getattr(store, "conversation_thread", None)
+    if not buscar:
+        return ""
+    try:
+        thread = buscar(sender_hash, limit=8)
+    except Exception:  # noqa: BLE001 - sem histórico a resposta segue
+        return ""
+    linhas = []
+    for item in (thread or {}).get("messages") or []:
+        texto = str(item.get("content") or "").strip()
+        if not texto:
+            continue
+        quem = "Pessoa" if item.get("direction") == "in" else "Tuca"
+        linhas.append(f"{quem}: {texto[:400]}")
+    if linhas and atual and linhas[-1] == f"Pessoa: {atual.strip()[:400]}":
+        linhas.pop()
+    return "\n".join(linhas[-6:])
 
 
 def _stop(_signum: int, _frame: Any) -> None:
@@ -397,8 +423,32 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             _bloquear_conteudo("ofensa", AVISO_OFENSA)
             return
 
+        if triagem["tipo"] == "conversa" and not _is_greeting(content):
+            # A IA chamou de papo, mas há uma pergunta. O mesmo modelo que
+            # responde dúvida atende, com o que já foi dito. O texto de oi
+            # não entra aqui.
+            resposta = _compose_reply(
+                content, "Experiência Geral", triagem.get("urgencia") or "Neutro",
+                sector, transcribed, known=triagem.get("ficha"), usar_ia=ia_ligada,
+                historico=_contexto(store, sender_hash, content),
+            )
+            if sector:
+                resposta += f"\n\n{_sector_prompt(sector)}"
+            if pode_responder:
+                store.enqueue_text(message, resposta)
+            store.finish_inbox(message_id, "ignored")
+            logger.info("Pergunta respondida sem abrir chamado")
+            return
+
         if triagem["tipo"] == "conversa":
-            resposta = compose_smalltalk(content) if ia_ligada else welcome_text()
+            # A contagem inclui a mensagem atual. Mais de uma na janela quer
+            # dizer que esta pessoa já ouviu o Tuca: repetir a apresentação
+            # inteira a cada oi é o que esgota o limite de mensagens.
+            ja_falou = store.recent_sender_count(sender_hash, JANELA_MINUTOS) > 1
+            resposta = compose_smalltalk(
+                content, ja_falou=ja_falou, usar_ia=ia_ligada,
+                historico=_contexto(store, sender_hash, content),
+            )
             if sector:
                 resposta += f"\n\n{_sector_prompt(sector)}"
             if pode_responder:
@@ -468,6 +518,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 resposta = _compose_reply(
                     content, category, urgency, sector, transcribed,
                     known=triagem.get("ficha"), usar_ia=ia_ligada,
+                    historico=_contexto(store, sender_hash, content),
                 )
                 # Chamado que pede equipe e não tem lugar nenhum: o Tuca pergunta
                 # em vez de mandar a equipe procurar o festival inteiro.

@@ -119,7 +119,8 @@ class WorkerTests(unittest.TestCase):
         # A conversa por IA também sai do caminho. O patch vai no worker, que é
         # quem chama a função: o nome foi importado para o namespace dele.
         smalltalk = mock.patch.object(
-            worker, "compose_smalltalk", lambda _c: "BOAS-VINDAS DO TUCA"
+            worker, "compose_smalltalk",
+            lambda _c, ja_falou=False, usar_ia=True, historico="": "BOAS-VINDAS DO TUCA",
         )
         smalltalk.start()
         self.addCleanup(smalltalk.stop)
@@ -556,6 +557,42 @@ class WorkerTests(unittest.TestCase):
         client.send_image.assert_called_once_with("5543", "https://x/b.jpg", caption="Line-up do Palco Hype")
         client.send_text.assert_not_called()
         self.assertEqual(store.sent, ("o1", "wamid.1"))
+
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "conversa", "urgencia": "Neutro"})
+    def test_pergunta_chega_no_modelo_com_o_que_ja_foi_dito(self, _mock_ia):
+        """Cadê você? depois do oi tem que ver a fala anterior, não nascer do zero."""
+
+        vistos = []
+
+        def grava(*_a, **k):
+            vistos.append(k.get("historico") or "")
+            return "Tô aqui na festa, ué."
+
+        store = FakeStore()
+        store.conversation_thread = lambda _h, limit=8: {"messages": [
+            {"direction": "out", "content": "Oi, eu sou o Tuca"},
+            {"direction": "in", "content": "Voce nao gosta de festa? Kd vc?"},
+        ]}
+        with mock.patch.object(worker, "_compose_reply", grava):
+            process_inbox(store, _message(content="Voce nao gosta de festa? Kd vc?"))
+
+        self.assertIsNone(store.feedback)
+        self.assertIn("Oi, eu sou o Tuca", vistos[0])
+        self.assertNotIn("nao gosta de festa", vistos[0])
+        self.assertIn("festa", store.response[1])
+
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "conversa", "urgencia": "Neutro"})
+    def test_pergunta_nao_cai_no_texto_de_oi(self, _mock_ia):
+        """Pergunta marcada como papo vai para o modelo que responde, não para o oi."""
+
+        store = FakeStore()
+        process_inbox(store, _message(content="Voce nao gosta de festa? Kd vc?"))
+
+        self.assertIsNone(store.feedback)
+        self.assertNotIn("BOAS-VINDAS", store.response[1])
+        self.assertIn("Recebi sua mensagem", store.response[1])
 
     def test_inundacao_desliga_a_ia_mas_registra_o_chamado(self):
         store = FakeStore(per_minute=protecao.FLOOD_GLOBAL_POR_MINUTO + 1)

@@ -110,6 +110,16 @@ class TriarMensagemIaTests(unittest.TestCase):
         self.assertEqual(self._triar(fake, "banheiro sujo")["tipo"], "relato")
 
 
+class PerguntaNaoEConversaTests(unittest.TestCase):
+    def test_prompt_manda_a_ia_tratar_pergunta_como_relato(self):
+        fake_client = TriarMensagemIaTests()._fake_client()
+        TriarMensagemIaTests()._triar(fake_client, "Voce nao gosta de festa? Kd vc?")
+        system = fake_client.chat.completions.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn("PERGUNTA NUNCA É CONVERSA", system)
+        self.assertIn("cadê você?", system)
+        self.assertIn("você gosta de festa?", system)
+
+
 class ClassificarKeywordsTests(unittest.TestCase):
     """O fallback determinístico, usado quando a OpenAI está fora."""
 
