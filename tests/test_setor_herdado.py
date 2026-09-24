@@ -111,7 +111,7 @@ class SetorHerdadoTests(unittest.TestCase):
             self.addCleanup(p.stop)
         p = mock.patch.object(
             worker, "compose_smalltalk",
-            lambda _c, ja_falou=False, usar_ia=True: "OI DO TUCA",
+            lambda _c, ja_falou=False, usar_ia=True, historico="": "OI DO TUCA",
         )
         p.start()
         self.addCleanup(p.stop)
