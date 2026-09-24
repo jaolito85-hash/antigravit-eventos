@@ -74,8 +74,8 @@ class FakeStore:
         self.feedback = kwargs
         return 42
 
-    def enqueue_text(self, *args, **kwargs):
-        pass
+    def enqueue_text(self, message, content, feedback_id=None):
+        self.response = (message, content, feedback_id)
 
     def enqueue_image(self, *args, **kwargs):
         pass
@@ -157,6 +157,31 @@ class SetorHerdadoTests(unittest.TestCase):
 
         self.assertIsNone(store.feedback["sector_id"])
         self.assertIsNone(store.feedback["sector_source"])
+
+    def test_tipo_de_lugar_sem_setor_pergunta_qual_deles(self):
+        """"Aqui na entrada" sem cravar qual: pergunta "em qual entrada?", não "onde você está"."""
+
+        store = FakeStore(setor_recente=None)
+        with mock.patch.object(
+            server, "triar_mensagem_ia",
+            return_value={
+                "tipo": "relato", "urgencia": "Urgente",
+                "setor": None, "lugar": "Entradas e Acessos",
+            },
+        ):
+            process_inbox(store, _mensagem("Organização aqui na entrada tá muito ruim"))
+
+        resposta = store.response[1]
+        self.assertIn("Em qual entrada?", resposta)
+        self.assertIn("já aviso a equipe", resposta)
+        self.assertNotIn("onde você está", resposta)
+        self.assertNotIn("Where", resposta)
+
+    def test_sem_lugar_nenhum_pergunta_onde_esta(self):
+        store = FakeStore(setor_recente=None)
+        process_inbox(store, _mensagem("tá tudo muito desorganizado"))
+        self.assertIn("onde você está", store.response[1])
+        self.assertNotIn("Where", store.response[1])
 
     def test_lugar_citado_no_texto_ganha_da_memoria(self):
         """O que a pessoa escreveu agora vale mais que onde ela passou antes."""

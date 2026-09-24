@@ -102,14 +102,40 @@ AVISO_LOCALIZACAO_SEM_CHAMADO = (
 # adivinhar. Vai junto da resposta, e só aí: em elogio e dúvida seria mais um
 # papel na mão de quem só queria conversar.
 PERGUNTA_ONDE_ESTA = (
-    "📍 Só me diz *onde você está*? Pode ser a referência mais próxima (o bar, o "
-    "banheiro, o palco) ou sua localização pelo clipe 📎 do WhatsApp. Sem isso a "
-    "equipe sai procurando.\n"
-    # A linha em inglês existe porque este texto é fixo, não passa pela IA, e
-    # medido em 23/09 ele saía em português para quem escreveu em inglês.
-    "📍 Where are you? The nearest landmark (bar, restroom, stage) or your "
-    "location via the 📎 clip."
+    "📍 Me diz onde você está (o bar, o banheiro ou o palco mais perto), ou manda "
+    "sua localização pelo clipe 📎, que eu já aviso a equipe."
 )
+
+# Quando a pessoa disse o tipo de lugar ("aqui na entrada", "o banheiro") mas
+# há vários desse tipo na planta, a pergunta é qual deles, não "onde você
+# está": perguntar de novo o que ela acabou de dizer soa como se o bot não
+# tivesse lido (24/09). A palavra vem do grupo do setor, no singular.
+_NOME_DO_LUGAR = {
+    "Entradas e Acessos": "entrada",
+    "Sanitários": "banheiro",
+    "Bares": "bar",
+    "Alimentação": "ponto de alimentação",
+    "Palcos": "palco",
+    "Saúde": "ambulatório",
+    "Acessibilidade": "ponto PCD",
+    "Atendimento ao Público": "guichê",
+    "Ativações e Lazer": "ativação",
+    "Caixas": "caixa",
+    "Telões": "telão",
+    "Lojas e Feirinha": "loja",
+}
+
+
+def pergunta_onde(lugar: str | None) -> str:
+    """A pergunta de lugar certa: qual deles, se o tipo já veio; onde, se não."""
+
+    nome = _NOME_DO_LUGAR.get(str(lugar or "").strip())
+    if not nome:
+        return PERGUNTA_ONDE_ESTA
+    return (
+        f"📍 Em qual {nome}? Manda sua localização pelo clipe 📎 ou uma referência "
+        "perto de você, que eu já aviso a equipe."
+    )
 
 AVISO_LOCALIZACAO_ILEGIVEL = (
     "Não consegui ler essa localização. Pode mandar de novo pelo botão de "
@@ -545,17 +571,17 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                     known=triagem.get("ficha"), usar_ia=ia_ligada,
                     historico=_contexto(store, sender_hash, content),
                 )
-                # Chamado que pede equipe e não tem lugar nenhum: o Tuca pergunta
-                # em vez de mandar a equipe procurar o festival inteiro. No
-                # Crítico o protocolo de emergência já pede a localização, na
-                # língua da pessoa, tanto pela IA quanto pelo texto de reserva:
-                # repetir aqui era pedir duas vezes, a segunda em português.
+                # Chamado que pede equipe sem setor cravado: o Tuca pergunta em
+                # vez de mandar a equipe procurar o festival inteiro. Se a
+                # pessoa já disse o tipo de lugar ("aqui na entrada"), a
+                # pergunta é qual deles. No Crítico o protocolo de emergência
+                # já pede a localização, pela IA e pelo texto de reserva.
                 if (
                     not localizado
                     and urgency in URGENCIAS_QUE_PEDEM_EQUIPE
                     and urgency not in ("Critico", "Crítico")
                 ):
-                    resposta += f"\n\n{PERGUNTA_ONDE_ESTA}"
+                    resposta += f"\n\n{pergunta_onde(triagem.get('lugar'))}"
                 store.enqueue_text(message, resposta, feedback_id)
             elif cabecalho:
                 # O cabeçalho sai literal, do jeito que a produção escreveu:

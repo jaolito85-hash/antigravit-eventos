@@ -115,14 +115,16 @@ class ProtocoloCriticoTest(unittest.TestCase):
         self.assertIn("localização", resposta.lower())
         self.assertNotIn("afaste-se", resposta.lower())
 
-    def test_fallback_tem_linha_em_ingles(self):
-        # O fallback não passa pela IA, então não é traduzido. Uma linha em
-        # inglês cobre quem não lê português numa emergência.
+    def test_fallback_e_so_em_portugues(self):
+        # O Joao Marcos vetou qualquer texto em inglês em 24/09: o público é
+        # brasileiro e a linha bilíngue assustou no primeiro teste real.
         resposta = _compose_reply(
             "there is a fight here", "Segurança & Organização", "Critico",
             sector=None, transcribed=False, known=None, usar_ia=False,
         )
-        self.assertIn("location", resposta.lower())
+        self.assertNotIn("alert received", resposta.lower())
+        self.assertNotIn("location", resposta.lower())
+        self.assertIn("localização", resposta.lower())
 
     def test_critico_nao_promete_prazo(self):
         resposta = _compose_reply(

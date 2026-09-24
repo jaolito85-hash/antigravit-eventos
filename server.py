@@ -2019,15 +2019,13 @@ def _reply(urgency: str) -> str:
         # Rede de segurança para a IA fora do ar. Não dá ordem de movimento de
         # propósito: o texto é o mesmo para quem está em perigo e para quem está
         # cuidando de alguém, e "afaste-se" seria a pior instrução no segundo
-        # caso. A linha em inglês existe porque o fallback não é traduzido.
+        # caso. Só português: o Joao Marcos vetou qualquer texto em inglês
+        # em 24/09, e o público do festival é brasileiro.
         return (
             "🚨 Recebemos seu alerta e ele já está com prioridade máxima, a equipe foi avisada. "
             "Manda sua localização aqui pelo clipe de anexo do WhatsApp, que é o jeito mais "
             "rápido de te achar. Se não der, me diz um ponto de referência bem visível "
-            "perto de você.\n\n"
-            "🚨 Alert received, top priority, the team was notified. Please send your "
-            "location using the WhatsApp attachment button, or tell me a visible landmark "
-            "near you."
+            "perto de você."
         )
     if urgency == "Urgente":
         return "⚠️ Recebemos e destacamos sua mensagem para a equipe do evento. Obrigado por avisar!"
