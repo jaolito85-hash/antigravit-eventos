@@ -53,6 +53,7 @@ class EventStore:
         self._hash_secret = os.getenv("PII_HASH_SECRET", "")
         self._client: Any = None
         self._event_id: str | None = None
+        self._event_window: tuple[str | None, str | None] | None = None
         # event_id() inicializa o cliente dentro da região crítica; o lock
         # reentrante evita deadlock sem abrir uma corrida entre workers.
         self._lock = threading.RLock()
@@ -99,6 +100,27 @@ class EventStore:
                 )
             self._event_id = str(response.data[0]["id"])
             return self._event_id
+
+    def event_window(self) -> tuple[str | None, str | None]:
+        """Início e fim do evento, como estão na tabela, em cache.
+
+        A IA precisa disso para saber se o festival já começou: antes do dia,
+        "quem toca agora" não tem resposta pelo relógio.
+        """
+
+        if self._event_window is not None:
+            return self._event_window
+        response = (
+            self._get_client()
+            .table("events")
+            .select("starts_at,ends_at")
+            .eq("slug", self._event_slug)
+            .limit(1)
+            .execute()
+        )
+        linha = (response.data or [{}])[0]
+        self._event_window = (linha.get("starts_at"), linha.get("ends_at"))
+        return self._event_window
 
     def table(self, name: str) -> Any:
         """Consulta direta a uma tabela, para leituras operacionais do monitor.

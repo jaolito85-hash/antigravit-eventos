@@ -115,9 +115,13 @@ class PerguntaNaoEConversaTests(unittest.TestCase):
         fake_client = TriarMensagemIaTests()._fake_client()
         TriarMensagemIaTests()._triar(fake_client, "Voce nao gosta de festa? Kd vc?")
         system = fake_client.chat.completions.create.call_args.kwargs["messages"][0]["content"]
-        self.assertIn("PERGUNTA NUNCA É CONVERSA", system)
+        # Pergunta sobre o evento abre chamado; pergunta ao Tuca é conversa
+        # respondida. Os dois exemplos do print ficam do lado da conversa, para
+        # o painel não encher de "cadê você?" como chamado Neutro.
+        self.assertIn("PERGUNTA SOBRE O EVENTO É SEMPRE relato", system)
         self.assertIn("cadê você?", system)
         self.assertIn("você gosta de festa?", system)
+        self.assertIn("Conversa é respondida, só não vira chamado", system)
 
 
 class ClassificarKeywordsTests(unittest.TestCase):
@@ -134,6 +138,17 @@ class ClassificarKeywordsTests(unittest.TestCase):
             classificar_categoria("Falta cerveja no bar do camarote"),
             "Alimentação & Bebidas",
         )
+
+    def test_show_pegando_fogo_e_elogio_nao_incendio(self):
+        """Gíria de festa não pode tomar a tela do telão como Crítico."""
+
+        self.assertEqual(classificar_sentimento("o show tá pegando fogo!!"), "Positivo")
+        self.assertEqual(classificar_sentimento("a pista tava pegando fogo, brabo demais"), "Positivo")
+
+    def test_fogo_de_verdade_continua_critico(self):
+        self.assertEqual(classificar_sentimento("a barraca tá pegando fogo"), "Critico")
+        self.assertEqual(classificar_sentimento("tem fumaça e fogo perto do palco"), "Critico")
+        self.assertEqual(classificar_sentimento("fogo na lixeira"), "Critico")
 
 
 if __name__ == "__main__":

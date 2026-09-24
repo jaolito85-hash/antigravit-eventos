@@ -51,7 +51,10 @@ fica sem resposta por causa disso.
 
 | Chega | O que o worker faz |
 |---|---|
-| Só a tag do QR (`#SETOR:X`) | Responde com o nome do setor e o convite cadastrado em `metadata.cta`. Não cria card. |
+| Só a tag do QR (`#SETOR:X`) | Sem passar pela IA: na primeira mensagem da pessoa em 10 min vão as boas-vindas do painel e o convite do setor (`metadata.cta`); depois disso só o convite. Não cria card. |
+| Pergunta ou brincadeira dirigida ao Tuca ("cadê você?", "quem é você?") | A IA marca como `conversa`. O modelo de resposta responde a pergunta, com as últimas falas da conversa, e **não abre chamado**. Nunca repete a apresentação para quem já falou na janela. |
+| Duas perguntas numa mensagem ("até que horas vai e quem toca?") | A triagem devolve `ficha` e `ficha2`; as duas respostas oficiais viram uma e a IA responde as duas. |
+| Chamado Urgente sem lugar nenhum (sem QR, sem setor no texto, sem placa recente) | A resposta termina pedindo onde a pessoa está, em português e inglês. No Crítico não repete: o protocolo de emergência já pede a localização na língua da pessoa. |
 | Texto com relato | Classifica, cria o feedback, responde com jeito de gente citando o setor. |
 | Áudio | Baixa da Graph API em duas etapas, transcreve com Whisper e segue o fluxo de texto. Resposta começa com "Ouvi seu áudio". |
 | Foto, vídeo, documento | Pede texto ou áudio. Não cria card. |

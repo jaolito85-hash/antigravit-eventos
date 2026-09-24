@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import signal
 import time
 from typing import Any
@@ -44,6 +45,7 @@ from server import (
     transcribe_audio,
     triar_mensagem,
     triar_mensagem_sem_ia,
+    welcome_text,
 )
 
 logging.basicConfig(
@@ -102,7 +104,11 @@ AVISO_LOCALIZACAO_SEM_CHAMADO = (
 PERGUNTA_ONDE_ESTA = (
     "📍 Só me diz *onde você está*? Pode ser a referência mais próxima (o bar, o "
     "banheiro, o palco) ou sua localização pelo clipe 📎 do WhatsApp. Sem isso a "
-    "equipe sai procurando."
+    "equipe sai procurando.\n"
+    # A linha em inglês existe porque este texto é fixo, não passa pela IA, e
+    # medido em 23/09 ele saía em português para quem escreveu em inglês.
+    "📍 Where are you? The nearest landmark (bar, restroom, stage) or your "
+    "location via the 📎 clip."
 )
 
 AVISO_LOCALIZACAO_ILEGIVEL = (
@@ -154,6 +160,10 @@ def _contexto(store: EventStore, sender_hash: str, atual: str) -> str:
         texto = str(item.get("content") or "").strip()
         if not texto:
             continue
+        # O histórico entra no prompt como texto solto, fora da tag que marca
+        # a mensagem do participante como dado. Quem fechou a tag na mensagem
+        # anterior não pode reabrir o bloco de instruções pela conversa.
+        texto = re.sub(r"</?\s*participant\s*>", " ", texto, flags=re.IGNORECASE)
         quem = "Pessoa" if item.get("direction") == "in" else "Tuca"
         linhas.append(f"{quem}: {texto[:400]}")
     if linhas and atual and linhas[-1] == f"Pessoa: {atual.strip()[:400]}":
@@ -377,6 +387,21 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 sector_code,
             )
 
+        # Placa escaneada sem texto nenhum: é o primeiro contato de quem acabou
+        # de ler o QR, e não há o que triar. Não se paga IA nem se arrisca
+        # resposta a uma mensagem vazia: quem chega recebe as boas-vindas
+        # cadastradas no painel e o convite do setor; quem já falou na janela
+        # recebe só o convite, para não ouvir o cartaz de novo.
+        if not content.strip():
+            if pode_responder:
+                primeira_vez = store.recent_sender_count(sender_hash, JANELA_MINUTOS) <= 1
+                partes = [welcome_text()] if primeira_vez else []
+                partes.append(_sector_prompt(sector))
+                store.enqueue_text(message, "\n\n".join(partes))
+            store.finish_inbox(message_id, "ignored")
+            logger.info("Mensagem sem texto: convite enviado sem triagem")
+            return
+
         def _bloquear_conteudo(motivo: str, aviso: str) -> None:
             """Registra o strike, avisa uma vez e encerra a mensagem."""
 
@@ -521,8 +546,15 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                     historico=_contexto(store, sender_hash, content),
                 )
                 # Chamado que pede equipe e não tem lugar nenhum: o Tuca pergunta
-                # em vez de mandar a equipe procurar o festival inteiro.
-                if not localizado and urgency in URGENCIAS_QUE_PEDEM_EQUIPE:
+                # em vez de mandar a equipe procurar o festival inteiro. No
+                # Crítico o protocolo de emergência já pede a localização, na
+                # língua da pessoa, tanto pela IA quanto pelo texto de reserva:
+                # repetir aqui era pedir duas vezes, a segunda em português.
+                if (
+                    not localizado
+                    and urgency in URGENCIAS_QUE_PEDEM_EQUIPE
+                    and urgency not in ("Critico", "Crítico")
+                ):
                     resposta += f"\n\n{PERGUNTA_ONDE_ESTA}"
                 store.enqueue_text(message, resposta, feedback_id)
             elif cabecalho:

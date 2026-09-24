@@ -184,8 +184,9 @@ Faça este teste com o seu próprio número antes de mostrar para o organizador:
 
 | Envie | Resposta esperada | No dashboard |
 |---|---|---|
-| `oi` | Boas-vindas do Tuca com a regra de ouro anti-golpe | Nenhum card (saudação não polui o painel) |
-| Escanear um QR e enviar | Convite com o nome do setor | Nenhum card ainda |
+| Escanear um QR e enviar | Boas-vindas do Tuca com a regra de ouro anti-golpe e o convite com o nome do setor | Nenhum card ainda |
+| `oi` | Uma linha curta do Tuca. Se for a primeira mensagem, ele se apresenta; se você já falou, ele só diz que está aí | Nenhum card (saudação não polui o painel) |
+| `cadê você?` | O Tuca responde a pergunta, sem repetir a apresentação | Nenhum card |
 | `acabou o papel e a fila tá enorme` | Resposta com jeito de gente, citando o setor | Card Urgente, pin do setor fica laranja |
 | Um áudio de 10s reclamando | Começa com "🎤 Ouvi seu áudio!" | Card com o texto transcrito |
 

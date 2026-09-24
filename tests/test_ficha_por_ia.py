@@ -115,6 +115,68 @@ class SimuladorTests(unittest.TestCase):
         self.assertIn("A IA escolheu a ficha", r["explain"])
         self.assertEqual(compor.call_args.kwargs["known"], FICHAS[1])
 
+    def test_simulador_responde_pergunta_ao_tuca_sem_abrir_chamado(self):
+        """Igual ao worker: "cadê você?" é respondido pelo modelo de resposta, sem card."""
+
+        triagem = {"tipo": "conversa", "urgencia": "Neutro", "ficha": None, "ficha_por": "ia"}
+        with mock.patch.object(server, "triar_mensagem", return_value=triagem), \
+                mock.patch.object(server, "moderar_texto", return_value={"bloquear": False, "motivo": None}), \
+                mock.patch.object(server, "compose_smalltalk") as oi, \
+                mock.patch.object(server, "_compose_reply", return_value="tô aqui") as compor:
+            r = server._simular("Voce nao gosta de festa? Kd vc?", None)
+        self.assertEqual(r["reply"], "tô aqui")
+        self.assertFalse(r["createsCard"])
+        self.assertEqual(r["kind"], "conversa")
+        oi.assert_not_called()
+        self.assertEqual(compor.call_args.args[0], "Voce nao gosta de festa? Kd vc?")
+
+    def test_simulador_cumprimento_puro_vai_para_o_oi(self):
+        triagem = {"tipo": "conversa", "urgencia": "Neutro", "ficha": None, "ficha_por": "ia"}
+        with mock.patch.object(server, "triar_mensagem", return_value=triagem), \
+                mock.patch.object(server, "moderar_texto", return_value={"bloquear": False, "motivo": None}), \
+                mock.patch.object(server, "compose_smalltalk", return_value="salve!") as oi, \
+                mock.patch.object(server, "_compose_reply") as compor:
+            r = server._simular("oi tuca", None)
+        self.assertEqual(r["reply"], "salve!")
+        oi.assert_called_once()
+        compor.assert_not_called()
+
+
+class PerguntaDuplaTests(unittest.TestCase):
+    """Duas perguntas numa mensagem: as duas fichas viram uma resposta oficial."""
+
+    GUIA = FICHAS[:2] + [
+        {"id": "f4", "question": "Line-up do Palco Tropical", "answer": "20:25 | Luísa Sonza",
+         "kind": "lineup", "image_url": "https://x/lineup.png", "active": True},
+    ]
+
+    def test_ficha2_junta_as_duas_respostas(self):
+        cliente = _ia_respondendo({"tipo": "relato", "urgencia": "Neutro", "ficha": 2, "ficha2": 3})
+        with mock.patch.object(server, "_openai_chat_client", return_value=cliente):
+            r = server.triar_mensagem_ia("onde fica o sac e quem toca no tropical?", self.GUIA)
+        ficha = r["ficha"]
+        self.assertIn("Ao lado da praça de alimentação", ficha["answer"])
+        self.assertIn("Luísa Sonza", ficha["answer"])
+        # O guia manda no prompt, e a foto sai: banner responderia só pela imagem.
+        self.assertEqual(ficha["kind"], "lineup")
+        self.assertIsNone(ficha["image_url"])
+        prompt = cliente.chat.completions.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn("ficha2", prompt)
+
+    def test_ficha2_igual_ou_invalida_nao_muda_nada(self):
+        for segundo in (2, 0, 9, "x", None):
+            cliente = _ia_respondendo({"tipo": "relato", "urgencia": "Neutro", "ficha": 2, "ficha2": segundo})
+            with mock.patch.object(server, "_openai_chat_client", return_value=cliente):
+                r = server.triar_mensagem_ia("onde fica o sac?", self.GUIA)
+            self.assertEqual(r["ficha"]["id"], "f2", segundo)
+            self.assertEqual(r["ficha"]["answer"], "Ao lado da praça de alimentação da pista.")
+
+    def test_sem_primeira_ficha_a_segunda_e_ignorada(self):
+        cliente = _ia_respondendo({"tipo": "relato", "urgencia": "Neutro", "ficha": 0, "ficha2": 3})
+        with mock.patch.object(server, "_openai_chat_client", return_value=cliente):
+            r = server.triar_mensagem_ia("acabou o papel", self.GUIA)
+        self.assertIsNone(r["ficha"])
+
 
 if __name__ == "__main__":
     unittest.main()
