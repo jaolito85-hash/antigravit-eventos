@@ -56,7 +56,7 @@ fica sem resposta por causa disso.
 | Áudio | Baixa da Graph API em duas etapas, transcreve com Whisper e segue o fluxo de texto. Resposta começa com "Ouvi seu áudio". |
 | Foto, vídeo, documento | Pede texto ou áudio. Não cria card. |
 | Menos de 3 caracteres ou só emoji | Convida a contar o que aconteceu. Não cria card. |
-| Quarta mensagem do mesmo número em 10 min | Pede para aguardar. Limite compartilhado via banco, não memória. |
+| 11ª mensagem do mesmo número em 10 min | Avisa e para de responder. Continua registrando até a 30ª. Limite no banco, não na memória. |
 | Saudação, agradecimento ou despedida, sem conteúdo do evento | A IA marca como `conversa`. O bot responde no tom dele e **não abre chamado**, para a fila de trabalho não encher de "oi, tudo bem". |
 | Cumprimento junto com conteúdo, como "bom dia, faltou cerveja" | A IA marca como `relato`. Abre chamado normalmente. |
 | Qualquer mensagem, com a conversa assumida por um operador | Registra o chamado normalmente e **não envia nada**. Quem responde é a pessoa, pelo painel. O limite de mensagens também não se aplica. |

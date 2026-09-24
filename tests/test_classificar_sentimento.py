@@ -110,6 +110,36 @@ class TriarMensagemIaTests(unittest.TestCase):
         self.assertEqual(self._triar(fake, "banheiro sujo")["tipo"], "relato")
 
 
+class NaoEngolirChamadoTests(unittest.TestCase):
+    def test_ia_diz_conversa_mas_tem_briga(self):
+        with patch("server.triar_mensagem_ia", return_value={
+            "tipo": "conversa", "urgencia": "Neutro", "ficha": None,
+            "setor": None, "lugar": None,
+        }):
+            from server import triar_mensagem
+            resultado = triar_mensagem("o show tá bom mas tem briga")
+        self.assertEqual(resultado["tipo"], "relato")
+        self.assertEqual(resultado["urgencia"], "Critico")
+
+    def test_ia_diz_conversa_em_pedido_de_ajuda(self):
+        with patch("server.triar_mensagem_ia", return_value={
+            "tipo": "conversa", "urgencia": "Neutro", "ficha": None,
+            "setor": None, "lugar": None,
+        }):
+            from server import triar_mensagem
+            resultado = triar_mensagem("ajuda")
+        self.assertEqual(resultado["tipo"], "relato")
+        self.assertEqual(resultado["urgencia"], "Urgente")
+
+    def test_oi_continua_conversa_mesmo_com_a_rede(self):
+        with patch("server.triar_mensagem_ia", return_value={
+            "tipo": "conversa", "urgencia": "Neutro", "ficha": None,
+            "setor": None, "lugar": None,
+        }):
+            from server import triar_mensagem
+            self.assertEqual(triar_mensagem("oi")["tipo"], "conversa")
+
+
 class ClassificarKeywordsTests(unittest.TestCase):
     """O fallback determinístico, usado quando a OpenAI está fora."""
 

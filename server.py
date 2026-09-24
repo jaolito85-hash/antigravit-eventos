@@ -323,24 +323,11 @@ def _contem_termo(texto_lower: str, termos) -> bool:
 def classificar_sentimento(texto):
     """Classifica sentimento com gírias brasileiras"""
     texto_lower = texto.lower()
-    
-    # POSITIVO - verificar primeiro!
-    palavras_positivas = [
-        # Formais
-        'lindo', 'maravilhoso', 'incrivel', 'incrível', 'excelente', 'perfeito', 
-        'sensacional', 'fantastico', 'fantástico', 'adorei', 'amei', 'recomendo',
-        # Gírias BR
-        'top', 'show', 'bom', 'mto bom', 'muito bom', 'demais', 'd+', 'animal',
-        'brabo', 'brabissimo', 'foda', 'monstro', 'sinistro', 'insano', 'irado',
-        'maneiro', 'da hora', 'massa', 'dahora', 'firmeza', 'suave', 'de boa',
-        'arrasou', 'arrasa', 'lacrou', 'mitou', 'arrebentou', 'bombando',
-        'curti', 'curtindo', 'gostei', 'gostando', 'amando', 'to amando',
-        'muito legal', 'legal demais', 'show de bola', 'nota 10', '10/10'
-    ]
-    if _contem_termo(texto_lower, palavras_positivas):
-        return 'Positivo'
-    
-    # CRÍTICO - emergências e violência
+
+    # Crítico e urgente vêm antes do elogio. "bom", "show" e "foda" estão na
+    # lista positiva, e "bom dia, tem briga" ou "o show pegou fogo" não podem
+    # virar elogio: no telão só Urgente e Crítico acendem pino, e Crítico toma
+    # a tela. Elogio puro continua Positivo porque não carrega essas palavras.
     palavras_criticas = [
         # Violência/Crime
         'droga', 'assalto', 'roubo', 'roubaram', 'briga', 'brigando', 'arma',
@@ -360,7 +347,11 @@ def classificar_sentimento(texto):
         # Acidentes graves
         'acidente', 'acidente grave', 'atropelado', 'atropelamento', 'capotou', 'explosao',
         'explosão', 'incendio', 'incêndio', 'fogo', 'queimando', 'desabou',
-        'desmoronou', 'afogando', 'afogado', 'afogamento'
+        'desmoronou', 'afogando', 'afogado', 'afogamento',
+        # Sofrimento que a pessoa não chama de emergência. Sem isso, com a IA
+        # fora, "tô surtando" vira Neutro e o pino do telão não acende.
+        'surtando', 'pânico', 'panico', 'não consigo respirar',
+        'nao consigo respirar',
     ]
     if _contem_termo(texto_lower, palavras_criticas):
         return 'Critico'
@@ -405,12 +396,29 @@ def classificar_sentimento(texto):
         # Gírias BR reclamação
         'ta osso', 'tá osso', 'ta foda', 'tá foda', 'paia', 'zoado',
         'zuado', 'uma bosta', 'uma merda', 'lixo', 'um lixo', 'demora',
-        'demorando', 'atrasado', 'sem condição', 'sem condições'
+        'demorando', 'atrasado', 'sem condição', 'sem condições',
+        # Mal-estar sem a palavra emergência. "tô ansioso pro show" não entra:
+        # "ansioso" sozinho é empolgação e a lista positiva pega o resto.
+        'não tô bem', 'nao to bem', 'não to bem', 'nao tô bem',
+        'tô tonto', 'to tonto', 'tô com medo', 'to com medo',
+        'mal estar', 'mal-estar',
     ]
     if _contem_termo(texto_lower, palavras_urgentes):
         return 'Urgente'
-    
-    # NEUTRO (padrão)
+
+    palavras_positivas = [
+        'lindo', 'maravilhoso', 'incrivel', 'incrível', 'excelente', 'perfeito',
+        'sensacional', 'fantastico', 'fantástico', 'adorei', 'amei', 'recomendo',
+        'top', 'show', 'bom', 'mto bom', 'muito bom', 'demais', 'd+', 'animal',
+        'brabo', 'brabissimo', 'foda', 'monstro', 'sinistro', 'insano', 'irado',
+        'maneiro', 'da hora', 'massa', 'dahora', 'firmeza', 'suave', 'de boa',
+        'arrasou', 'arrasa', 'lacrou', 'mitou', 'arrebentou', 'bombando',
+        'curti', 'curtindo', 'gostei', 'gostando', 'amando', 'to amando',
+        'muito legal', 'legal demais', 'show de bola', 'nota 10', '10/10',
+    ]
+    if _contem_termo(texto_lower, palavras_positivas):
+        return 'Positivo'
+
     return 'Neutro'
 
 def classificar_categoria(texto):
@@ -763,6 +771,9 @@ def triar_mensagem_ia(texto, fichas=None, setores=None):
             "não leva isso para a equipe e não responde com simpatia. Cuidado para não "
             "confundir com quem está SOFRENDO assédio, que é relato Critico: \"um cara "
             "está me assediando\" é pedido de ajuda e vai direto para a equipe.\n"
+            "PEDIDO DE AJUDA É SEMPRE relato, mesmo com uma palavra só: \"ajuda\", "
+            "\"help\", \"socorro\", \"não tô bem\", \"tô passando mal\". Não é teste "
+            "de canal.\n"
             "Na dúvida entre conversa e relato, escolha relato. Na dúvida entre ofensa "
             "e relato, escolha relato.\n\n"
             "urgencia = Critico para emergência, violência, acidente ou risco à vida.\n"
@@ -952,8 +963,41 @@ def triar_mensagem(texto, localizar=False):
     if resultado:
         resultado["ficha_por"] = "ia"
         resultado["setor_por"] = "ia" if resultado.get("setor") else None
-        return resultado
+        return _nao_engolir_chamado(texto, resultado)
     return triar_mensagem_sem_ia(texto, fichas, setores)
+
+
+def _nao_engolir_chamado(texto, resultado):
+    """Impede a IA de tratar emergência ou pedido de ajuda como conversa.
+
+    O modelo às vezes marca "ajuda" ou "tem briga, mas o show tá bom" como
+    papo. Conversa não abre chamado e não acende o telão. Palavra de
+    emergência ou de ajuda ganha do modelo.
+    """
+
+    if resultado.get("tipo") != "conversa" or _is_greeting(texto):
+        return resultado
+    urgencia = classificar_sentimento(texto)
+    pedido = _pedido_de_ajuda(texto)
+    if urgencia not in ("Critico", "Urgente") and not pedido:
+        return resultado
+    corrigido = dict(resultado)
+    corrigido["tipo"] = "relato"
+    if urgencia in ("Critico", "Urgente"):
+        corrigido["urgencia"] = urgencia
+    elif pedido and corrigido.get("urgencia") == "Neutro":
+        corrigido["urgencia"] = "Urgente"
+    return corrigido
+
+
+def _pedido_de_ajuda(texto: str) -> bool:
+    """Uma ou duas palavras pedindo socorro, sem relato em volta."""
+
+    limpo = _normalize(texto or "")
+    palavras = [p for p in re.split(r"[^a-z]+", limpo) if p]
+    if not palavras or len(palavras) > 4:
+        return False
+    return any(p in {"ajuda", "help", "socorro", "socorroo"} for p in palavras)
 
 
 def triar_mensagem_sem_ia(texto, fichas=None, setores=None):
@@ -1696,7 +1740,7 @@ def url_do_qr(numero: str, codigo: str) -> str:
 CUMPRIMENTOS = {
     "oi", "oie", "oii", "oiii", "ola", "opa", "opaa", "eae", "eai", "salve",
     "fala", "hey", "hei", "hi", "hello", "hola", "alo", "alow", "yo",
-    "menu", "ajuda", "help", "start", "comecar", "iniciar",
+    "menu", "start", "comecar", "iniciar",
 }
 
 # Agradecimento e despedida também são conversa, não chamado.

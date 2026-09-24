@@ -32,8 +32,6 @@ SAUDACOES = [
     "tudo bem?",
     "Oi Tuca, tudo bem?",
     "menu",
-    "ajuda",
-    "help",
 ]
 
 AGRADECIMENTOS = [
@@ -91,6 +89,13 @@ class GreetingTests(unittest.TestCase):
 
         self.assertFalse(_is_greeting("pessoal"))
         self.assertFalse(_is_greeting("por favor"))
+
+    def test_pedido_de_ajuda_nao_e_saudacao(self):
+        """Ajuda sozinha não pode receber o texto de oi e sumir da fila."""
+
+        for texto in ("ajuda", "AJUDA", "help", "ajuda por favor", "socorro"):
+            with self.subTest(texto=texto):
+                self.assertFalse(_is_greeting(texto))
 
     def test_pergunta_ao_tuca_nao_e_so_oi(self):
         """O print do ensaio: pergunta simples não pode cair no texto de oi."""
