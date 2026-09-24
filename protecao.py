@@ -203,7 +203,7 @@ def moderar_texto(texto: str, client: Any = None) -> dict[str, Any]:
         try:
             from openai import OpenAI
 
-            client = OpenAI(api_key=api_key, timeout=10)
+            client = OpenAI(api_key=api_key, timeout=10, max_retries=0)
         except Exception as exc:  # noqa: BLE001 - cliente indisponível cai na lista
             logger.error("Cliente de moderação indisponível | erro=%s", type(exc).__name__)
             return _moderacao_por_palavras(texto)

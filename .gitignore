@@ -16,3 +16,7 @@ __pycache__/
 
 # Arquivos gerados para a grafica, refeitos pelo scripts/generate_qrcodes.py
 out/
+
+# Capturas e estado local do navegador de testes
+.playwright-cli/
+output/playwright/

@@ -92,7 +92,7 @@ AVISO_SO_TEXTO_OU_AUDIO = (
 )
 AVISO_LOCALIZACAO_RECEBIDA = (
     "📍 Localização recebida, obrigado! Já mandei para a equipe junto com o seu "
-    "chamado. Fica em um lugar visível se puder, que eles estão indo."
+    "chamado."
 )
 AVISO_LOCALIZACAO_SEM_CHAMADO = (
     "📍 Recebi sua localização! Me conta em texto ou áudio 🎤 o que está "
@@ -342,6 +342,17 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         atendimento_humano = store.conversation_mode(sender_hash) == "human"
         pode_responder = not atendimento_humano
 
+        # Uma localização completa um chamado existente, mesmo após o limite.
+        if message_type == "location":
+            responder_localizacao = pode_responder
+            if not atendimento_humano:
+                responder_localizacao = (
+                    degrau_do_remetente(store.recent_sender_count(sender_hash, JANELA_MINUTOS))["responder"]
+                    and store.recent_blocked_count(sender_hash, JANELA_MINUTOS) < STRIKES_PARA_SILENCIAR
+                )
+            _tratar_localizacao(store, message, responder_localizacao, sender_hash)
+            return
+
         # 2. Degraus por número. Quem está falando com a equipe escreve à
         # vontade; para os outros, o aviso sai uma vez em cada degrau.
         if not atendimento_humano:
@@ -364,12 +375,6 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
 
         raw_content = str(message.get("content") or "")
         transcribed = False
-
-        # 3. Localização: completa o chamado que a pessoa já abriu, em vez de
-        # ser recusada. É o Tuca que pede isso na emergência.
-        if message_type == "location":
-            _tratar_localizacao(store, message, pode_responder, sender_hash)
-            return
 
         # 4. Imagem, vídeo e afins nunca são baixados: o bot pede texto ou áudio.
         if message_type in TIPOS_DE_MIDIA:
@@ -481,6 +486,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             resposta = _compose_reply(
                 content, "Experiência Geral", triagem.get("urgencia") or "Neutro",
                 sector, transcribed, known=triagem.get("ficha"), usar_ia=ia_ligada,
+                chamado_registrado=False,
                 historico=_contexto(store, sender_hash, content),
             )
             if sector:
@@ -567,7 +573,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             # dela seria enfeite que ninguém pediu. Sem texto, vai só a foto.
             if not manda_banner:
                 resposta = _compose_reply(
-                    content, category, urgency, sector, transcribed,
+                    content, category, urgency, localizado, transcribed,
                     known=triagem.get("ficha"), usar_ia=ia_ligada,
                     historico=_contexto(store, sender_hash, content),
                 )
@@ -658,6 +664,10 @@ def run() -> None:
             for inbox_message in store.pending_inbox():
                 worked = True
                 process_inbox(store, inbox_message)
+                for ready in store.pending_outbox():
+                    process_outbox(store, client, ready)
+                if not _running:
+                    break
             for outbound_message in store.pending_outbox():
                 worked = True
                 process_outbox(store, client, outbound_message)

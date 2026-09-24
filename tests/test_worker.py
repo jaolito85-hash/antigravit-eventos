@@ -625,7 +625,7 @@ class WorkerTests(unittest.TestCase):
 
         self.assertIsNone(store.feedback)
         self.assertNotIn("BOAS-VINDAS", store.response[1])
-        self.assertIn("Recebi sua mensagem", store.response[1])
+        self.assertIn("Tô aqui", store.response[1])
 
     def test_inundacao_desliga_a_ia_mas_registra_o_chamado(self):
         store = FakeStore(per_minute=protecao.FLOOD_GLOBAL_POR_MINUTO + 1)

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Testes lado a lado | TUCA</title>
+    <link rel="icon" href="/static/icons/icon-512.png" />
+    <link rel="stylesheet" href="/static/fontes.css" />
+    <link rel="stylesheet" href="/static/remixicon.css" />
+    <link rel="stylesheet" href="/static/tuca_lab.css" />
+    <script src="/static/tuca_lab.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header class="masthead">
+        <a class="back" href="/"
+          ><i class="ri-arrow-left-line" aria-hidden="true"></i> Voltar ao
+          painel</a
+        ><span class="lab-tag"><span></span> AMBIENTE DE TESTE</span>
+      </header>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">TUCA / LABORATÓRIO</p>
+          <h1>Uma mensagem.<br /><span>Duas maneiras de cuidar.</span></h1>
+          <p class="lede">
+            Teste o Tuca atual e a minha versão experimental lado a lado.<br
+              class="desktop"
+            />
+            Você compara o atendimento e decide o próximo passo.
+          </p>
+        </div>
+        <div class="intro-note">
+          <i class="ri-shield-check-line" aria-hidden="true"></i
+          ><strong>Seu teste fica aqui.</strong>
+          <p>
+            Chamados e localização são simulados. Nada é enviado ao WhatsApp dos
+            participantes.
+          </p>
+        </div>
+      </section>
+      <section class="toolbar" aria-label="Configuração da comparação">
+        <div>
+          <label for="mode">Informações usadas pelos dois</label
+          ><select id="mode">
+            <option value="published">Configuração publicada</option>
+            <option value="draft">Rascunho do painel</option>
+          </select>
+        </div>
+        <div class="session">
+          <span id="status" role="status">Preparando comparação...</span
+          ><small id="snapshot"
+            >A mesma base, duas conversas independentes.</small
+          >
+        </div>
+        <button id="reset" class="button ghost" type="button">
+          <i class="ri-refresh-line" aria-hidden="true"></i> Nova comparação</button
+        ><button id="export" class="button ghost" disabled type="button">
+          <i class="ri-download-line" aria-hidden="true"></i> Exportar
+        </button>
+      </section>
+      <div class="notice" id="error" role="alert" hidden></div>
+      <section class="arena" aria-label="Conversas lado a lado">
+        <article class="agent current">
+          <header class="agent-head">
+            <div class="agent-number">01</div>
+            <div>
+              <h2>Tuca atual</h2>
+              <p>Motor do sistema nesta versão do código</p>
+            </div>
+            <span class="pill">REFERÊNCIA</span>
+          </header>
+          <div
+            class="stream"
+            id="current-stream"
+            role="log"
+            aria-label="Conversa com o Tuca atual"
+            aria-live="polite"
+          >
+            <div class="empty">
+              <i class="ri-chat-smile-3-line" aria-hidden="true"></i>
+              <h3>O Tuca que você conhece.</h3>
+              <p>
+                A mesma mensagem vai chegar aqui e ao experimental. Comece com
+                um cenário real do evento.
+              </p>
+            </div>
+          </div>
+          <footer>
+            <span>Memória própria</span
+            ><span id="current-count">0 chamados simulados</span>
+          </footer>
+        </article>
+        <article class="agent experimental">
+          <header class="agent-head">
+            <div class="agent-number">02</div>
+            <div>
+              <h2>Tuca experimental</h2>
+              <p>Minha versão, com protocolos e fontes verificáveis</p>
+            </div>
+            <span class="pill">EXPERIMENTO</span>
+          </header>
+          <div
+            class="stream"
+            id="experimental-stream"
+            role="log"
+            aria-label="Conversa com o Tuca experimental"
+            aria-live="polite"
+          >
+            <div class="empty">
+              <i class="ri-seedling-line" aria-hidden="true"></i>
+              <h3>Acolher. Conferir. Encaminhar.</h3>
+              <p>
+                Emergências têm protocolo. Dúvidas precisam de fonte. O que
+                falta vira encaminhamento simulado.
+              </p>
+            </div>
+          </div>
+          <footer>
+            <span>Memória própria</span
+            ><span id="experimental-count">0 chamados simulados</span>
+          </footer>
+        </article>
+      </section>
+      <section class="compose" aria-label="Enviar mensagem de teste">
+        <div class="examples">
+          <span>Experimente</span
+          ><button type="button" data-example="Show maravilhoso!">Elogio</button
+          ><button type="button" data-example="Tem água grátis?">
+            Informação oficial</button
+          ><button type="button" data-example="Que horas abrem os portões?">
+            Informação conflitante</button
+          ><button type="button" data-example="Qual a senha do wi-fi VIP?">
+            Dúvida desconhecida</button
+          ><button type="button" data-example="Socorro, uma pessoa desmaiou!">
+            Emergência
+          </button>
+        </div>
+        <form id="compose-form">
+          <div class="input-options">
+            <div>
+              <label for="kind">Tipo de mensagem</label
+              ><select id="kind">
+                <option value="text">Texto</option>
+                <option value="location">Localização GPS</option>
+              </select>
+            </div>
+            <div class="sector-control">
+              <label for="sector">QR somente nesta mensagem</label
+              ><select id="sector">
+                <option value="">Sem QR</option>
+              </select>
+            </div>
+            <span id="type-hint"
+              >Para testar continuação, envie uma mensagem de cada vez.</span
+            >
+          </div>
+          <div class="input-row">
+            <label class="sr-only" for="message"
+              >Mensagem para os dois Tucas</label
+            ><textarea
+              id="message"
+              rows="2"
+              maxlength="2000"
+              placeholder="Escreva como alguém no festival. Ex.: o banheiro está sem papel..."
+              required
+            ></textarea
+            ><button class="button send" id="send" type="submit" disabled>
+              <span>Enviar aos dois</span
+              ><i class="ri-arrow-right-line" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="compose-foot">
+            <span
+              >Enter envia. Shift + Enter quebra a linha. Testes usam a API de
+              IA configurada.</span
+            ><span id="counter">0 / 2.000</span>
+          </div>
+        </form>
+      </section>
+      <section
+        id="evaluations"
+        class="evaluations"
+        aria-label="Suas avaliações"
+        hidden
+      >
+        <h2>Seu olhar faz parte do teste.</h2>
+        <p>
+          Escolha a resposta que você usaria no evento. Sua avaliação acompanha
+          a exportação.
+        </p>
+        <div id="votes"></div>
+      </section>
+      <footer class="page-foot">
+        <p>
+          O comparativo avalia respostas e decisões simuladas. Não mede entrega
+          de WhatsApp, tempo da equipe ou capacidade de produção.
+        </p>
+        <p>
+          Nenhum dos lados é promovido para produção por esta tela. A sessão
+          expira após 30 minutos ou 60 rodadas.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>
