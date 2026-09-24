@@ -21,9 +21,9 @@
       <section class="intro">
         <div>
           <p class="eyebrow">TUCA / LABORATÓRIO</p>
-          <h1>Uma mensagem.<br /><span>Duas maneiras de cuidar.</span></h1>
+          <h1>Uma mensagem.<br /><span>Três maneiras de cuidar.</span></h1>
           <p class="lede">
-            Teste o Tuca atual e a minha versão experimental lado a lado.<br
+            Compare o Tuca atual, o experimental e o JEV + LLM.<br
               class="desktop"
             />
             Você compara o atendimento e decide o próximo passo.
@@ -40,7 +40,7 @@
       </section>
       <section class="toolbar" aria-label="Configuração da comparação">
         <div>
-          <label for="mode">Informações usadas pelos dois</label
+          <label for="mode">Informações usadas pelos três</label
           ><select id="mode">
             <option value="published">Configuração publicada</option>
             <option value="draft">Rascunho do painel</option>
@@ -49,7 +49,7 @@
         <div class="session">
           <span id="status" role="status">Preparando comparação...</span
           ><small id="snapshot"
-            >A mesma base, duas conversas independentes.</small
+            >A mesma base, três conversas independentes.</small
           >
         </div>
         <button id="reset" class="button ghost" type="button">
@@ -58,6 +58,102 @@
           <i class="ri-download-line" aria-hidden="true"></i> Exportar
         </button>
       </section>
+      <details class="jev-settings" id="jev-settings">
+        <summary>
+          <span
+            ><i class="ri-settings-3-line" aria-hidden="true"></i> Configurar
+            JEV</span
+          ><span id="jev-status" role="status"
+            >Verificando conexão configurada...</span
+          >
+        </summary>
+        <p>
+          O JEV faz a triagem. O código aplica os limites e a LLM seleciona
+          trechos das fontes aprovadas. Estes limites são experimentais e
+          precisam ser avaliados com suas mensagens.
+        </p>
+        <form id="jev-form" class="jev-form">
+          <label class="key-field"
+            >Chave API TypeSafe<input
+              id="jev-key"
+              type="password"
+              autocomplete="new-password"
+              maxlength="4096"
+              placeholder="Deixe em branco para manter a chave atual"
+            /><small
+              >A chave fica somente no servidor. Não aparece nas conversas nem
+              nas exportações.</small
+            ></label
+          >
+          <label
+            >Modelo<input
+              id="jev-model"
+              value="jev-1.13.0"
+              maxlength="50"
+              required
+            /><small
+              >Versão fixa permite comparar resultados. Também aceita
+              jev-latest.</small
+            ></label
+          >
+          <label
+            >Confiança mínima de intenção<input
+              id="jev-intent"
+              type="number"
+              min="0.5"
+              max="0.99"
+              step="0.01"
+              value="0.75"
+              required
+          /></label>
+          <label
+            >Confiança e probabilidade de localização<input
+              id="jev-location"
+              type="number"
+              min="0.5"
+              max="0.99"
+              step="0.01"
+              value="0.9"
+              required
+          /></label>
+          <label
+            >Probabilidade mínima de relevância da fonte<input
+              id="jev-source"
+              type="number"
+              min="0.5"
+              max="0.99"
+              step="0.01"
+              value="0.85"
+              required
+          /></label>
+          <label
+            >Tempo limite JEV (segundos)<input
+              id="jev-timeout"
+              type="number"
+              min="3"
+              max="20"
+              step="1"
+              value="12"
+              required
+          /></label>
+          <div class="jev-actions">
+            <button class="button primary" id="jev-save" type="submit">
+              Salvar configuração</button
+            ><button class="button ghost" id="jev-test" type="button">
+              Testar conexão</button
+            ><button class="button ghost" id="jev-remove" type="button">
+              Remover chave do painel
+            </button>
+          </div>
+        </form>
+        <p class="jev-help">
+          Salvar afeta a próxima comparação. Exporte as avaliações antes de
+          iniciar outra. O teste de conexão usa uma mensagem fictícia e consome
+          a API TypeSafe. Confiança não é percentual garantido de acerto.
+          Suspeitas de risco têm protocolo conservador fixo.
+        </p>
+        <p id="jev-feedback" role="status" aria-live="polite"></p>
+      </details>
       <div class="notice" id="error" role="alert" hidden></div>
       <section class="arena" aria-label="Conversas lado a lado">
         <article class="agent current">
@@ -80,8 +176,8 @@
               <i class="ri-chat-smile-3-line" aria-hidden="true"></i>
               <h3>O Tuca que você conhece.</h3>
               <p>
-                A mesma mensagem vai chegar aqui e ao experimental. Comece com
-                um cenário real do evento.
+                A mesma mensagem vai chegar aos três motores. Comece com um
+                cenário real do evento.
               </p>
             </div>
           </div>
@@ -120,6 +216,36 @@
             ><span id="experimental-count">0 chamados simulados</span>
           </footer>
         </article>
+        <article class="agent jev">
+          <header class="agent-head">
+            <div class="agent-number">03</div>
+            <div>
+              <h2>Tuca JEV + LLM</h2>
+              <p>Probabilidades para decidir, fontes para responder</p>
+            </div>
+            <span class="pill">JEV</span>
+          </header>
+          <div
+            class="stream"
+            id="jev-stream"
+            role="log"
+            aria-label="Conversa com o Tuca JEV"
+            aria-live="polite"
+          >
+            <div class="empty">
+              <i class="ri-route-line" aria-hidden="true"></i>
+              <h3>Entender antes de responder.</h3>
+              <p>
+                Triagem probabilística com limites explícitos. Confira o que o
+                JEV decidiu em cada rodada.
+              </p>
+            </div>
+          </div>
+          <footer>
+            <span>Memória própria</span
+            ><span id="jev-count">0 chamados simulados</span>
+          </footer>
+        </article>
       </section>
       <section class="compose" aria-label="Enviar mensagem de teste">
         <div class="examples">
@@ -156,7 +282,7 @@
           </div>
           <div class="input-row">
             <label class="sr-only" for="message"
-              >Mensagem para os dois Tucas</label
+              >Mensagem para os três Tucas</label
             ><textarea
               id="message"
               rows="2"
@@ -165,7 +291,7 @@
               required
             ></textarea
             ><button class="button send" id="send" type="submit" disabled>
-              <span>Enviar aos dois</span
+              <span>Enviar aos três</span
               ><i class="ri-arrow-right-line" aria-hidden="true"></i>
             </button>
           </div>

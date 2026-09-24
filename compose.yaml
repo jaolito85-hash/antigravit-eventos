@@ -31,12 +31,15 @@ services:
       META_WABA_ID: ${META_WABA_ID}
       META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
       SECRET_KEY: ${SECRET_KEY}
       ADMIN_USER: ${ADMIN_USER}
       ADMIN_PASS: ${ADMIN_PASS}
       WORKER_POLL_INTERVAL: ${WORKER_POLL_INTERVAL:-1}
       WORKER_MAX_ATTEMPTS: ${WORKER_MAX_ATTEMPTS:-8}
+    volumes:
+      - tuca_lab_private:/app/instance
     expose:
       - "5001"
     healthcheck:
@@ -81,3 +84,6 @@ services:
     depends_on:
       web:
         condition: service_healthy
+
+volumes:
+  tuca_lab_private:

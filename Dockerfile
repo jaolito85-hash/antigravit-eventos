@@ -15,6 +15,8 @@ COPY . .
 
 # Executar sem privilégios de root reduz o impacto de uma eventual exploração.
 RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /app/instance \
+    && chmod 700 /app/instance \
     && chown -R appuser:appuser /app
 USER appuser
 

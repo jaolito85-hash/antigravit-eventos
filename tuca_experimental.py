@@ -318,8 +318,16 @@ def respond(state, snapshot, content, kind, planner=None):
         )
     # Se uma única ficha contém todos os termos específicos da pergunta,
     # prefira a frase completa que contém esses termos a uma associação vaga da IA.
+    allowed = plan.get("allowed_source_ids")
+    if allowed is not None:
+        sources = [s for s in sources if s["id"] in allowed]
     retrieved = server.recuperar_ficha_por_resposta(
-        text, snapshot["config"].get("knowledge", [])
+        text,
+        (
+            [{"answer": s["body"]} for s in sources]
+            if allowed is not None
+            else snapshot["config"].get("knowledge", [])
+        ),
     )
     if retrieved:
         source = next(

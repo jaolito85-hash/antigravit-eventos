@@ -9,6 +9,7 @@ from pathlib import Path
 from flask import request, session, jsonify, render_template
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 import tuca_lab
+import tuca_jev_config as jev
 
 
 def register_lab(app, login_required):
@@ -25,6 +26,9 @@ def register_lab(app, login_required):
                     "worker.py",
                     "tuca_experimental.py",
                     "tuca_lab.py",
+                    "tuca_jev.py",
+                    "tuca_jev_config.py",
+                    "tuca_lab_routes.py",
                 ]
             )
         ).hexdigest()[:12]
@@ -46,6 +50,58 @@ def register_lab(app, login_required):
     @login_required
     def tuca_lab_page():
         return render_template("tuca_lab.html")
+
+    @app.get("/api/tuca-lab/jev-config")
+    @login_required
+    def tuca_jev_config_get():
+        try:
+            response = jsonify(jev.public_config())
+            response.headers["Cache-Control"] = "no-store"
+            return response
+        except jev.JevError as exc:
+            return jsonify(error=str(exc)), 503
+
+    @app.post("/api/tuca-lab/jev-config")
+    @login_required
+    def tuca_jev_config_save():
+        try:
+            data = body()
+            result = jev.save_config(data)
+            response = jsonify(result)
+            response.headers["Cache-Control"] = "no-store"
+            return response
+        except ValueError as exc:
+            return jsonify(error=str(exc)), 400
+        except (jev.JevError, OSError):
+            return (
+                jsonify(
+                    error="Não foi possível salvar. Verifique a permissão da pasta privada do servidor."
+                ),
+                503,
+            )
+
+    @app.post("/api/tuca-lab/jev-test")
+    @login_required
+    def tuca_jev_test():
+        try:
+            body()
+            questions = {
+                "connection": {
+                    "type": "noul",
+                    "instructions": "Does message greet the assistant?",
+                }
+            }
+            result = jev.ask({"message": "Olá, Tuca!"}, questions, jev.settings())
+            jev.checked_answers(result, questions)
+            return jsonify(
+                ok=True,
+                model=result.get("model"),
+                message="Conexão confirmada com o JEV.",
+            )
+        except ValueError as exc:
+            return jsonify(error=str(exc)), 400
+        except jev.JevError as exc:
+            return jsonify(error=str(exc)), 503
 
     @app.post("/api/tuca-lab/start")
     @login_required
@@ -70,6 +126,7 @@ def register_lab(app, login_required):
                 "clock": datetime.now(timezone.utc).isoformat(),
                 "mode": mode,
                 "revision": revision(),
+                "jev_settings": jev.settings(),
             }
             owner = session.setdefault("tuca_lab_owner", secrets.token_urlsafe(24))
             shared = {
@@ -80,7 +137,7 @@ def register_lab(app, login_required):
             }
             tokens = {
                 e: serializer().dumps({**shared, "engine": e, "state": {"turns": 0}})
-                for e in ("current", "experimental")
+                for e in ("current", "experimental", "jev")
             }
             return jsonify(
                 tokens=tokens,
@@ -89,6 +146,7 @@ def register_lab(app, login_required):
                 mode=mode,
                 created_at=snapshot["clock"],
                 version=tuca_lab.VERSION,
+                jev=jev.public_config(),
                 sectors=[
                     {"code": s["code"], "name": s["name"]} for s in snapshot["sectors"]
                 ],
@@ -171,7 +229,7 @@ def register_lab(app, login_required):
             app.logger.exception("Falha em uma variante do laboratório")
             return (
                 jsonify(
-                    error="Esta variante não respondeu. Você pode tentar novamente sem perder a outra resposta."
+                    error="Esta variante não respondeu. Você pode tentar novamente sem perder as outras respostas."
                 ),
                 503,
             )

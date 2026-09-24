@@ -8,3 +8,6 @@ __pycache__
 *.py[cod]
 *.log
 supabase/.temp
+
+# Credenciais privadas do laboratorio
+instance/

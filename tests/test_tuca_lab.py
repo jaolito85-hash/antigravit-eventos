@@ -260,7 +260,7 @@ class RoutesTests(unittest.TestCase):
 
     def test_duas_variantes_da_mesma_base(self):
         data = self.start().get_json()
-        self.assertEqual({"current", "experimental"}, set(data["tokens"]))
+        self.assertEqual({"current", "experimental", "jev"}, set(data["tokens"]))
         self.assertTrue(data["snapshot"])
         self.assertNotEqual(data["tokens"]["current"], data["tokens"]["experimental"])
 

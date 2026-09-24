@@ -20,3 +20,6 @@ out/
 # Capturas e estado local do navegador de testes
 .playwright-cli/
 output/playwright/
+
+# Credenciais privadas do laboratorio
+instance/

@@ -1,6 +1,6 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
-const engines = ["current", "experimental"];
+const engines = ["current", "experimental", "jev"];
 let tokens = {},
   metadata = {},
   rounds = [],
@@ -26,6 +26,9 @@ function updateControls() {
   $("mode").disabled = busy;
   $("export").disabled = !rounds.length;
   $("kind").disabled = busy;
+  document
+    .querySelectorAll("#jev-form input, #jev-form button")
+    .forEach((node) => (node.disabled = busy));
   $("sector").disabled = busy || $("kind").value === "location";
   document
     .querySelectorAll("[data-example]")
@@ -67,11 +70,12 @@ async function start() {
   tokens = {};
   updateControls();
   error("");
-  $("status").textContent = "Carregando a mesma base para os dois...";
+  $("status").textContent = "Carregando a mesma base para os três...";
   try {
     const data = await api("/api/tuca-lab/start", { mode: $("mode").value });
     tokens = data.tokens;
     metadata = { ...data };
+    showJevConfig(data.jev);
     delete metadata.tokens;
     rounds = [];
     engines.forEach((e) => {
@@ -142,6 +146,12 @@ function renderResult(engine, target, result) {
   });
   const tags = el("div", "result-tags");
   [
+    result.jev &&
+      {
+        ok: "JEV consultado",
+        bypass: "Protocolo direto",
+        unavailable: "JEV indisponível: reserva",
+      }[result.jev.status],
     result.urgency,
     result.action,
     result.sector && "Local: " + result.sector,
@@ -173,6 +183,54 @@ function renderResult(engine, target, result) {
       ),
     );
   result.notes.forEach((n) => details.append(el("p", "", n)));
+  if (result.jev) {
+    const j = result.jev;
+    if (j.status === "ok")
+      $("jev-status").textContent = "JEV conectado · " + j.model;
+    if (j.status === "unavailable")
+      $("jev-status").textContent =
+        "JEV indisponível nesta rodada. Veja os detalhes da resposta.";
+    const labels = {
+      ok: "JEV consultado",
+      bypass: "Protocolo direto, sem JEV",
+      unavailable: "JEV indisponível: reserva ativa",
+    };
+    details.append(el("strong", "jev-label", labels[j.status] || j.status));
+    if (j.model) details.append(el("p", "", "Modelo: " + j.model));
+    const names = {
+      intent: "Intenção",
+      danger: "Risco físico",
+      sector: "Setor",
+      has_location: "Localização explícita",
+      conflict: "Conflito nas fontes",
+    };
+    Object.entries(j.decisions || {}).forEach(([name, answer]) => {
+      const line =
+        answer.type === "noul"
+          ? `${names[name] || "Relevância " + name.replace("source_", "")}: probabilidade ${(answer.noul * 100).toFixed(1)}%`
+          : `${names[name] || name}: ${answer.choice} · confiança ${answer.confidence.toFixed(2)}`;
+      details.append(el("p", "decision-line", line));
+      if (answer.probabilities) {
+        const distribution = el("details", "distribution");
+        distribution.append(el("summary", "", "Ver probabilidades das opções"));
+        Object.entries(answer.probabilities)
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([option, value]) =>
+            distribution.append(
+              el("p", "", `${option}: ${(value * 100).toFixed(1)}%`),
+            ),
+          );
+        details.append(distribution);
+      }
+    });
+    details.append(
+      el(
+        "p",
+        "",
+        "Probabilidades estimadas pelo modelo. Confiança resume a distribuição; não garante que a decisão esteja correta.",
+      ),
+    );
+  }
   target.append(details);
   $(engine + "-count").textContent =
     `${result.cards} chamado${result.cards === 1 ? "" : "s"} simulado${result.cards === 1 ? "" : "s"}`;
@@ -192,7 +250,8 @@ function addVote(round) {
     ["", "Qual resposta você usaria?"],
     ["current", "Tuca atual"],
     ["experimental", "Tuca experimental"],
-    ["tie", "As duas estão boas"],
+    ["jev", "Tuca JEV + LLM"],
+    ["tie", "As três estão boas"],
     ["neither", "Nenhuma está pronta"],
   ].forEach(([v, t]) => select.add(new Option(t, v)));
   select.addEventListener("change", () => (round.vote = select.value));
@@ -278,7 +337,7 @@ async function send(event) {
   const targets = Object.fromEntries(
     engines.map((e) => [e, addRound(e, round)]),
   );
-  $("status").textContent = "Comparando as duas respostas...";
+  $("status").textContent = "Comparando as três respostas...";
   $("message").value = "";
   $("counter").textContent = "0 / 2.000";
   $("sector").value = "";
@@ -335,5 +394,63 @@ $("export").addEventListener("click", () => {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+function showJevConfig(config) {
+  if (!config) return;
+  $("jev-status").textContent = config.configured
+    ? `Chave configurada no ${config.key_source}. Conexão ainda não verificada.`
+    : "Sem chave: configure para testar o JEV";
+  $("jev-model").value = config.model;
+  $("jev-intent").value = config.intent_threshold;
+  $("jev-location").value = config.location_threshold;
+  $("jev-source").value = config.source_threshold;
+  $("jev-timeout").value = config.timeout;
+}
+async function saveJev(remove = false) {
+  if (busy) return;
+  busy = true;
+  updateControls();
+  try {
+    const data = await api("/api/tuca-lab/jev-config", {
+      api_key: remove ? "" : $("jev-key").value.trim(),
+      remove_key: remove,
+      model: $("jev-model").value.trim(),
+      intent_threshold: Number($("jev-intent").value),
+      location_threshold: Number($("jev-location").value),
+      source_threshold: Number($("jev-source").value),
+      timeout: Number($("jev-timeout").value),
+    });
+    $("jev-key").value = "";
+    showJevConfig(data);
+    $("jev-feedback").textContent =
+      "Salvo. Inicie uma nova comparação para aplicar os limites. A chave configurada é usada na próxima chamada.";
+  } catch (err) {
+    $("jev-feedback").textContent = err.message;
+  } finally {
+    busy = false;
+    updateControls();
+  }
+}
+$("jev-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveJev();
+});
+$("jev-remove").addEventListener("click", () => saveJev(true));
+$("jev-test").addEventListener("click", async () => {
+  if (busy) return;
+  busy = true;
+  updateControls();
+  $("jev-feedback").textContent =
+    "Consultando o JEV com uma saudação fictícia...";
+  try {
+    const data = await api("/api/tuca-lab/jev-test", {});
+    $("jev-feedback").textContent = data.message + " Modelo: " + data.model;
+    $("jev-status").textContent = "Conexão verificada: " + data.model;
+  } catch (err) {
+    $("jev-feedback").textContent = err.message;
+  } finally {
+    busy = false;
+    updateControls();
+  }
 });
 start();

@@ -193,11 +193,18 @@ def run_turn(engine, state, snapshot, content, kind):
     start = time.monotonic()
     if engine == "current":
         result = run_current(state, snapshot, content, kind)
-    else:
+    elif engine == "jev":
+        from tuca_jev import respond
+
+        with frozen(snapshot):
+            result = respond(state, snapshot, content, kind)
+    elif engine == "experimental":
         from tuca_experimental import respond
 
         with frozen(snapshot):
             result = respond(state, snapshot, content, kind)
+    else:
+        raise ValueError("Motor de teste inválido.")
     state["history"] = state.get("history", [])[-24:]
     state["turns"] = state.get("turns", 0) + 1
     result["elapsed_ms"] = round((time.monotonic() - start) * 1000)
