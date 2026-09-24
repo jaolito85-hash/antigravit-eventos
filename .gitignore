@@ -23,3 +23,6 @@ output/playwright/
 
 # Credenciais privadas do laboratorio
 instance/
+
+# Relatorios PDF e renderizacoes gerados localmente
+output/pdf/

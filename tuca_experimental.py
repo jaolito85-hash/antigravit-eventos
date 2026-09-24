@@ -215,6 +215,13 @@ def respond(state, snapshot, content, kind, planner=None):
                 "Posso ajudar com uma dúvida ou um problema do evento. Me conta o que aconteceu, sem atacar ninguém.",
                 "blocked",
             )
+        from tuca_atendimento import respond_lab
+        # O histórico já recebeu a entrada; o helper recebe apenas o contexto anterior.
+        state["history"].pop()
+        approved = respond_lab(state, snapshot, content, kind)
+        if approved:
+            return approved
+        state["history"].append({"direction": "in", "content": content})
         plan = (planner or plan_message)(text, state, snapshot, sources)
     if not plan:
         severity = server.classificar_sentimento(text)

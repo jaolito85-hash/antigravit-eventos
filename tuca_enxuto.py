@@ -290,6 +290,13 @@ def respond(state: dict[str, Any], snapshot: dict[str, Any], content: str, kind:
     if moderacao.get("bloquear"):
         return fim(RESPOSTA_BLOQUEADA, "blocked")
 
+    from tuca_atendimento import respond_lab
+    state["history"].pop()
+    approved = respond_lab(state, snapshot, content, kind)
+    if approved:
+        return approved
+    state["history"].append({"direction": "in", "content": content})
+
     fichas = fichas_de(snapshot)
     plano = perguntar(texto, state["history"][:-1], snapshot, fichas)
     if not plano:

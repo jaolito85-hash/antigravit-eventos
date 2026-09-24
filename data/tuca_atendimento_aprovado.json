@@ -1,0 +1,11 @@
+{
+  "food_unknown": "Em qual setor você está? 👀\n\nSe estiver no Lounge ou no Backstage, cola em uma das estações de food: é tudo incluso! Aproveita!\n\nSe estiver na Pista, a praça de alimentação fica na nossa Street e tem um monte de coisa boa por lá. Cola lá!",
+  "food_pista": "Na Pista, a praça de alimentação fica na nossa Street e tem um monte de coisa boa por lá. Cola lá! 🍔",
+  "food_lounge": "No Lounge, cola em uma das estações de food: é tudo incluso! Aproveita! 🍔",
+  "food_backstage": "No Backstage, cola em uma das estações de food: é tudo incluso! Aproveita! 🍔",
+  "bathroom": "Não tenho a posição exata dos banheiros para te orientar com segurança. Pergunta para a equipe no local, que ela te indica o banheiro mais próximo. 🚻",
+  "replay": "Sim! Estamos gravando tudo e, em breve, vamos postar no nosso canal oficial do YouTube.\n\nFica ligado no nosso Instagram que a gente conta tudo por lá!",
+  "complaint_first": "Sinto muito pela experiência. Tô aqui pra te ouvir. Me conta o que aconteceu e o que te deixou insatisfeito? Sua reclamação foi registrada, e seu feedback ajuda a gente a melhorar.",
+  "complaint_followup": "Registrei sua insatisfação. Peço desculpas pela experiência. Me conta o que aconteceu para a equipe entender melhor e cuidar disso com atenção.",
+  "trash_ambiguous": "Você está falando de lixo acumulado em algum lugar ou dizendo que não gostou da experiência? Me conta o que aconteceu para eu te ajudar."
+}

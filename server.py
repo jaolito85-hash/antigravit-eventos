@@ -795,7 +795,12 @@ def triar_mensagem_ia(texto, fichas=None, setores=None):
             "segurança me empurrou\" é relato Critico. Xingar alguém da equipe (segurança, "
             "bar, atendente, staff) é reclamação de mau atendimento, e reclamação é relato "
             "Urgente: \"esse segurança é um idiota\" é relato. Ofensa é só quando o alvo é "
-            "o Tuca, o festival em geral ou ninguém. Ofensa tem urgencia Neutro.\n"
+            "o Tuca ou ninguém, sem reclamação sobre a experiência. Criticar o festival "
+            "em geral, mesmo com palavrão, é relato Neutro: acolha e peça detalhes; "
+            "não é ofensa nem exige localização sem um problema operacional concreto. "
+            "Dizer que está com fome é pedido de orientação alimentar, não falta de comida "
+            "no evento; classifique como conversa Neutro se não houver outro problema. "
+            "Ofensa tem urgencia Neutro.\n"
             "INVESTIDA SEXUAL sobre alguém do evento também é ofensa, mesmo sem palavrão e "
             "mesmo em tom de brincadeira: \"quero transar com a atendente do bar\", \"me "
             "arruma o contato daquela menina do caixa\", \"a segurança é gostosa\". O Tuca "
@@ -3098,6 +3103,15 @@ def _simular(content_raw, sector_code):
                        "não vai para o telão e o bot responde com o aviso fixo.",
             "sector": sector["name"] if sector else None,
             "createsCard": False,
+        }
+
+    from tuca_atendimento import resolve as atendimento_aprovado
+    approved = atendimento_aprovado(content, location=sector)
+    if approved:
+        return {
+            "reply": approved["reply"], "kind": "relato" if approved["register"] else "conversa",
+            "explain": approved["source"], "sector": sector["name"] if sector else None,
+            "createsCard": approved["register"],
         }
 
     # Sem QR, a triagem procura o setor no texto, igual ao worker. O

@@ -403,6 +403,39 @@ def _tratar_localizacao(
         logger.info("Localizacao sem chamado recente: pedi o relato")
 
 
+def _atendimento_aprovado(store, message, content, sector, pode_responder, transcribed):
+    from tuca_atendimento import resolve, is_candidate
+    if not is_candidate(content):
+        return False
+    sender = str(message.get("sender_hash") or "")
+    try:
+        history = (store.conversation_thread(sender, limit=10) or {}).get("messages") or []
+        if history and history[-1].get("direction") == "in" and history[-1].get("content") in (content, message.get("content")):
+            history = history[:-1]
+    except Exception:  # Sem contexto, não presumimos continuação da reclamação.
+        history = []
+    known = sector or store.ultimo_setor_escaneado(sender, QR_RECENTE_MINUTOS)
+    answer = resolve(content, history, known)
+    if not answer:
+        return False
+    feedback_id = None
+    if answer["register"]:
+        feedback_id = store.create_feedback(
+            message=message, content=content, category="Experiência Geral",
+            region=known["name"] if known else "N/A", urgency="Neutro",
+            topic="Insatisfação com o evento", sector_id=str(known["id"]) if known else None,
+            sector_source=("qr" if sector else "qr_recente") if known else None,
+            place_group=None,
+        )
+        if not feedback_id:
+            raise RuntimeError("Reclamação não foi registrada")
+    if pode_responder:
+        prefix = "🎤 *Ouvi seu áudio!*\n\n" if transcribed else ""
+        store.enqueue_text(message, prefix + answer["reply"], feedback_id)
+    store.finish_inbox(str(message["id"]), "processed" if feedback_id else "ignored")
+    return True
+
+
 def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
     """Transforma uma mensagem persistida em feedback e resposta enfileirada.
 
@@ -550,6 +583,10 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             if moderacao["bloquear"]:
                 _bloquear_conteudo(str(moderacao["motivo"]), AVISO_CONTEUDO_BLOQUEADO)
                 return
+
+        # Correções de atendimento aprovadas pelo usuário, após a moderação existente.
+        if _atendimento_aprovado(store, message, content, sector, pode_responder, transcribed):
+            return
 
         # 7. Inundação geral: a IA é desligada, o chamado continua entrando.
         ia_ligada = store.recent_event_count(1) <= FLOOD_GLOBAL_POR_MINUTO

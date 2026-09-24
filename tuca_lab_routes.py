@@ -24,6 +24,8 @@ def register_lab(app, login_required):
                 for f in [
                     "server.py",
                     "worker.py",
+                    "tuca_atendimento.py",
+                    "data/tuca_atendimento_aprovado.json",
                     "tuca_experimental.py",
                     "tuca_lab.py",
                     "tuca_jev.py",
