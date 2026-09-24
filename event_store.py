@@ -122,6 +122,54 @@ class EventStore:
         self._event_window = (linha.get("starts_at"), linha.get("ends_at"))
         return self._event_window
 
+    # Qual motor responde no WhatsApp: "atual" (o worker de sempre) ou
+    # "enxuto" (plano B, só FAQ). Fica em events.metadata, fora do fluxo de
+    # publicar, para a produção poder trocar no meio da festa e valer em até
+    # 15 segundos, sem deploy.
+    MOTORES = ("atual", "enxuto")
+    _MOTOR_TTL_SECONDS = 15
+
+    def motor_ativo(self) -> str:
+        cache = getattr(self, "_motor_cache", None)
+        agora = datetime.now(timezone.utc)
+        if cache and (agora - cache["at"]).total_seconds() < self._MOTOR_TTL_SECONDS:
+            return cache["motor"]
+        motor = "atual"
+        try:
+            response = (
+                self._get_client()
+                .table("events")
+                .select("metadata")
+                .eq("id", self.event_id())
+                .limit(1)
+                .execute()
+            )
+            valor = str(((response.data or [{}])[0].get("metadata") or {}).get("motor") or "")
+            if valor in self.MOTORES:
+                motor = valor
+        except Exception as exc:  # noqa: BLE001 - sem leitura, vale o motor de sempre
+            logger.error("Falha ao ler o motor ativo: %s", type(exc).__name__)
+            if cache:
+                return cache["motor"]
+        self._motor_cache = {"motor": motor, "at": agora}
+        return motor
+
+    def definir_motor(self, motor: str) -> str:
+        """Troca o motor do WhatsApp. Só aceita os nomes conhecidos."""
+
+        if motor not in self.MOTORES:
+            raise ValueError("motor desconhecido")
+        client = self._get_client()
+        atual = (
+            client.table("events").select("metadata").eq("id", self.event_id()).limit(1).execute()
+        )
+        metadata = dict(((atual.data or [{}])[0].get("metadata") or {}))
+        metadata["motor"] = motor
+        metadata["motor_alterado_em"] = datetime.now(timezone.utc).isoformat()
+        client.table("events").update({"metadata": metadata}).eq("id", self.event_id()).execute()
+        self._motor_cache = {"motor": motor, "at": datetime.now(timezone.utc)}
+        return motor
+
     def table(self, name: str) -> Any:
         """Consulta direta a uma tabela, para leituras operacionais do monitor.
 

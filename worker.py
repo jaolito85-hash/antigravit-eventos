@@ -7,6 +7,7 @@ import os
 import re
 import signal
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from event_store import EventStore
@@ -37,6 +38,7 @@ from server import (
     _compose_reply,
     _is_greeting,
     _extract_sector,
+    classificar_categoria,
     _sector_prompt,
     _setores_ativos,
     _topic,
@@ -195,6 +197,90 @@ def _contexto(store: EventStore, sender_hash: str, atual: str) -> str:
     if linhas and atual and linhas[-1] == f"Pessoa: {atual.strip()[:400]}":
         linhas.pop()
     return "\n".join(linhas[-6:])
+
+
+def _processar_enxuto(
+    store: EventStore,
+    message: dict[str, Any],
+    raw_content: str,
+    transcribed: bool,
+    sender_hash: str,
+    pode_responder: bool,
+    sector: dict[str, Any] | None,
+) -> None:
+    """Plano B: o Tuca enxuto responde, com a memória vinda do banco.
+
+    O motor foi escrito para o laboratório, com estado em memória. Aqui o
+    estado nasce da conversa gravada e o que ele decide (chamado, resposta,
+    bloqueio) é persistido do mesmo jeito que o fluxo de sempre.
+    """
+
+    import tuca_enxuto
+
+    message_id = str(message["id"])
+    snapshot = {
+        "config": store.live_config(),
+        "sectors": store.list_sectors(),
+        "window": list(store.event_window()),
+        "clock": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        thread = store.conversation_thread(sender_hash, limit=8)
+    except Exception:  # noqa: BLE001 - sem histórico a resposta segue
+        thread = {}
+    historico = [
+        {"direction": m.get("direction"), "content": str(m.get("content") or "")}
+        for m in (thread or {}).get("messages") or []
+        if m.get("content")
+    ]
+    # A mensagem atual já está gravada na caixa de entrada e viria repetida.
+    _, content = _extract_sector(raw_content)
+    if (
+        historico
+        and historico[-1]["direction"] == "in"
+        and historico[-1]["content"].strip() in (raw_content.strip(), content.strip())
+    ):
+        historico.pop()
+    state: dict[str, Any] = {"history": historico, "cards": []}
+    recente = sector or store.ultimo_setor_escaneado(sender_hash, QR_RECENTE_MINUTOS)
+    if recente:
+        state["location"] = {
+            "id": recente.get("id"), "code": recente.get("code"),
+            "name": recente.get("name"), "at": time.time(),
+        }
+
+    resultado = tuca_enxuto.respond(state, snapshot, raw_content, "text")
+    texto = "\n".join(str(m.get("content") or "") for m in resultado.get("messages") or []).strip()
+
+    feedback_id = None
+    for card in state["cards"]:
+        lugar = card.get("location") or {}
+        setor_do_card = store.sector_by_code(lugar.get("code")) if lugar.get("code") else None
+        if not setor_do_card and lugar.get("id"):
+            setor_do_card = {"id": lugar["id"], "name": lugar.get("name") or "N/A"}
+        category = classificar_categoria(content)
+        feedback_id = store.create_feedback(
+            message=message,
+            content=content,
+            category=category,
+            region=str(setor_do_card["name"]) if setor_do_card else "N/A",
+            urgency=card["urgency"],
+            topic=_topic(content, category, card["urgency"]),
+            sector_id=str(setor_do_card["id"]) if setor_do_card else None,
+            sector_source=("qr" if sector else "qr_recente") if setor_do_card else None,
+            place_group=None,
+        )
+    if pode_responder and texto:
+        prefix = "🎤 *Ouvi seu áudio!*\n\n" if transcribed else ""
+        store.enqueue_text(message, prefix + texto, feedback_id)
+    if resultado.get("status") == "blocked":
+        store.block_inbox(message_id, "conteudo ofensa")
+    else:
+        store.finish_inbox(message_id, "processed" if state["cards"] else "ignored")
+    logger.info(
+        "Motor enxuto respondeu | prioridade=%s chamado=%s",
+        resultado.get("urgency"), bool(state["cards"]),
+    )
 
 
 def _stop(_signum: int, _frame: Any) -> None:
@@ -418,6 +504,16 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 sector_code,
             )
 
+        # Plano B: o motor enxuto responde no lugar do fluxo de sempre. A chave
+        # fica no evento e a produção troca pelo painel, sem publicar nem
+        # subir deploy. As barreiras de cima (limite, mídia, áudio) valem
+        # para os dois; daqui para baixo cada motor faz o seu.
+        if getattr(store, "motor_ativo", lambda: "atual")() == "enxuto":
+            _processar_enxuto(
+                store, message, raw_content, transcribed, sender_hash, pode_responder, sector,
+            )
+            return
+
         # Placa escaneada sem texto nenhum: é o primeiro contato de quem acabou
         # de ler o QR, e não há o que triar. Não se paga IA nem se arrisca
         # resposta a uma mensagem vazia: quem chega recebe as boas-vindas
@@ -582,8 +678,12 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 # pessoa já disse o tipo de lugar ("aqui na entrada"), a
                 # pergunta é qual deles. No Crítico o protocolo de emergência
                 # já pede a localização, pela IA e pelo texto de reserva.
+                # Com ficha oficial a resposta já diz para onde ir ("procure o
+                # SAC"): perguntar onde a pessoa está era o segundo deslize da
+                # bateria de 24/09, em "perdi minha pulseira" e "reembolso".
                 if (
                     not localizado
+                    and not triagem.get("ficha")
                     and urgency in URGENCIAS_QUE_PEDEM_EQUIPE
                     and urgency not in ("Critico", "Crítico")
                 ):

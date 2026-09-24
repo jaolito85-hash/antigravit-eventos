@@ -863,6 +863,18 @@
 
                 <!-- Jeito de falar -->
                 <div id="aba-tom" class="hidden">
+                    <div class="field" id="motor-bloco"
+                        style="border:1px solid #2f5d5a; border-radius:10px; padding:12px 14px; margin-bottom:16px">
+                        <label>Motor que responde no WhatsApp</label>
+                        <div style="display:flex; gap:9px; flex-wrap:wrap; align-items:center">
+                            <button class="btn ghost" id="motor-atual" onclick="definirMotor('atual')">Tuca atual</button>
+                            <button class="btn ghost" id="motor-enxuto" onclick="definirMotor('enxuto')">Tuca enxuto (plano B)</button>
+                            <span id="motor-status" style="font-size:.85rem; opacity:.85"></span>
+                        </div>
+                        <div class="field-hint">Vale na hora, sem publicar e sem deploy: em até 15 segundos o WhatsApp
+                            passa a responder pelo motor escolhido. O enxuto só responde o que está nas perguntas
+                            cadastradas e manda o resto para o app; use se o atual der problema no dia.</div>
+                    </div>
                     <div class="field">
                         <label for="persona">Instruções de tom para o bot</label>
                         <textarea id="persona" rows="6" maxlength="2000"
@@ -1556,6 +1568,48 @@
         function usarPadrao() {
             document.getElementById('welcome').value = padraoWelcome;
         }
+
+        // ================= MOTOR DO WHATSAPP (PLANO B) =================
+        function mostrarMotor(motor) {
+            const ativo = motor || 'atual';
+            document.getElementById('motor-atual').className = 'btn ' + (ativo === 'atual' ? 'primary' : 'ghost');
+            document.getElementById('motor-enxuto').className = 'btn ' + (ativo === 'enxuto' ? 'primary' : 'ghost');
+            document.getElementById('motor-status').textContent =
+                ativo === 'enxuto' ? 'No ar: Tuca enxuto (plano B)' : 'No ar: Tuca atual';
+        }
+
+        async function carregarMotor() {
+            try {
+                const res = await fetch('/api/bot/motor');
+                const data = await res.json();
+                mostrarMotor(data.motor);
+            } catch (err) {
+                document.getElementById('motor-status').textContent = 'Não foi possível ler o motor.';
+            }
+        }
+
+        async function definirMotor(motor) {
+            try {
+                const res = await fetch('/api/bot/motor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ motor })
+                });
+                if (!res.ok) {
+                    const erro = await res.json().catch(() => ({}));
+                    aviso(erro.error || 'Não foi possível trocar o motor.', true);
+                    return;
+                }
+            } catch (err) {
+                aviso('Erro ao trocar o motor.', true);
+                return;
+            }
+            mostrarMotor(motor);
+            aviso(motor === 'enxuto'
+                ? 'Plano B ligado: o WhatsApp passa a responder pelo Tuca enxuto em até 15 segundos.'
+                : 'Tuca atual de volta no WhatsApp em até 15 segundos.');
+        }
+        carregarMotor();
 
         async function salvarTom() {
             const welcome = document.getElementById('welcome').value.trim();

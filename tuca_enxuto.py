@@ -65,8 +65,10 @@ _EMOJI = re.compile(r"[\U0001F000-\U0001FAFF☀-➿️]")
 def texto_do_app(snapshot: dict[str, Any]) -> str:
     """Para onde vai quem pergunta o que não está nas FAQ: o app, ou a equipe."""
 
+    import server
+
     settings = (snapshot.get("config") or {}).get("settings") or {}
-    app_url = str(settings.get("appUrl") or "").strip()
+    app_url = server.link_publico_do_app(settings.get("appUrl"))
     if app_url:
         return (
             "Essa eu não tenho aqui, mas no app oficial do festival tá tudo "
