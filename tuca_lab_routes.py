@@ -29,6 +29,7 @@ def register_lab(app, login_required):
                     "tuca_jev.py",
                     "tuca_jev_config.py",
                     "tuca_lab_routes.py",
+                    "tuca_enxuto.py",
                 ]
             )
         ).hexdigest()[:12]
@@ -137,7 +138,7 @@ def register_lab(app, login_required):
             }
             tokens = {
                 e: serializer().dumps({**shared, "engine": e, "state": {"turns": 0}})
-                for e in ("current", "experimental", "jev")
+                for e in ("current", "experimental", "jev", "enxuto")
             }
             return jsonify(
                 tokens=tokens,

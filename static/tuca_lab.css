@@ -178,7 +178,7 @@ select {
 }
 .arena {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
 }
 .agent {
@@ -708,6 +708,11 @@ textarea::placeholder {
   margin: 4px 0;
   font-size: 12px;
 }
+@media (max-width: 1400px) {
+  .arena {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 @media (max-width: 1000px) {
   .arena {
     grid-template-columns: 1fr;
@@ -754,4 +759,23 @@ textarea::placeholder {
   font-size: 12px;
   line-height: 1.5;
   margin-top: 10px;
+}
+
+/* Quarto motor: enxuto */
+.agent.enxuto {
+  border-color: #2f5d5a;
+}
+.enxuto .agent-head {
+  background: #10201f;
+}
+.enxuto .agent-number,
+.enxuto .pill {
+  color: #6fe3d6;
+  background: #163230;
+}
+.enxuto .empty i {
+  color: #6fe3d6;
+}
+.enxuto .bubble.bot {
+  border-color: #2f5d5a;
 }

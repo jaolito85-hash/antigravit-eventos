@@ -1,6 +1,6 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
-const engines = ["current", "experimental", "jev"];
+const engines = ["current", "experimental", "jev", "enxuto"];
 let tokens = {},
   metadata = {},
   rounds = [],
@@ -73,7 +73,7 @@ async function start() {
   tokens = {};
   updateControls();
   error("");
-  $("status").textContent = "Carregando a mesma base para os três...";
+  $("status").textContent = "Carregando a mesma base para os quatro...";
   try {
     const data = await api("/api/tuca-lab/start", { mode: $("mode").value });
     tokens = data.tokens;
@@ -92,7 +92,7 @@ async function start() {
     $("sector").replaceChildren(new Option("Sem QR", ""));
     data.sectors.forEach((s) => $("sector").add(new Option(s.name, s.code)));
     $("status").textContent =
-      "Nova conversa iniciada. Os três históricos estão vazios.";
+      "Nova conversa iniciada. Os quatro históricos estão vazios.";
     $("snapshot").textContent =
       `Base ${data.mode === "draft" ? "rascunho" : "publicada"} congelada · ${data.snapshot} · código ${data.revision}`;
   } catch (err) {
@@ -257,7 +257,8 @@ function addVote(round) {
     ["current", "Tuca atual"],
     ["experimental", "Tuca experimental"],
     ["jev", "Tuca JEV + LLM"],
-    ["tie", "As três estão boas"],
+    ["enxuto", "Tuca enxuto"],
+    ["tie", "Todas estão boas"],
     ["neither", "Nenhuma está pronta"],
   ].forEach(([v, t]) => select.add(new Option(t, v)));
   select.addEventListener("change", () => (round.vote = select.value));
@@ -343,7 +344,7 @@ async function send(event) {
   const targets = Object.fromEntries(
     engines.map((e) => [e, addRound(e, round)]),
   );
-  $("status").textContent = "Comparando as três respostas...";
+  $("status").textContent = "Comparando as quatro respostas...";
   $("message").value = "";
   $("counter").textContent = "0 / 2.000";
   $("sector").value = "";

@@ -203,6 +203,11 @@ def run_turn(engine, state, snapshot, content, kind):
 
         with frozen(snapshot):
             result = respond(state, snapshot, content, kind)
+    elif engine == "enxuto":
+        from tuca_enxuto import respond
+
+        with frozen(snapshot):
+            result = respond(state, snapshot, content, kind)
     else:
         raise ValueError("Motor de teste inválido.")
     state["history"] = state.get("history", [])[-24:]

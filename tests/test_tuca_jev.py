@@ -246,7 +246,7 @@ class JevTests(unittest.TestCase):
         from itsdangerous import URLSafeTimedSerializer
 
         data = r.get_json()
-        self.assertEqual({"current", "experimental", "jev"}, set(data["tokens"]))
+        self.assertEqual({"current", "experimental", "jev", "enxuto"}, set(data["tokens"]))
         payload = URLSafeTimedSerializer(
             server.app.secret_key, salt="tuca-lab-v1"
         ).loads(data["tokens"]["jev"])
