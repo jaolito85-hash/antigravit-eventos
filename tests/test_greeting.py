@@ -7,7 +7,13 @@ lado, precisa abrir chamado mesmo vindo depois de um "bom dia".
 
 import unittest
 
-from server import _is_greeting
+from server import (
+    RESPOSTA_CURTA_CONVERSA,
+    _instrucao_conversa,
+    _is_greeting,
+    _texto_conversa_sem_ia,
+    welcome_text,
+)
 
 SAUDACOES = [
     "oi",
@@ -85,6 +91,49 @@ class GreetingTests(unittest.TestCase):
 
         self.assertFalse(_is_greeting("pessoal"))
         self.assertFalse(_is_greeting("por favor"))
+
+    def test_pergunta_ao_tuca_nao_e_so_oi(self):
+        """O print do ensaio: pergunta simples não pode cair no texto de oi."""
+
+        for texto in (
+            "Voce nao gosta de festa? Kd vc?",
+            "Cade voce??",
+            "cadê você?",
+            "você gosta de festa?",
+        ):
+            with self.subTest(texto=texto):
+                self.assertFalse(_is_greeting(texto))
+
+
+class ConversaTests(unittest.TestCase):
+    def test_pergunta_pede_resposta_e_nao_a_apresentacao(self):
+        instrucao = _instrucao_conversa("Voce nao gosta de festa? Kd vc?", ja_falou=False)
+        self.assertIn("RESPONDA o que ela perguntou", instrucao)
+        self.assertNotIn("primeira mensagem", instrucao)
+
+    def test_oi_de_primeira_vez_apresenta_o_canal(self):
+        instrucao = _instrucao_conversa("Oi", ja_falou=False)
+        self.assertIn("primeira mensagem", instrucao)
+        self.assertIn("problema, elogio ou dúvida", instrucao)
+
+    def test_oi_repetido_nao_reapresenta(self):
+        instrucao = _instrucao_conversa("Oi", ja_falou=True)
+        self.assertIn("Não se apresente de novo", instrucao)
+        self.assertNotIn("primeira mensagem", instrucao)
+
+    def test_sem_ia_pergunta_nao_recebe_o_cartaz(self):
+        texto = _texto_conversa_sem_ia("Cade voce??", ja_falou=False)
+        self.assertEqual(texto, RESPOSTA_CURTA_CONVERSA)
+        self.assertNotIn("100% gratuito", texto)
+
+    def test_sem_ia_primeiro_oi_mantem_as_boas_vindas(self):
+        self.assertEqual(_texto_conversa_sem_ia("oi", ja_falou=False), welcome_text())
+
+    def test_sem_ia_oi_repetido_fica_curto(self):
+        self.assertEqual(
+            _texto_conversa_sem_ia("oi", ja_falou=True),
+            RESPOSTA_CURTA_CONVERSA,
+        )
 
 
 if __name__ == "__main__":

@@ -43,7 +43,6 @@ from server import (
     transcribe_audio,
     triar_mensagem,
     triar_mensagem_sem_ia,
-    welcome_text,
 )
 
 logging.basicConfig(
@@ -398,7 +397,11 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             return
 
         if triagem["tipo"] == "conversa":
-            resposta = compose_smalltalk(content) if ia_ligada else welcome_text()
+            # A contagem inclui a mensagem atual. Mais de uma na janela quer
+            # dizer que esta pessoa já ouviu o Tuca: repetir a apresentação
+            # inteira a cada oi é o que esgota o limite de mensagens.
+            ja_falou = store.recent_sender_count(sender_hash, JANELA_MINUTOS) > 1
+            resposta = compose_smalltalk(content, ja_falou=ja_falou, usar_ia=ia_ligada)
             if sector:
                 resposta += f"\n\n{_sector_prompt(sector)}"
             if pode_responder:

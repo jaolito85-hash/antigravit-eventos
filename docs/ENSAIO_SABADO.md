@@ -189,8 +189,9 @@ Faça este teste com o seu próprio número antes de mostrar para o organizador:
 | `acabou o papel e a fila tá enorme` | Resposta com jeito de gente, citando o setor | Card Urgente, pin do setor fica laranja |
 | Um áudio de 10s reclamando | Começa com "🎤 Ouvi seu áudio!" | Card com o texto transcrito |
 
-Atenção ao limite: o rate limit corta a partir de 4 mensagens do mesmo número em
-10 minutos. Para ensaiar à vontade, use dois celulares ou espere a janela passar.
+Atenção ao limite: a partir da 11ª mensagem do mesmo número em 10 minutos o bot
+avisa e para de responder (continua registrando até a 30ª). Para ensaiar à
+vontade, use dois celulares ou espere a janela passar.
 
 ---
 

@@ -119,7 +119,7 @@ class WorkerTests(unittest.TestCase):
         # A conversa por IA também sai do caminho. O patch vai no worker, que é
         # quem chama a função: o nome foi importado para o namespace dele.
         smalltalk = mock.patch.object(
-            worker, "compose_smalltalk", lambda _c: "BOAS-VINDAS DO TUCA"
+            worker, "compose_smalltalk", lambda _c, ja_falou=False, usar_ia=True: "BOAS-VINDAS DO TUCA"
         )
         smalltalk.start()
         self.addCleanup(smalltalk.stop)
@@ -556,6 +556,29 @@ class WorkerTests(unittest.TestCase):
         client.send_image.assert_called_once_with("5543", "https://x/b.jpg", caption="Line-up do Palco Hype")
         client.send_text.assert_not_called()
         self.assertEqual(store.sent, ("o1", "wamid.1"))
+
+    @mock.patch("server.triar_mensagem_ia",
+                return_value={"tipo": "conversa", "urgencia": "Neutro"})
+    def test_pergunta_repetida_nao_abre_chamado_e_avisa_que_ja_falou(self, _mock_ia):
+        """O caso do print: pergunta seguida de vários oi não vira fila nem apresentação."""
+
+        vistas = []
+
+        def grava(content, ja_falou=False, usar_ia=True):
+            vistas.append((content, ja_falou, usar_ia))
+            return "Tô aqui, claro que gosto de festa."
+
+        store = FakeStore(count=6)
+        with mock.patch.object(worker, "compose_smalltalk", grava):
+            process_inbox(store, _message(content="Voce nao gosta de festa? Kd vc?"))
+
+        self.assertIsNone(store.feedback)
+        self.assertEqual(store.finished, "ignored")
+        self.assertEqual(
+            vistas,
+            [("Voce nao gosta de festa? Kd vc?", True, True)],
+        )
+        self.assertIn("gosto de festa", store.response[1])
 
     def test_inundacao_desliga_a_ia_mas_registra_o_chamado(self):
         store = FakeStore(per_minute=protecao.FLOOD_GLOBAL_POR_MINUTO + 1)
