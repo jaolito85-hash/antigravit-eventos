@@ -19,6 +19,9 @@ function error(message) {
   $("error").hidden = !message;
 }
 function updateControls() {
+  $("conversation-progress").textContent = rounds.length
+    ? `Próxima mensagem: ${rounds.length + 1} · continuação da mesma conversa`
+    : "Mensagem 1: início da conversa";
   const unresolved =
     rounds.length && engines.some((e) => !rounds.at(-1).results[e]);
   $("send").disabled = busy || !tokens.current || !!unresolved;
@@ -78,6 +81,8 @@ async function start() {
     showJevConfig(data.jev);
     delete metadata.tokens;
     rounds = [];
+    $("message").value = "";
+    $("counter").textContent = "0 / 2.000";
     engines.forEach((e) => {
       $(e + "-stream").innerHTML = originals[e];
       $(e + "-count").textContent = "0 chamados simulados";
@@ -86,13 +91,14 @@ async function start() {
     $("evaluations").hidden = true;
     $("sector").replaceChildren(new Option("Sem QR", ""));
     data.sectors.forEach((s) => $("sector").add(new Option(s.name, s.code)));
-    $("status").textContent = "Prontos para ouvir. Envie o primeiro teste.";
+    $("status").textContent =
+      "Nova conversa iniciada. Os três históricos estão vazios.";
     $("snapshot").textContent =
       `Base ${data.mode === "draft" ? "rascunho" : "publicada"} congelada · ${data.snapshot} · código ${data.revision}`;
   } catch (err) {
     error(err.message);
     $("status").textContent =
-      "Comparação indisponível. Use Nova comparação para tentar novamente.";
+      "Comparação indisponível. Use Iniciar nova conversa para tentar novamente.";
   } finally {
     busy = false;
     updateControls();
@@ -296,7 +302,7 @@ function complete(round) {
   if (engines.every((e) => round.results[e])) {
     addVote(round);
     $("status").textContent =
-      `Rodada ${round.number} concluída. Continue a conversa ou avalie as respostas.`;
+      `Mensagem ${round.number} respondida. Seu próximo envio continua esta conversa.`;
   } else
     $("status").textContent =
       "Uma variante falhou. Tente novamente nela ou inicie outra comparação.";

@@ -53,7 +53,8 @@
           >
         </div>
         <button id="reset" class="button ghost" type="button">
-          <i class="ri-refresh-line" aria-hidden="true"></i> Nova comparação</button
+          <i class="ri-refresh-line" aria-hidden="true"></i> Iniciar nova
+          conversa</button
         ><button id="export" class="button ghost" disabled type="button">
           <i class="ri-download-line" aria-hidden="true"></i> Exportar
         </button>
@@ -248,6 +249,28 @@
         </article>
       </section>
       <section class="compose" aria-label="Enviar mensagem de teste">
+        <div class="conversation-guide">
+          <strong id="conversation-progress" role="status"
+            >Mensagem 1: início da conversa</strong
+          >
+          <p id="conversation-help">
+            Cada envio continua esta conversa. Cada Tuca usa o próprio histórico
+            para responder à próxima mensagem.
+          </p>
+          <p>
+            Exemplo: envie “O banheiro está sem papel” e depois “Estou perto do
+            palco”. A segunda mensagem é uma continuação.
+          </p>
+          <p>
+            Para testar outra pessoa ou uma pergunta sem contexto anterior,
+            clique em <strong>Iniciar nova conversa</strong>. Isso zera os três
+            históricos. Exporte antes se quiser guardar os resultados.
+          </p>
+          <small
+            >Atualizar a página ou trocar a base publicada pelo rascunho também
+            inicia uma nova conversa.</small
+          >
+        </div>
         <div class="examples">
           <span>Experimente</span
           ><button type="button" data-example="Show maravilhoso!">Elogio</button
@@ -277,7 +300,7 @@
               </select>
             </div>
             <span id="type-hint"
-              >Para testar continuação, envie uma mensagem de cada vez.</span
+              >Texto livre e exemplos continuam a conversa atual.</span
             >
           </div>
           <div class="input-row">
@@ -285,6 +308,7 @@
               >Mensagem para os três Tucas</label
             ><textarea
               id="message"
+              aria-describedby="conversation-help conversation-progress"
               rows="2"
               maxlength="2000"
               placeholder="Escreva como alguém no festival. Ex.: o banheiro está sem papel..."

@@ -77,7 +77,7 @@ Abra **Configurar JEV** na própria aba de testes:
 
 Esses valores são iniciais, não limites calibrados para todos os participantes. Risco físico usa política conservadora fixa: probabilidade a partir de `0.35` aciona protocolo crítico. Confiança do Choice é um resumo da distribuição, não percentual de acerto. Os detalhes mostram as probabilidades separadamente.
 
-Salvar os limites não modifica uma comparação em andamento. Inicie **Nova comparação** para aplicá-los. Trocar a chave vale para a chamada seguinte. Exporte os resultados antes de iniciar outra comparação.
+Salvar os limites não modifica uma comparação em andamento. Inicie **Iniciar nova conversa** para aplicá-los. Trocar a chave vale para a chamada seguinte. Exporte os resultados antes de iniciar outra comparação.
 
 ### Chave e publicação
 
@@ -101,3 +101,5 @@ Arquivos principais: `tuca_jev.py` e `tuca_jev_config.py`. Regressões em `tests
 
 
 A interface também foi validada em desktop e celular: salvar configurações, testar conexão, votar no JEV e exportar as três respostas com probabilidades. Foi repetida a pergunta de água pela interface, além da bateria de 30 processamentos. Nessa repetição, o motor atual acrescentou caracteres em outro idioma, ausentes da base oficial; experimental e JEV mantiveram o trecho da fonte. Essa ocorrência foi preservada no comparativo local e não é evidência suficiente para estimar uma taxa de falha.
+
+A caixa de mensagem informa explicitamente que envios sucessivos continuam a mesma conversa, com contador da próxima mensagem. O botão Iniciar nova conversa zera os três históricos. Atualizar a página ou trocar a base também reinicia.
