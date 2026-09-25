@@ -105,7 +105,18 @@ class WorkerNaoRepeteArteTests(unittest.TestCase):
             p = mock.patch.object(worker, alvo, return_value=valor)
             p.start()
             self.addCleanup(p.stop)
-        self.triagem = {"tipo": "relato", "urgencia": "Neutro", "ficha": SEDA, "setor": None, "lugar": None}
+        self.triagem = {"tipo": "relato", "urgencia": "Neutro", "ficha": SEDA, "setor": None, "lugar": None, "continuacao": True}
+
+    def test_pergunta_completa_recebe_a_arte_mesmo_recente(self):
+        """"Sabe se tem água de coco?" 20 min depois da arte recebeu texto (25/09): a arte vai."""
+
+        store = StoreComArte(minutos_atras=20, count=2)
+        with mock.patch.object(worker, "triar_mensagem", return_value={**self.triagem, "continuacao": False}), \
+                mock.patch.object(worker, "_compose_reply", return_value="nunca usado") as compor:
+            worker.process_inbox(store, _message(content="sabe se tem seda?"))
+        self.assertEqual(store.imagens, [ARTE])
+        self.assertEqual(store.responses, [])
+        compor.assert_not_called()
 
     def test_arte_recente_vira_resposta_em_texto_a_partir_da_ficha(self):
         store = StoreComArte(minutos_atras=1, count=2)

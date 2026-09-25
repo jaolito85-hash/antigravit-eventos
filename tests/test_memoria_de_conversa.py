@@ -80,6 +80,21 @@ class TriagemComMemoriaTests(unittest.TestCase):
         self.assertIn("<history>\nPessoa: tem seda??\nTuca: [mandou a imagem com a resposta]\n</history>", entrada)
         self.assertTrue(entrada.endswith("Mensagem atual, a única que você classifica:\nonde eu compro?"))
 
+    def test_triagem_diz_se_a_mensagem_e_continuacao_da_conversa(self):
+        for valor, esperado in ((True, True), ("true", True), (False, False), (None, False)):
+            cliente = _ia_respondendo({"tipo": "relato", "urgencia": "Neutro", "ficha": 1, "continuacao": valor})
+            with mock.patch.object(server, "_openai_chat_client", return_value=cliente):
+                r = server.triar_mensagem_ia("quanto custa?", [SEDA], historico=MEMORIA_ESPERADA)
+            self.assertEqual(r["continuacao"], esperado, valor)
+        prompt = cliente.chat.completions.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn('"continuacao"', prompt)
+
+    def test_sem_conversa_nunca_e_continuacao(self):
+        cliente = _ia_respondendo({"tipo": "relato", "urgencia": "Neutro", "ficha": 1, "continuacao": True})
+        with mock.patch.object(server, "_openai_chat_client", return_value=cliente):
+            r = server.triar_mensagem_ia("quanto custa?", [SEDA])
+        self.assertFalse(r["continuacao"])
+
     def test_sem_conversa_o_prompt_e_o_de_sempre(self):
         cliente = _ia_respondendo({"tipo": "relato", "urgencia": "Neutro", "ficha": 0})
         with mock.patch.object(server, "_openai_chat_client", return_value=cliente):

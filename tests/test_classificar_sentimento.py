@@ -54,7 +54,8 @@ class TriarMensagemIaTests(unittest.TestCase):
 
         self.assertEqual(
             resultado,
-            {"tipo": "relato", "urgencia": "Urgente", "ficha": None, "setor": None, "lugar": None},
+            {"tipo": "relato", "urgencia": "Urgente", "ficha": None, "setor": None, "lugar": None,
+             "continuacao": False},
         )
         kwargs = fake_client.chat.completions.create.call_args.kwargs
         self.assertEqual(kwargs["model"], "gpt-4o-mini")
@@ -84,7 +85,8 @@ class TriarMensagemIaTests(unittest.TestCase):
         fake_client = self._fake_client(tipo="conversa", urgencia="Neutro")
         self.assertEqual(
             self._triar(fake_client, "oi, tudo bem?"),
-            {"tipo": "conversa", "urgencia": "Neutro", "ficha": None, "setor": None, "lugar": None},
+            {"tipo": "conversa", "urgencia": "Neutro", "ficha": None, "setor": None, "lugar": None,
+             "continuacao": False},
         )
 
     def test_aceita_json_dentro_de_bloco_de_codigo(self):

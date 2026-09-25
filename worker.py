@@ -816,16 +816,20 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # o gatilho "cerveja" da ficha do cardápio pegou um relato de falta.
         # Pergunta de lugar ("onde tem seda?") quer o lugar, não a arte com
         # preço: vai texto, montado da ficha, que diz onde se vende. Arte
-        # que a pessoa acabou de receber também não vai de novo: "qto
-        # custa?" depois da arte da seda é respondido em texto (25/09).
+        # que a pessoa acabou de receber não vai de novo quando a mensagem
+        # é só continuação ("qto custa?" depois da arte da seda): vai texto.
+        # Pergunta completa ("sabe se tem água de coco?") recebe a arte de
+        # novo, mesmo que ela tenha ido há pouco: em 25/09 a regra só por
+        # tempo negou a arte a quem perguntou de novo 20 minutos depois.
+        arte_repetida = bool(banner) and banner in artes_recentes and bool(triagem.get("continuacao"))
         manda_banner = (
             bool(banner)
             and urgency == "Neutro"
             and not pergunta_de_lugar(content)
-            and banner not in artes_recentes
+            and not arte_repetida
         )
-        if banner and banner in artes_recentes and urgency == "Neutro":
-            logger.info("Arte já enviada há pouco: resposta em texto a partir da ficha")
+        if arte_repetida and urgency == "Neutro":
+            logger.info("Continuação com a arte já enviada: resposta em texto a partir da ficha")
 
         if pode_responder:
             # Ficha com imagem responde SÓ pela imagem: a arte já é a resposta
