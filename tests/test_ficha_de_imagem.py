@@ -10,7 +10,7 @@ from unittest import mock
 
 import server
 import worker
-from worker import _cabecalho_do_banner, _so_imagem, process_inbox
+from worker import process_inbox
 
 LIBERADO = {"bloquear": False, "motivo": None, "origem": "teste"}
 
@@ -129,12 +129,27 @@ class FormatoDaRespostaTests(unittest.TestCase):
         self.assertEqual(len(store.imagens), 1)
         self.assertEqual(store.imagens[0]["url"], FICHA_SO_FOTO["image_url"])
 
-    def test_cabecalho_sai_em_negrito_e_literal(self):
-        """O texto da produção não passa pela IA: sai como ela escreveu."""
+    def test_ficha_com_texto_e_foto_tambem_manda_so_a_foto(self):
+        """Desde 25/09 o texto cadastrado não vai antes da foto: a arte é a resposta."""
 
         store = self._rodar(FICHA_COM_CABECALHO, "tem cardápio?")
-        self.assertEqual(store.textos, ["*Cardápio de hoje no Open Food 🍔*"])
+        self.assertEqual(store.textos, [], "não pode sair texto nenhum antes da foto")
         self.assertEqual(len(store.imagens), 1)
+
+    def test_relato_urgente_nunca_recebe_a_arte_do_guia(self):
+        """"Falta cerveja no bar" casou com o cardápio de cervejas: vai o registro, não o cardápio."""
+
+        store = FakeStore()
+        cardapio = {**FICHA_COM_CABECALHO, "kind": "bar", "question": "Cervejas: cardápio e preços"}
+        with mock.patch.object(
+            server, "triar_mensagem_ia",
+            return_value={"tipo": "relato", "urgencia": "Urgente", "ficha": cardapio},
+        ):
+            process_inbox(store, _mensagem("falta cerveja no bar"))
+        self.assertEqual(store.imagens, [])
+        self.assertEqual(len(store.textos), 1)
+        self.assertNotIn("Cardápio", store.textos[0])
+        self.assertIn("destacamos", store.textos[0])
 
     def test_ficha_sem_foto_segue_como_sempre(self):
         """Quem não tem imagem continua no caminho antigo, com resposta em texto."""
@@ -144,29 +159,6 @@ class FormatoDaRespostaTests(unittest.TestCase):
         self.assertEqual(store.imagens, [])
 
 
-class CabecalhoTests(unittest.TestCase):
-    def test_negrito_aplicado_para_quem_nao_sabe_a_sintaxe(self):
-        self.assertEqual(
-            _cabecalho_do_banner({"answer": "Line-up do Palco Hype"}),
-            "*Line-up do Palco Hype*",
-        )
-
-    def test_quem_ja_formatou_fica_como_esta(self):
-        """Asterisco cadastrado é escolha de quem escreveu, não erro a corrigir."""
-
-        self.assertEqual(
-            _cabecalho_do_banner({"answer": "*Line-up* do Palco Hype"}),
-            "*Line-up* do Palco Hype",
-        )
-
-    def test_texto_longo_nao_vira_um_negrito_gigante(self):
-        longo = "x" * 250
-        self.assertEqual(_cabecalho_do_banner({"answer": longo}), longo)
-
-    def test_sem_texto_nao_ha_cabecalho(self):
-        self.assertEqual(_cabecalho_do_banner({"answer": ""}), "")
-        self.assertTrue(_so_imagem({"answer": ""}))
-        self.assertFalse(_so_imagem({"answer": "algo"}))
 
 
 if __name__ == "__main__":

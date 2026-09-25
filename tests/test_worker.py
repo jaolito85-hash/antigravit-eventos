@@ -529,12 +529,11 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(store.responses, [])
 
     @mock.patch("server.triar_mensagem_ia")
-    def test_ficha_do_guia_com_banner_manda_o_cabecalho_e_a_imagem(self, mock_ia):
-        """Ficha com foto responde pela foto, e o texto vira cabeçalho literal.
+    def test_ficha_do_guia_com_banner_manda_so_a_imagem(self, mock_ia):
+        """Ficha com foto responde só pela foto, mesmo com texto cadastrado.
 
-        Mudou em 23/09/2026: antes o texto passava pela IA e a legenda da
-        imagem repetia a pergunta. Agora o que a produção escreveu sai como
-        ela escreveu, em negrito, e a foto vem logo abaixo, limpa.
+        Mudou em 25/09/2026 a pedido do Joao Marcos: o texto da ficha fica
+        para a triagem saber o que a arte contém, mas não vai antes da foto.
         """
 
         ficha = {"id": "f9", "question": "Line-up do Palco Hype", "answer": "15:30 | Ricardo Farhat",
@@ -545,9 +544,7 @@ class WorkerTests(unittest.TestCase):
         process_inbox(store, _message(content="qual o line up do palco hype?"))
 
         self.assertEqual(store.finished, "processed")
-        self.assertEqual(len(store.responses), 2)
-        self.assertEqual(store.responses[0], "*15:30 | Ricardo Farhat*")
-        self.assertEqual(store.responses[1], ("imagem", ficha["image_url"], "", 42))
+        self.assertEqual(store.responses, [("imagem", ficha["image_url"], "", 42)])
 
     @mock.patch("server.triar_mensagem_ia")
     def test_ficha_so_com_foto_nao_manda_texto_nenhum(self, mock_ia):
@@ -646,8 +643,11 @@ class WorkerTests(unittest.TestCase):
     def test_inundacao_desliga_a_ia_mas_registra_o_chamado(self):
         store = FakeStore(per_minute=protecao.FLOOD_GLOBAL_POR_MINUTO + 1)
 
+        # As fichas vêm do banco real nos testes; sem o patch, um gatilho
+        # cadastrado no painel muda o resultado deste teste.
         with mock.patch("server.triar_mensagem_ia") as triagem, \
-                mock.patch.object(server, "generate_ai_response") as criativa:
+                mock.patch.object(server, "generate_ai_response") as criativa, \
+                mock.patch.object(server, "_fichas_ativas", return_value=[]):
             process_inbox(store, _message(content="Falta cerveja no bar"))
 
         triagem.assert_not_called()

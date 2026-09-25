@@ -145,30 +145,6 @@ AVISO_LOCALIZACAO_ILEGIVEL = (
 )
 
 
-def _so_imagem(ficha: dict[str, Any]) -> bool:
-    """A ficha responde com a foto e nada mais?
-
-    É o caso da produção que sobe o line-up do palco e não escreve nada: a
-    imagem já é a resposta inteira.
-    """
-
-    return not str(ficha.get("answer") or "").strip()
-
-
-def _cabecalho_do_banner(ficha: dict[str, Any]) -> str:
-    """A linha que vai antes da foto, em negrito, quando a produção escreveu uma.
-
-    O negrito é aplicado aqui e não pedido à produção: quem cadastra escreve
-    "Line-up do Palco Hype" e não precisa saber que asterisco formata no
-    WhatsApp. Se ela já formatou, fica como está.
-    """
-
-    texto = str(ficha.get("answer") or "").strip()
-    if not texto or "*" in texto:
-        return texto
-    return f"*{texto}*" if len(texto) <= 200 else texto
-
-
 def _contexto(store: EventStore, sender_hash: str, atual: str) -> str:
     """As últimas falas, para a IA entender continuação e não se apresentar de novo.
 
@@ -694,16 +670,18 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         )
         ficha = triagem.get("ficha") or {}
         banner = str(ficha.get("image_url") or "").strip()
-        # Elogio e crítico não usam ficha: um não pergunta nada e o outro tem
-        # protocolo fixo, e banner no meio de uma emergência é ruído.
-        manda_banner = bool(banner) and urgency not in ("Positivo", "Critico")
-        cabecalho = _cabecalho_do_banner(ficha) if manda_banner else ""
+        # Só dúvida (Neutro) recebe a arte. Elogio não pergunta nada, crítico
+        # tem protocolo fixo, e relato de problema ("falta cerveja no bar")
+        # não pode voltar com o cardápio de cervejas: visto em 25/09, quando
+        # o gatilho "cerveja" da ficha do cardápio pegou um relato de falta.
+        manda_banner = bool(banner) and urgency == "Neutro"
 
         if pode_responder:
-            # Ficha com imagem responde pela imagem: o texto cadastrado vira
-            # cabeçalho e sai literal, sem passar pela IA. A produção subiu a
-            # foto do line-up para o Tuca mandar a foto, e texto gerado antes
-            # dela seria enfeite que ninguém pediu. Sem texto, vai só a foto.
+            # Ficha com imagem responde SÓ pela imagem: a arte já é a resposta
+            # inteira (line-up, cardápio), e o Joao Marcos pediu em 25/09 que
+            # nenhum texto fosse antes dela. O texto cadastrado continua
+            # existindo para a triagem saber o que a arte contém e escolher a
+            # ficha certa; ele só não vai para o WhatsApp.
             if not manda_banner:
                 resposta = _compose_reply(
                     content, category, urgency, localizado, transcribed,
@@ -731,11 +709,6 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 ):
                     resposta += f"\n\n{pergunta_onde(triagem.get('lugar'))}"
                 store.enqueue_text(message, resposta, feedback_id)
-            elif cabecalho:
-                # O cabeçalho sai literal, do jeito que a produção escreveu:
-                # aqui ela está escrevendo a resposta, não dando material para
-                # a IA reescrever.
-                store.enqueue_text(message, cabecalho, feedback_id)
             if manda_banner:
                 store.enqueue_image(
                     message, banner, caption="", feedback_id=feedback_id,

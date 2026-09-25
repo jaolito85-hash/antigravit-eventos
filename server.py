@@ -2321,6 +2321,11 @@ def _compose_reply(
     sector_name = str(sector["name"]) if sector else None
     if urgency == "Urgente" and known and _PROMESSA_OPERACIONAL.search(str(known.get("answer") or "")):
         known = None
+    # Relato de problema nunca é respondido com ficha do guia: "falta cerveja
+    # no bar" casava pelo gatilho com o cardápio de cervejas e, sem IA, a
+    # pessoa recebia a lista de preços em vez do registro (25/09).
+    if urgency == "Urgente" and known and known.get("kind") in GUIDE_KINDS:
+        known = None
     if usar_ia:
         try:
             reply = generate_ai_response(

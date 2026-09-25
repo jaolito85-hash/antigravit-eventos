@@ -58,6 +58,7 @@ fica sem resposta por causa disso.
 | Texto com relato | Classifica, cria o feedback, responde com jeito de gente citando o setor. |
 | Áudio | Baixa da Graph API em duas etapas, transcreve com Whisper e segue o fluxo de texto. Resposta começa com "Ouvi seu áudio". |
 | Foto, vídeo, documento | Pede texto ou áudio. Não cria card. |
+| Dúvida que casa com ficha do guia com banner (line-up, cardápio) | Manda **só a imagem**, sem texto antes (pedido do Joao Marcos em 25/09). O texto da ficha fica para a triagem saber o que a arte contém. Relato Urgente, elogio e crítico nunca recebem a arte. |
 | Menos de 3 caracteres ou só emoji | Convida a contar o que aconteceu. Não cria card. |
 | 11ª mensagem do mesmo número em 10 min | Avisa e para de responder. Continua registrando até a 30ª. Limite no banco, não na memória. |
 | Saudação, agradecimento ou despedida, sem conteúdo do evento | A IA marca como `conversa`. O bot responde no tom dele e **não abre chamado**, para a fila de trabalho não encher de "oi, tudo bem". |
