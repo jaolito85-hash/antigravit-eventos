@@ -140,6 +140,26 @@ class DeslizesDoAtualTests(unittest.TestCase):
         worker.process_inbox(store, _message(content="acabou o gelo"))
         self.assertIn("Em qual bar?", store.response[1])
 
+    @mock.patch("server.triar_mensagem_ia", return_value={
+        "tipo": "relato", "urgencia": "Urgente", "lugar": "Bares", "setor": None,
+        "ficha": {"id": "f9", "question": "Acabou a cerveja no bar", "answer": "Registrei, a operação já está indo repor."},
+    })
+    def test_lugar_de_operacao_com_ficha_ainda_pergunta_qual(self, _ia):
+        """Há três bares Hype: com ficha ou sem, a equipe precisa saber qual."""
+
+        store = FakeStore()
+        worker.process_inbox(store, _message(content="acabou a cerveja no bar do hype"))
+        self.assertIn("Em qual bar?", store.response[1])
+
+    @mock.patch("server.triar_mensagem_ia", return_value={
+        "tipo": "relato", "urgencia": "Urgente", "lugar": "Saúde", "setor": None, "ficha": None,
+    })
+    def test_saude_nao_pergunta_em_qual_ambulatorio(self, _ia):
+        store = FakeStore()
+        worker.process_inbox(store, _message(content="não tô bem"))
+        self.assertIn("onde você está", store.response[1])
+        self.assertNotIn("ambulatório?", store.response[1])
+
     def test_link_do_painel_nunca_vai_para_o_publico(self):
         self.assertEqual(server.link_publico_do_app("https://app.nodedata.com.br/"), "")
         self.assertEqual(server.link_publico_do_app("  "), "")

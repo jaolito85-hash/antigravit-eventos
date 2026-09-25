@@ -856,6 +856,11 @@ def triar_mensagem_ia(texto, fichas=None, setores=None):
                 "para o outro lado do festival.\n"
                 "\"o banheiro tá sem papel\" é 0, porque há vários banheiros. "
                 "\"o banheiro do palco tropical tá sem papel\" é o setor daquele banheiro. "
+                "Nome que existe em mais de um setor sem dizer qual é 0: \"bar do hype\" "
+                "existe na Pista, no Lounge e no Backstage. Palco não é bar nem telão: "
+                "\"o som do palco Lab tá estourando\" é 0, não o Bar LAB. "
+                "Alagamento, sujeira, falta de item e fila são Urgente, não Critico; "
+                "Critico é só risco a pessoa. "
                 "Elogio a show e pergunta sobre line-up normalmente são 0, a não ser que "
                 "a pessoa diga onde está."
             )

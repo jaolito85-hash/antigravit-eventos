@@ -118,13 +118,13 @@ _NOME_DO_LUGAR = {
     "Bares": "bar",
     "Alimentação": "ponto de alimentação",
     "Palcos": "palco",
-    "Saúde": "ambulatório",
-    "Acessibilidade": "ponto PCD",
-    "Atendimento ao Público": "guichê",
     "Ativações e Lazer": "ativação",
     "Caixas": "caixa",
     "Telões": "telão",
     "Lojas e Feirinha": "loja",
+    # Saúde, Acessibilidade e Atendimento ao Público ficam de fora: quem
+    # diz "não tô bem" não está no ambulatório, e "em qual ambulatório?"
+    # (25/09) era pergunta sem sentido. Nesses casos vale "onde você está".
 }
 
 
@@ -715,12 +715,17 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 # pessoa já disse o tipo de lugar ("aqui na entrada"), a
                 # pergunta é qual deles. No Crítico o protocolo de emergência
                 # já pede a localização, pela IA e pelo texto de reserva.
-                # Com ficha oficial a resposta já diz para onde ir ("procure o
-                # SAC"): perguntar onde a pessoa está era o segundo deslize da
-                # bateria de 24/09, em "perdi minha pulseira" e "reembolso".
+                # Quando a pessoa fala de um lugar de operação (bar, banheiro,
+                # caixa, palco), a equipe precisa ir até lá: pergunta qual,
+                # mesmo que uma ficha tenha respondido ("acabou a cerveja no
+                # bar do hype" tem ficha e há três bares Hype). Fora disso, a
+                # ficha oficial já diz para onde ir ("procure o SAC") e
+                # perguntar onde a pessoa está era o deslize de "perdi minha
+                # pulseira" e "reembolso" (24/09).
+                lugar_de_operacao = triagem.get("lugar") in _NOME_DO_LUGAR
                 if (
                     not localizado
-                    and not triagem.get("ficha")
+                    and (lugar_de_operacao or not triagem.get("ficha"))
                     and urgency in URGENCIAS_QUE_PEDEM_EQUIPE
                     and urgency not in ("Critico", "Crítico")
                 ):
