@@ -14,6 +14,11 @@
     <link href="/static/fontes.css" rel="stylesheet">
     <link href="/static/remixicon.css" rel="stylesheet">
     <style>
+        /* As abas de configuração trocam de conteúdo pondo esta classe. Sem a
+           regra, as cinco ficavam empilhadas e o que estava embaixo (o bloco
+           do motor, em "Jeito de falar") parecia não existir (25/09). */
+        .hidden { display: none !important; }
+
         :root {
             --bg-body: #050507;
             --bg-card: #111217;
@@ -674,7 +679,7 @@
             </div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <a href="/tuca/laboratorio" class="back" style="color:#b7f47b;border-color:#527338"><i class="ri-flask-line"></i> Comparar os três Tucas</a>
+            <a href="/tuca/laboratorio" class="back" style="color:#b7f47b;border-color:#527338"><i class="ri-flask-line"></i> Comparar os quatro Tucas</a>
             <a href="/" class="back"><i class="ri-arrow-left-line"></i> Voltar ao painel</a>
         </div>
     </div>
