@@ -1384,6 +1384,32 @@ def link_publico_do_app(valor: Any) -> str:
     return link
 
 
+_FALA_DO_APP = re.compile(r"\b(?:app|aplicativo|apk)\b", re.IGNORECASE)
+# "o aplicativo da BaladApp" e "app BaladApp" são a bilheteria, não o app.
+_BILHETERIA = re.compile(r"(?:\b(?:app|aplicativo)\b\s+(?:d[aeo]s?\s+)?)?\S*balad\S*", re.IGNORECASE)
+
+
+def com_link_do_app(texto: str) -> str:
+    """Resposta que fala do app sai com o link cadastrado, sempre.
+
+    As fichas dizem "baixe o aplicativo e veja a rota" e as regras mandam
+    "envie o link", mas quem colava o link era a IA, e ela esquecia: em 25/09
+    "perdi minha carteira" voltou com "confira a rota completa no aplicativo
+    oficial" e nada para clicar. Aqui é determinístico: mencionou o app sem
+    o link, o link vai na linha de baixo. BaladApp é a bilheteria, não o app
+    do festival, e não conta como menção.
+    """
+
+    texto = str(texto or "")
+    link = link_do_app()
+    if not link or link.lower() in texto.lower():
+        return texto
+    sem_bilheteria = _BILHETERIA.sub(" ", texto)
+    if not _FALA_DO_APP.search(sem_bilheteria):
+        return texto
+    return f"{texto.rstrip()}\n📲 {link}"
+
+
 def _rules_block(idioma: str = "pt") -> str:
     """Regras de negócio prontas para entrar no prompt, da maior prioridade.
 
@@ -1557,6 +1583,7 @@ Your personality:
 - NEVER mention categories, classifications, or technical terms
 - Respond as a REAL PERSON backstage
 - Be hospitable and warm. Humor belongs in positive messages and light conversation, never in distress or complaints
+- If the participant lost something (wallet, phone, wristband, a friend) or is telling you about a bad moment that is not an emergency, OPEN the reply with one caring emoji (😢 or 🥺) and a short empathetic phrase, then give the information. No jokes in that reply
 - Never request videos or photos: this channel cannot interpret them
 - Never claim staff are on their way, restocking or resolving anything without confirmed operational status, even for missing supplies
 - When an event question cannot be answered from official material, admit it and say the report has been sent to the team. Never promise a later reply
@@ -2400,7 +2427,7 @@ def compose_smalltalk(
         if not resposta_segura(reply, regras):
             logger.warning("Resposta de conversa barrada pelo filtro de saída")
             return reserva
-        return reply or reserva
+        return com_link_do_app(reply) if reply else reserva
     except Exception as exc:  # noqa: BLE001 - conversa nunca derruba o fluxo
         logger.error("IA de conversa indisponível | erro=%s", type(exc).__name__)
         return reserva
@@ -2475,7 +2502,7 @@ def _compose_reply(
                 # Sem sufixo automático de "seu chamado já foi enviado": a IA
                 # já diz isso quando não tem a resposta, e colado a uma
                 # resposta dada ele irritava e soava a mentira (25/09).
-                return prefix + reply
+                return prefix + _com_link_se_couber(reply, urgency)
         except Exception as exc:  # noqa: BLE001 - resposta criativa é opcional
             logger.error("IA de resposta indisponível | erro=%s", type(exc).__name__)
 
@@ -2486,8 +2513,23 @@ def _compose_reply(
     if known and str(known.get("answer") or "").strip():
         # Sem IA, o texto oficial vai como está: é melhor soar formal do que
         # deixar a pergunta sem a informação correta.
-        return prefix + _limpar_resposta(known["answer"])
+        return prefix + _com_link_se_couber(_limpar_resposta(known["answer"]), urgency)
     return prefix + _reply(urgency)
+
+
+def _com_link_se_couber(texto: str, urgency: str) -> str:
+    """Quem fala do app leva o link; só a emergência fica de fora.
+
+    O prompt já proíbe mandar quem relata um problema para o app (regra de
+    24/09). Se mesmo assim a resposta falar do app, como em "perdi minha
+    carteira" quando a triagem marca Urgente, o link vai junto: menção sem
+    link é o pior dos dois mundos (print de 25/09). No Crítico o protocolo
+    é texto fixo e nunca fala do app.
+    """
+
+    if urgency in ("Critico", "Crítico"):
+        return texto
+    return com_link_do_app(texto)
 
 
 # --- ROUTES ---
