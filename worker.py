@@ -41,6 +41,9 @@ from server import (
     _extract_sector,
     _normalize,
     classificar_categoria,
+    pergunta_de_lugar,
+    pergunta_sobre_app,
+    resposta_sobre_app,
     _sector_prompt,
     _setores_ativos,
     _topic,
@@ -592,6 +595,16 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             logger.info("Mensagem sem texto: convite enviado sem triagem")
             return
 
+        # "Qual o app de vocês?": o link está cadastrado no painel e a resposta
+        # é fixa. A IA respondia "não tenho essa informação" e colava o link
+        # em seguida (25/09).
+        if pergunta_sobre_app(content):
+            if pode_responder:
+                store.enqueue_text(message, resposta_sobre_app())
+            store.finish_inbox(message_id, "ignored")
+            logger.info("Pergunta sobre o app respondida com o link cadastrado")
+            return
+
         # "Quero" logo depois de "quer o cardápio completo?": vai a arte do
         # cardápio geral, sem triagem e sem chamado.
         if _quer_cardapio_completo(store, sender_hash, content):
@@ -741,7 +754,9 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # tem protocolo fixo, e relato de problema ("falta cerveja no bar")
         # não pode voltar com o cardápio de cervejas: visto em 25/09, quando
         # o gatilho "cerveja" da ficha do cardápio pegou um relato de falta.
-        manda_banner = bool(banner) and urgency == "Neutro"
+        # Pergunta de lugar ("onde tem seda?") quer o lugar, não a arte com
+        # preço: vai texto, montado da ficha, que diz onde se vende.
+        manda_banner = bool(banner) and urgency == "Neutro" and not pergunta_de_lugar(content)
 
         if pode_responder:
             # Ficha com imagem responde SÓ pela imagem: a arte já é a resposta

@@ -1238,6 +1238,65 @@ def _bot_config() -> dict[str, Any]:
         return {"settings": {}, "rules": []}
 
 
+# Pergunta de lugar ("onde tem seda?", "cadê a lojinha?", "como chego no
+# bar?") quer o lugar, não o preço. Quem manda a arte do cardápio para essa
+# pergunta responde a coisa errada (visto pelo Joao Marcos em 25/09).
+_PERGUNTA_DE_LUGAR = re.compile(
+    r"\b(?:onde|aonde|cad[eê]|kd|em que lugar|que lugar|fica onde|como (?:eu |que )?(?:chego|chegar|acho|encontro)"
+    r"|localiza[çc][ãa]o d[oa]|caminho (?:pra|para|at[ée]))\b",
+    re.IGNORECASE,
+)
+# Pergunta sobre o app oficial: o link está cadastrado, a resposta é fixa.
+_PERGUNTA_SOBRE_APP = re.compile(
+    r"\b(?:app|aplicativo|apk|play ?store|app ?store)\b", re.IGNORECASE,
+)
+_PEDE_O_APP = re.compile(
+    r"\b(?:qual|onde|aonde|cad[eê]|kd|tem|link|baix\w*|instal\w*|manda|passa|me d[áa]|nome d[oa])\b",
+    re.IGNORECASE,
+)
+_PROBLEMA_NO_APP = re.compile(
+    r"\b(?:n[ãa]o (?:abre|funciona|carrega|instala|baixa)|travou|travando|bug|erro|caiu|fora do ar)\b",
+    re.IGNORECASE,
+)
+
+
+def pergunta_de_lugar(texto: str) -> bool:
+    """A pessoa quer saber ONDE algo fica ou se vende, não quanto custa."""
+
+    return bool(_PERGUNTA_DE_LUGAR.search(texto or ""))
+
+
+def pergunta_sobre_app(texto: str) -> bool:
+    """"Qual o app de vocês?", "onde baixo o app?", "tem app?". Reclamação do app não."""
+
+    t = texto or ""
+    return bool(
+        _PERGUNTA_SOBRE_APP.search(t) and _PEDE_O_APP.search(t) and not _PROBLEMA_NO_APP.search(t)
+    )
+
+
+def link_do_app() -> str:
+    """O link público cadastrado no painel, ou vazio."""
+
+    return link_publico_do_app((_bot_config().get("settings") or {}).get("appUrl"))
+
+
+def resposta_sobre_app() -> str:
+    """Texto fixo para quem pergunta do app: com o link, ou sem ele."""
+
+    link = link_do_app()
+    if link:
+        return (
+            "O app oficial da Tropicadelia é este aqui 📲\n"
+            f"{link}\n"
+            "Nele tem o mapa, a programação e os cardápios do festival."
+        )
+    return (
+        "O app oficial ainda não está disponível por aqui. Me manda sua dúvida que eu "
+        "respondo, e a equipe no local também ajuda."
+    )
+
+
 def link_publico_do_app(valor: Any) -> str:
     """O link do app que pode ir para o público, ou vazio.
 
@@ -3125,6 +3184,15 @@ def _simular(content_raw, sector_code):
             "kind": "bloqueado",
             "explain": f"Bloqueado pela moderação ({moderacao['motivo']}): não vira chamado, "
                        "não vai para o telão e o bot responde com o aviso fixo.",
+            "sector": sector["name"] if sector else None,
+            "createsCard": False,
+        }
+
+    if pergunta_sobre_app(content):
+        return {
+            "reply": resposta_sobre_app(),
+            "kind": "conversa",
+            "explain": "Pergunta sobre o app oficial: resposta fixa com o link cadastrado no painel, sem IA e sem chamado.",
             "sector": sector["name"] if sector else None,
             "createsCard": False,
         }

@@ -223,3 +223,75 @@ class RotaDoMotorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LugarOuPrecoEAppTests(unittest.TestCase):
+    """Onde é lugar, quanto é preço; e o app tem resposta fixa com o link do painel."""
+
+    def setUp(self):
+        for alvo in ("generate_ai_response", "classificar_com_ia"):
+            p = mock.patch.object(server, alvo, lambda *a, **k: None)
+            p.start()
+            self.addCleanup(p.stop)
+        p = mock.patch.object(worker, "moderar_texto", return_value=LIBERADO)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_pergunta_de_lugar(self):
+        for texto in ("onde tem seda?", "cadê a lojinha?", "como chego no bar hype?", "Kd o banheiro", "onde compro copo?"):
+            self.assertTrue(server.pergunta_de_lugar(texto), texto)
+        for texto in ("quanto custa a seda?", "tem seda?", "qual o cardápio?", "que horas abre?"):
+            self.assertFalse(server.pergunta_de_lugar(texto), texto)
+
+    @mock.patch("server.triar_mensagem_ia")
+    def test_onde_tem_seda_responde_em_texto_com_o_lugar(self, ia):
+        loja = {"id": "f1", "question": "Loja oficial: preços", "kind": "activation",
+                "answer": "LOJA OFICIAL (na pista, perto da feirinha). Seda Papelito R$ 5.",
+                "image_url": "https://bucket/loja.jpg"}
+        ia.return_value = {"tipo": "relato", "urgencia": "Neutro", "ficha": loja}
+        store = FakeStore()
+        worker.process_inbox(store, _message(content="onde tem seda?"))
+        self.assertEqual([r for r in store.responses if isinstance(r, tuple)], [])
+        self.assertIn("perto da feirinha", store.response[1])
+
+    @mock.patch("server.triar_mensagem_ia")
+    def test_quanto_custa_a_seda_manda_a_arte(self, ia):
+        loja = {"id": "f1", "question": "Loja oficial: preços", "kind": "activation",
+                "answer": "LOJA OFICIAL (na pista, perto da feirinha). Seda Papelito R$ 5.",
+                "image_url": "https://bucket/loja.jpg"}
+        ia.return_value = {"tipo": "relato", "urgencia": "Neutro", "ficha": loja}
+        store = FakeStore()
+        worker.process_inbox(store, _message(content="quanto custa a seda?"))
+        self.assertEqual(store.responses, [("imagem", "https://bucket/loja.jpg", "", 42)])
+
+    def test_pergunta_sobre_app(self):
+        for texto in ("qual o app de vocês?", "onde baixo o aplicativo?", "tem app?", "me manda o link do app", "cadê o app"):
+            self.assertTrue(server.pergunta_sobre_app(texto), texto)
+        for texto in ("o app não abre", "o aplicativo travou", "acabou o gelo", "quanto custa o copo?"):
+            self.assertFalse(server.pergunta_sobre_app(texto), texto)
+
+    @mock.patch("server.triar_mensagem_ia")
+    def test_qual_o_app_responde_com_o_link_sem_ia_e_sem_chamado(self, ia):
+        store = FakeStore()
+        with mock.patch.object(server, "_bot_config", return_value={"settings": {"appUrl": "https://apps.apple.com/br/app/x"}, "rules": []}):
+            worker.process_inbox(store, _message(content="qual o app de vocês?"))
+        ia.assert_not_called()
+        self.assertIsNone(store.feedback)
+        self.assertIn("https://apps.apple.com/br/app/x", store.response[1])
+        self.assertNotIn("não tenho", store.response[1].lower())
+
+    def test_sem_link_cadastrado_nao_inventa(self):
+        store = FakeStore()
+        with mock.patch.object(server, "_bot_config", return_value={"settings": {"appUrl": "https://app.nodedata.com.br/"}, "rules": []}):
+            worker.process_inbox(store, _message(content="qual o app de vocês?"))
+        self.assertNotIn("http", store.response[1])
+        self.assertIn("equipe", store.response[1])
+
+    def test_simulador_tambem_responde_o_app(self):
+        with mock.patch.object(server, "moderar_texto", return_value={"bloquear": False, "motivo": None}), \
+                mock.patch.object(server, "_bot_config", return_value={"settings": {"appUrl": "https://apps.apple.com/br/app/x"}, "rules": []}), \
+                mock.patch.object(server, "triar_mensagem") as triagem:
+            r = server._simular("qual o app de vocês?", None)
+        triagem.assert_not_called()
+        self.assertIn("https://apps.apple.com/br/app/x", r["reply"])
+        self.assertFalse(r["createsCard"])
