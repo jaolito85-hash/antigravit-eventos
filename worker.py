@@ -36,8 +36,10 @@ from protecao import (
 from server import (
     _classify,
     _compose_reply,
+    _fichas_ativas,
     _is_greeting,
     _extract_sector,
+    _normalize,
     classificar_categoria,
     _sector_prompt,
     _setores_ativos,
@@ -126,6 +128,58 @@ _NOME_DO_LUGAR = {
     # diz "não tô bem" não está no ambulatório, e "em qual ambulatório?"
     # (25/09) era pergunta sem sentido. Nesses casos vale "onde você está".
 }
+
+
+# Depois da arte específica (cervejas, Red Bull, drinks) o Tuca oferece o
+# cardápio geral de bebidas. Pedido do Joao Marcos em 25/09: a pessoa pergunta
+# o preço da água, recebe a arte certa, e aí pode pedir o completo.
+PERGUNTA_CARDAPIO_COMPLETO = (
+    "Quer o cardápio completo de bebidas? Responde *QUERO* que eu te mando 🍹"
+)
+# A ficha do cardápio geral é marcada pelo escopo, cadastrado no painel.
+ESCOPO_CARDAPIO_GERAL = "cardapio-geral"
+_QUER_SIM = re.compile(
+    r"^(?:sim|s|ss|quero|quero sim|sim quero|sim por favor|pode|pode mandar|pode ser|"
+    r"manda|manda ai|manda sim|me manda|claro|bora|isso|vai|ok|okay|por favor|pfv|pf|"
+    r"cardapio|o cardapio|cardapio completo|quero o cardapio|manda o cardapio|"
+    r"quero o completo|o completo)[\s!.]*$"
+)
+
+
+def ficha_cardapio_geral() -> dict[str, Any] | None:
+    """A ficha publicada com escopo cardapio-geral e arte, ou None."""
+
+    try:
+        fichas = _fichas_ativas()
+    except Exception:  # noqa: BLE001 - sem base, sem oferta
+        return None
+    for ficha in fichas:
+        if (
+            str(ficha.get("scope") or "").strip().lower() == ESCOPO_CARDAPIO_GERAL
+            and str(ficha.get("image_url") or "").strip()
+        ):
+            return ficha
+    return None
+
+
+def _quer_cardapio_completo(store: EventStore, sender_hash: str, content: str) -> bool:
+    """A pessoa acabou de ouvir "quer o cardápio completo?" e disse que sim.
+
+    Só vale com a pergunta como última fala do Tuca: "sim" solto continua
+    sendo conversa, e "quero" sem contexto vai para a triagem.
+    """
+
+    if not _QUER_SIM.match(_normalize(content).strip()):
+        return False
+    try:
+        thread = store.conversation_thread(sender_hash, limit=6)
+    except Exception:  # noqa: BLE001 - sem histórico, sem contexto
+        return False
+    ultima = next(
+        (m for m in reversed((thread or {}).get("messages") or []) if m.get("direction") == "out"),
+        None,
+    )
+    return bool(ultima) and "cardapio completo" in _normalize(str(ultima.get("content") or ""))
 
 
 def pergunta_onde(lugar: str | None) -> str:
@@ -538,6 +592,19 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             logger.info("Mensagem sem texto: convite enviado sem triagem")
             return
 
+        # "Quero" logo depois de "quer o cardápio completo?": vai a arte do
+        # cardápio geral, sem triagem e sem chamado.
+        if _quer_cardapio_completo(store, sender_hash, content):
+            geral = ficha_cardapio_geral()
+            if geral:
+                if pode_responder:
+                    store.enqueue_image(
+                        message, str(geral["image_url"]), caption="", feedback_id=None,
+                    )
+                store.finish_inbox(message_id, "ignored")
+                logger.info("Cardápio completo enviado a pedido")
+                return
+
         def _bloquear_conteudo(motivo: str, aviso: str) -> None:
             """Registra o strike, avisa uma vez e encerra a mensagem."""
 
@@ -713,6 +780,11 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 store.enqueue_image(
                     message, banner, caption="", feedback_id=feedback_id,
                 )
+                # A arte específica de bebida vem com o convite para o
+                # cardápio completo. O próprio geral não se oferece.
+                geral = ficha_cardapio_geral() if ficha.get("kind") == "bar" else None
+                if geral and str(ficha.get("scope") or "").strip().lower() != ESCOPO_CARDAPIO_GERAL:
+                    store.enqueue_text(message, PERGUNTA_CARDAPIO_COMPLETO, feedback_id)
         store.finish_inbox(message_id)
         if not pode_responder:
             logger.info(

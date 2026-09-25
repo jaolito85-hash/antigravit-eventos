@@ -28,6 +28,14 @@ FICHA_COM_CABECALHO = {
     "image_url": "https://bucket/cardapio.png",
     "kind": "food",
 }
+FICHA_GERAL = {
+    "id": "f4",
+    "question": "Cardápio geral de bebidas",
+    "answer": "Água R$ 8, Budweiser R$ 15...",
+    "image_url": "https://bucket/cardapio-geral.jpg",
+    "kind": "bar",
+    "scope": "cardapio-geral",
+}
 FICHA_SEM_FOTO = {
     "id": "f3",
     "question": "Que horas abre o portão?",
@@ -151,6 +159,29 @@ class FormatoDaRespostaTests(unittest.TestCase):
         self.assertNotIn("Cardápio", store.textos[0])
         self.assertIn("destacamos", store.textos[0])
 
+    def test_arte_de_bebida_vem_com_convite_para_o_cardapio_completo(self):
+        """Cervejas, Red Bull ou drinks: vai a arte e, depois, "quer o cardápio completo?"."""
+
+        cervejas = {"id": "f5", "question": "Cervejas: preços", "answer": "Budweiser R$ 15",
+                    "image_url": "https://bucket/cervejas.jpg", "kind": "bar", "scope": None}
+        with mock.patch.object(worker, "ficha_cardapio_geral", return_value=FICHA_GERAL):
+            store = self._rodar(cervejas, "quanto custa a budweiser?")
+        self.assertEqual([i["url"] for i in store.imagens], ["https://bucket/cervejas.jpg"])
+        self.assertEqual(store.textos, [worker.PERGUNTA_CARDAPIO_COMPLETO])
+
+    def test_cardapio_geral_nao_se_oferece(self):
+        with mock.patch.object(worker, "ficha_cardapio_geral", return_value=FICHA_GERAL):
+            store = self._rodar(FICHA_GERAL, "qual o cardápio de bebidas?")
+        self.assertEqual([i["url"] for i in store.imagens], [FICHA_GERAL["image_url"]])
+        self.assertEqual(store.textos, [])
+
+    def test_sem_cardapio_geral_publicado_nao_ha_convite(self):
+        cervejas = {"id": "f5", "question": "Cervejas: preços", "answer": "Budweiser R$ 15",
+                    "image_url": "https://bucket/cervejas.jpg", "kind": "bar", "scope": None}
+        with mock.patch.object(worker, "ficha_cardapio_geral", return_value=None):
+            store = self._rodar(cervejas, "quanto custa a budweiser?")
+        self.assertEqual(store.textos, [])
+
     def test_ficha_sem_foto_segue_como_sempre(self):
         """Quem não tem imagem continua no caminho antigo, com resposta em texto."""
 
@@ -163,3 +194,56 @@ class FormatoDaRespostaTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CardapioCompletoTests(unittest.TestCase):
+    """"Quero" logo depois da pergunta manda o cardápio geral; sem a pergunta, segue normal."""
+
+    def setUp(self):
+        for alvo in ("generate_ai_response", "classificar_com_ia"):
+            p = mock.patch.object(server, alvo, lambda *a, **k: None)
+            p.start()
+            self.addCleanup(p.stop)
+        p = mock.patch.object(worker, "moderar_texto", return_value=LIBERADO)
+        p.start()
+        self.addCleanup(p.stop)
+        p = mock.patch.object(worker, "ficha_cardapio_geral", return_value=FICHA_GERAL)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def _store(self, ultima_fala_do_tuca):
+        store = FakeStore()
+        store.conversation_thread = lambda _h, limit=6: {"messages": [
+            {"direction": "in", "content": "quanto custa a budweiser?"},
+            {"direction": "out", "content": ultima_fala_do_tuca},
+            {"direction": "in", "content": "quero"},
+        ]}
+        return store
+
+    def test_quero_depois_da_pergunta_manda_o_geral(self):
+        store = self._store(worker.PERGUNTA_CARDAPIO_COMPLETO)
+        with mock.patch.object(server, "triar_mensagem_ia") as triagem:
+            for resposta in ("quero", "Sim!", "manda", "pode mandar", "o cardápio"):
+                store.imagens.clear()
+                process_inbox(store, _mensagem(resposta))
+                self.assertEqual([i["url"] for i in store.imagens], [FICHA_GERAL["image_url"]], resposta)
+        triagem.assert_not_called()
+        self.assertEqual(store.textos, [])
+
+    def test_quero_sem_a_pergunta_antes_segue_o_fluxo_normal(self):
+        store = self._store("Tô por aqui, pode contar o que quiser sobre o evento")
+        with mock.patch.object(
+            server, "triar_mensagem_ia",
+            return_value={"tipo": "conversa", "urgencia": "Neutro", "ficha": None},
+        ), mock.patch.object(worker, "compose_smalltalk", lambda *a, **k: "OI"):
+            process_inbox(store, _mensagem("quero"))
+        self.assertEqual(store.imagens, [])
+
+    def test_nao_depois_da_pergunta_nao_manda_nada_de_cardapio(self):
+        store = self._store(worker.PERGUNTA_CARDAPIO_COMPLETO)
+        with mock.patch.object(
+            server, "triar_mensagem_ia",
+            return_value={"tipo": "conversa", "urgencia": "Neutro", "ficha": None},
+        ), mock.patch.object(worker, "compose_smalltalk", lambda *a, **k: "OI"):
+            process_inbox(store, _mensagem("não, valeu"))
+        self.assertEqual(store.imagens, [])
