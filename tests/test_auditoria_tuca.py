@@ -138,10 +138,13 @@ class AuditoriaTests(unittest.TestCase):
             result=server._compose_reply('pergunta','Evento','Neutro',None,False,known={'answer':'Resposta oficial.'})
         self.assertEqual('Resposta oficial.',result)
 
-    def test_saida_ia_sem_confirmacao_recebe_confirmacao(self):
+    def test_saida_ia_sem_confirmacao_sai_como_veio(self):
+        # O sufixo automático "seu chamado já foi enviado" foi retirado em
+        # 25/09: colado a uma resposta dada ele irritava e soava a mentira. O
+        # prompt já manda a IA dizer isso quando ela não tem a resposta.
         with mock.patch.object(server,'generate_ai_response',return_value='Essa eu não sei responder.'):
             result=server._compose_reply('wifi','Evento','Neutro',None,False,known=None)
-        self.assertIn('chamado já foi enviado',result)
+        self.assertEqual('Essa eu não sei responder.',result)
 
     def test_saida_ia_promessa_e_rejeitada(self):
         client=mock.Mock()

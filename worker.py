@@ -34,6 +34,7 @@ from protecao import (
 # O comportamento do bot vive no server para o simulador do painel usar
 # exatamente a mesma decisao que o WhatsApp recebe.
 from server import (
+    FALAS_NO_HISTORICO,
     _classify,
     _compose_reply,
     _fichas_ativas,
@@ -41,6 +42,7 @@ from server import (
     _extract_sector,
     _normalize,
     classificar_categoria,
+    historico_em_texto,
     pergunta_de_lugar,
     pergunta_sobre_app,
     resposta_sobre_app,
@@ -202,34 +204,26 @@ AVISO_LOCALIZACAO_ILEGIVEL = (
 )
 
 
-def _contexto(store: EventStore, sender_hash: str, atual: str) -> str:
+def _contexto(store: EventStore, sender_hash: str, atual: str, bruto: str = "") -> str:
     """As últimas falas, para a IA entender continuação e não se apresentar de novo.
 
     Sem isso cada mensagem nasce do zero: "cadê você?" depois do oi vira
-    outra apresentação. A mensagem atual sai da lista, ela já vai no prompt.
+    outra apresentação, e "onde eu compro?" depois de "tem seda?" vira uma
+    pergunta sem assunto. É montado uma vez por mensagem e vai para a
+    triagem e para a resposta: toda decisão vê a mesma conversa. A mensagem
+    atual sai da lista, ela já vai no prompt.
     """
 
     buscar = getattr(store, "conversation_thread", None)
     if not buscar:
         return ""
     try:
-        thread = buscar(sender_hash, limit=8)
+        thread = buscar(sender_hash, limit=FALAS_NO_HISTORICO + 2)
     except Exception:  # noqa: BLE001 - sem histórico a resposta segue
         return ""
-    linhas = []
-    for item in (thread or {}).get("messages") or []:
-        texto = str(item.get("content") or "").strip()
-        if not texto:
-            continue
-        # O histórico entra no prompt como texto solto, fora da tag que marca
-        # a mensagem do participante como dado. Quem fechou a tag na mensagem
-        # anterior não pode reabrir o bloco de instruções pela conversa.
-        texto = re.sub(r"</?\s*participant\s*>", " ", texto, flags=re.IGNORECASE)
-        quem = "Pessoa" if item.get("direction") == "in" else "Tuca"
-        linhas.append(f"{quem}: {texto[:400]}")
-    if linhas and atual and linhas[-1] == f"Pessoa: {atual.strip()[:400]}":
-        linhas.pop()
-    return "\n".join(linhas[-6:])
+    return historico_em_texto(
+        (thread or {}).get("messages") or [], atual=atual, bruto=bruto,
+    )
 
 
 def _processar_enxuto(
@@ -649,6 +643,12 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         if not ia_ligada:
             logger.warning("Inundação em curso: IA desligada neste chamado")
 
+        # As últimas falas desta pessoa, montadas uma vez: a triagem e a
+        # resposta leem a mesma conversa. Antes só a resposta tinha memória,
+        # e a triagem decidia no escuro: "onde eu compro?" depois de "tem
+        # seda?" abria chamado genérico com o link do app (25/09).
+        historico = _contexto(store, sender_hash, content, raw_content)
+
         # A IA decide se isso e conversa ou relato; a lista de palavras do
         # server so entra se ela estiver fora do ar ou desligada.
         #
@@ -656,7 +656,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # QR so acompanha a primeira mensagem de quem escaneou: audio nunca
         # carrega a tag, e ninguem volta na placa para escanear de novo.
         triagem = (
-            triar_mensagem(content, localizar=not sector)
+            triar_mensagem(content, localizar=not sector, historico=historico)
             if ia_ligada
             else triar_mensagem_sem_ia(content, setores=None if sector else _setores_ativos())
         )
@@ -676,7 +676,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 content, "Experiência Geral", triagem.get("urgencia") or "Neutro",
                 sector, transcribed, known=triagem.get("ficha"), usar_ia=ia_ligada,
                 chamado_registrado=False,
-                historico=_contexto(store, sender_hash, content),
+                historico=historico,
             )
             if sector:
                 resposta += f"\n\n{_sector_prompt(sector)}"
@@ -692,8 +692,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             # inteira a cada oi é o que esgota o limite de mensagens.
             ja_falou = store.recent_sender_count(sender_hash, JANELA_MINUTOS) > 1
             resposta = compose_smalltalk(
-                content, ja_falou=ja_falou, usar_ia=ia_ligada,
-                historico=_contexto(store, sender_hash, content),
+                content, ja_falou=ja_falou, usar_ia=ia_ligada, historico=historico,
             )
             if sector:
                 resposta += f"\n\n{_sector_prompt(sector)}"
@@ -768,7 +767,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 resposta = _compose_reply(
                     content, category, urgency, localizado, transcribed,
                     known=triagem.get("ficha"), usar_ia=ia_ligada,
-                    historico=_contexto(store, sender_hash, content),
+                    historico=historico,
                 )
                 # Chamado que pede equipe sem setor cravado: o Tuca pergunta em
                 # vez de mandar a equipe procurar o festival inteiro. Se a

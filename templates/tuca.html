@@ -1091,6 +1091,14 @@
             const content = input.value.trim();
             if (!content) return;
 
+            // As últimas bolhas vão junto como memória, igual ao histórico que o
+            // worker lê do banco: "onde eu compro?" depois de "tem seda?" precisa
+            // ser entendido aqui do mesmo jeito que no WhatsApp.
+            const historico = conversa
+                .filter(item => (item.tipo === 'me' || item.tipo === 'bot') && item.texto)
+                .slice(-10)
+                .map(item => ({ quem: item.tipo, texto: String(item.texto).slice(0, 400) }));
+
             document.getElementById('vazio').style.display = 'none';
             bolha('me', content);
             lembrar({ tipo: 'me', texto: content });
@@ -1104,7 +1112,8 @@
                     body: JSON.stringify({
                         content,
                         setor: document.getElementById('setor').value || null,
-                        rascunho: document.getElementById('modo').value === 'rascunho'
+                        rascunho: document.getElementById('modo').value === 'rascunho',
+                        historico
                     })
                 });
                 const data = await res.json();
