@@ -114,5 +114,26 @@ class CarinhaTristeTests(unittest.TestCase):
         self.assertIn("one caring emoji", system)
 
 
+class AssuntoMaisRecenteTests(unittest.TestCase):
+    def test_prompt_prende_a_continuacao_ao_assunto_mais_recente_e_nao_copia_fato_do_historico(self):
+        # 25/09 17:45: seda, "valeu", bebidas (arte) e "sabe onde compra?" voltou
+        # para a seda, copiada do histórico, com a ficha das bebidas na mão.
+        cliente = _ia_respondendo("As bebidas você compra nos bares do festival 🍹")
+        historico = "Pessoa: tem seda?\nTuca: Seda na loja oficial, R$ 5.\nPessoa: quanto custa as bebidas?\nTuca: [mandou a arte: Cardápio geral]"
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}), \
+                mock.patch.object(server, "_openai_chat_client", return_value=cliente), \
+                mock.patch.object(server, "_bot_config", return_value={"settings": {}, "rules": []}), \
+                mock.patch.object(server, "_rules_block", return_value=""), \
+                mock.patch.object(server, "resposta_segura", return_value=True):
+            server.generate_ai_response(
+                "sabe onde compra?", "Experiência Geral", "Neutro",
+                official_answer="Bebidas à venda nos bares.", official_kind="bar", historico=historico,
+            )
+        pedido = cliente.chat.completions.create.call_args.kwargs["messages"][1]["content"]
+        self.assertIn("MOST RECENT subject", pedido)
+        self.assertIn("never copied from the history", pedido)
+        self.assertNotIn("after talking about seda is about seda", pedido)
+
+
 if __name__ == "__main__":
     unittest.main()
