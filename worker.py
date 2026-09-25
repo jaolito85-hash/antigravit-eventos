@@ -7,7 +7,7 @@ import os
 import re
 import signal
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from event_store import SEM_LEGENDA, EventStore
@@ -87,6 +87,11 @@ LOCALIZACAO_JANELA_MINUTOS = 60
 # pediu essa janela em 23/09/2026 porque "a rotatividade é gigante". Passou
 # disso, o chamado entra sem lugar e o Tuca pergunta onde a pessoa está.
 QR_RECENTE_MINUTOS = 5
+
+# Arte (cardápio, line-up, loja) mandada dentro desta janela não vai de novo
+# para a mesma pessoa: a pergunta seguinte sobre o mesmo assunto ("quanto
+# custa?") é respondida em texto, a partir da ficha.
+ARTE_RECENTE_MINUTOS = 30
 
 # As urgências em que faltar o lugar atrapalha de verdade. São as mesmas que
 # acendem pino no telão: sem elas o chamado não vira deslocamento de equipe.
@@ -204,26 +209,78 @@ AVISO_LOCALIZACAO_ILEGIVEL = (
 )
 
 
-def _contexto(store: EventStore, sender_hash: str, atual: str, bruto: str = "") -> str:
+def _conversa(store: EventStore, sender_hash: str) -> list[dict[str, Any]]:
+    """As últimas mensagens desta pessoa, nos dois sentidos, lidas uma vez."""
+
+    buscar = getattr(store, "conversation_thread", None)
+    if not buscar:
+        return []
+    try:
+        thread = buscar(sender_hash, limit=FALAS_NO_HISTORICO + 2)
+    except Exception:  # noqa: BLE001 - sem histórico a resposta segue
+        return []
+    return list((thread or {}).get("messages") or [])
+
+
+def _artes_cadastradas() -> dict[str, str]:
+    """Endereço da imagem -> título da ficha, para nomear a arte no histórico."""
+
+    try:
+        return {
+            str(f.get("image_url") or "").strip(): str(f.get("question") or "").strip()
+            for f in _fichas_ativas()
+            if str(f.get("image_url") or "").strip()
+        }
+    except Exception:  # noqa: BLE001 - sem a lista, a arte fica sem nome
+        return {}
+
+
+def _contexto(
+    store: EventStore, sender_hash: str, atual: str, bruto: str = "",
+    mensagens: list[dict[str, Any]] | None = None,
+) -> str:
     """As últimas falas, para a IA entender continuação e não se apresentar de novo.
 
     Sem isso cada mensagem nasce do zero: "cadê você?" depois do oi vira
     outra apresentação, e "onde eu compro?" depois de "tem seda?" vira uma
     pergunta sem assunto. É montado uma vez por mensagem e vai para a
     triagem e para a resposta: toda decisão vê a mesma conversa. A mensagem
-    atual sai da lista, ela já vai no prompt.
+    atual sai da lista, ela já vai no prompt. `mensagens` é a conversa já
+    lida por `_conversa`; sem ela, lê aqui.
     """
 
-    buscar = getattr(store, "conversation_thread", None)
-    if not buscar:
-        return ""
-    try:
-        thread = buscar(sender_hash, limit=FALAS_NO_HISTORICO + 2)
-    except Exception:  # noqa: BLE001 - sem histórico a resposta segue
-        return ""
+    if mensagens is None:
+        mensagens = _conversa(store, sender_hash)
     return historico_em_texto(
-        (thread or {}).get("messages") or [], atual=atual, bruto=bruto,
+        mensagens, atual=atual, bruto=bruto, artes=_artes_cadastradas(),
     )
+
+
+def _artes_ja_enviadas(mensagens: list[dict[str, Any]], minutos: int = ARTE_RECENTE_MINUTOS) -> set[str]:
+    """Imagens que o Tuca mandou a esta pessoa há pouco.
+
+    Em 25/09 "tem seda?", "qto custa?" e "quanto custa?" receberam a mesma
+    arte três vezes seguidas: a memória achou a ficha certa, e a regra da
+    imagem repetiu a imagem. Quem já tem a arte na tela quer a resposta em
+    texto. Data ilegível conta como recente: repetir é pior que escrever.
+    """
+
+    limite = datetime.now(timezone.utc) - timedelta(minutes=minutos)
+    recentes: set[str] = set()
+    for item in mensagens or []:
+        url = str(item.get("media_url") or "").strip()
+        if item.get("direction") != "out" or not url:
+            continue
+        quando = str(item.get("at") or "").strip()
+        try:
+            momento = datetime.fromisoformat(quando.replace("Z", "+00:00"))
+            if momento.tzinfo is None:
+                momento = momento.replace(tzinfo=timezone.utc)
+        except ValueError:
+            momento = None
+        if momento is None or momento >= limite:
+            recentes.add(url)
+    return recentes
 
 
 def _processar_enxuto(
@@ -643,11 +700,14 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         if not ia_ligada:
             logger.warning("Inundação em curso: IA desligada neste chamado")
 
-        # As últimas falas desta pessoa, montadas uma vez: a triagem e a
+        # As últimas falas desta pessoa, lidas uma vez: a triagem e a
         # resposta leem a mesma conversa. Antes só a resposta tinha memória,
         # e a triagem decidia no escuro: "onde eu compro?" depois de "tem
-        # seda?" abria chamado genérico com o link do app (25/09).
-        historico = _contexto(store, sender_hash, content, raw_content)
+        # seda?" abria chamado genérico com o link do app (25/09). A mesma
+        # leitura diz que artes já foram mandadas, para não repetir.
+        conversa = _conversa(store, sender_hash)
+        historico = _contexto(store, sender_hash, content, raw_content, mensagens=conversa)
+        artes_recentes = _artes_ja_enviadas(conversa)
 
         # A IA decide se isso e conversa ou relato; a lista de palavras do
         # server so entra se ela estiver fora do ar ou desligada.
@@ -754,8 +814,17 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # não pode voltar com o cardápio de cervejas: visto em 25/09, quando
         # o gatilho "cerveja" da ficha do cardápio pegou um relato de falta.
         # Pergunta de lugar ("onde tem seda?") quer o lugar, não a arte com
-        # preço: vai texto, montado da ficha, que diz onde se vende.
-        manda_banner = bool(banner) and urgency == "Neutro" and not pergunta_de_lugar(content)
+        # preço: vai texto, montado da ficha, que diz onde se vende. Arte
+        # que a pessoa acabou de receber também não vai de novo: "qto
+        # custa?" depois da arte da seda é respondido em texto (25/09).
+        manda_banner = (
+            bool(banner)
+            and urgency == "Neutro"
+            and not pergunta_de_lugar(content)
+            and banner not in artes_recentes
+        )
+        if banner and banner in artes_recentes and urgency == "Neutro":
+            logger.info("Arte já enviada há pouco: resposta em texto a partir da ficha")
 
         if pode_responder:
             # Ficha com imagem responde SÓ pela imagem: a arte já é a resposta

@@ -1289,7 +1289,7 @@ class EventStore:
         if recipient:
             outbound = (
                 client.table("outbound_messages")
-                .select("id,content,origin,delivery_status,created_at,sent_at")
+                .select("id,content,media_url,origin,delivery_status,created_at,sent_at")
                 .eq("event_id", event_id)
                 .eq("recipient", recipient)
                 .order("created_at", desc=True)
@@ -1310,6 +1310,9 @@ class EventStore:
             {
                 "direction": "out",
                 "content": row.get("content"),
+                # A arte enviada fica identificável: o worker precisa saber
+                # que já mandou aquela imagem para não repetir (25/09).
+                "media_url": row.get("media_url"),
                 "origin": row.get("origin") or "bot",
                 "status": row.get("delivery_status"),
                 "at": row.get("sent_at") or row.get("created_at"),
