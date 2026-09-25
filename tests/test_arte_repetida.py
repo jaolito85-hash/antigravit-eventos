@@ -42,6 +42,15 @@ class HistoricoComNomeDaArteTests(unittest.TestCase):
         texto = server.historico_em_texto(falas, artes={ARTE: SEDA["question"]})
         self.assertEqual(texto, f"Pessoa: tem seda?\nTuca: [mandou a arte: {SEDA['question']}]")
 
+    def test_arte_com_legenda_mostra_a_arte_e_a_legenda(self):
+        falas = [{"direction": "out", "content": "Quer o cardápio completo? Responde QUERO", "media_url": ARTE}]
+        texto = server.historico_em_texto(falas, artes={ARTE: "Coco Leve: preços"})
+        self.assertEqual(texto, "Tuca: [mandou a arte: Coco Leve: preços] Quer o cardápio completo? Responde QUERO")
+
+    def test_foto_da_pessoa_nao_vira_arte_do_tuca(self):
+        falas = [{"direction": "in", "content": "olha isso", "media_url": "https://cdn/foto.jpg"}]
+        self.assertEqual(server.historico_em_texto(falas, artes={}), "Pessoa: olha isso")
+
     def test_arte_desconhecida_continua_com_a_descricao_generica(self):
         falas = [{"direction": "out", "content": SEM_LEGENDA, "media_url": "https://outra"}]
         self.assertEqual(server.historico_em_texto(falas, artes={ARTE: "x"}), f"Tuca: {server.IMAGEM_NO_HISTORICO}")

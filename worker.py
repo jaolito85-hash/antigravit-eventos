@@ -175,8 +175,10 @@ def ficha_cardapio_geral() -> dict[str, Any] | None:
 def _quer_cardapio_completo(store: EventStore, sender_hash: str, content: str) -> bool:
     """A pessoa acabou de ouvir "quer o cardápio completo?" e disse que sim.
 
-    Só vale com a pergunta como última fala do Tuca: "sim" solto continua
-    sendo conversa, e "quero" sem contexto vai para a triagem.
+    Só vale com a pergunta entre as últimas falas do Tuca: "sim" solto
+    continua sendo conversa, e "quero" sem contexto vai para a triagem.
+    Olha as três últimas, não só a última, porque a foto e o texto saem em
+    mensagens separadas e a hora de envio pode inverter a ordem (25/09).
     """
 
     if not _QUER_SIM.match(_normalize(content).strip()):
@@ -185,11 +187,10 @@ def _quer_cardapio_completo(store: EventStore, sender_hash: str, content: str) -
         thread = store.conversation_thread(sender_hash, limit=6)
     except Exception:  # noqa: BLE001 - sem histórico, sem contexto
         return False
-    ultima = next(
-        (m for m in reversed((thread or {}).get("messages") or []) if m.get("direction") == "out"),
-        None,
+    do_tuca = [m for m in (thread or {}).get("messages") or [] if m.get("direction") == "out"]
+    return any(
+        "cardapio completo" in _normalize(str(m.get("content") or "")) for m in do_tuca[-3:]
     )
-    return bool(ultima) and "cardapio completo" in _normalize(str(ultima.get("content") or ""))
 
 
 def pergunta_onde(lugar: str | None) -> str:
@@ -860,14 +861,19 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                     resposta += f"\n\n{pergunta_onde(triagem.get('lugar'))}"
                 store.enqueue_text(message, resposta, feedback_id)
             if manda_banner:
-                store.enqueue_image(
-                    message, banner, caption="", feedback_id=feedback_id,
-                )
                 # A arte específica de bebida vem com o convite para o
-                # cardápio completo. O próprio geral não se oferece.
+                # cardápio completo, como LEGENDA da própria imagem: numa
+                # mensagem só a ordem é garantida. Em duas, a Meta entregava
+                # o texto antes da foto (25/09, água de coco), e o "quero"
+                # seguinte não achava a pergunta como última fala. O próprio
+                # geral não se oferece.
                 geral = ficha_cardapio_geral() if ficha.get("kind") == "bar" else None
-                if geral and str(ficha.get("scope") or "").strip().lower() != ESCOPO_CARDAPIO_GERAL:
-                    store.enqueue_text(message, PERGUNTA_CARDAPIO_COMPLETO, feedback_id)
+                oferece = bool(geral) and str(ficha.get("scope") or "").strip().lower() != ESCOPO_CARDAPIO_GERAL
+                store.enqueue_image(
+                    message, banner,
+                    caption=PERGUNTA_CARDAPIO_COMPLETO if oferece else "",
+                    feedback_id=feedback_id,
+                )
         store.finish_inbox(message_id)
         if not pode_responder:
             logger.info(

@@ -783,9 +783,13 @@ def historico_em_texto(
         texto = str(item.get("content") or "").strip()
         if not texto:
             continue
-        if texto == SEM_LEGENDA:
-            titulo = (artes or {}).get(str(item.get("media_url") or "").strip())
-            texto = f"[mandou a arte: {titulo}]" if titulo else IMAGEM_NO_HISTORICO
+        url = str(item.get("media_url") or "").strip()
+        if item.get("direction") == "out" and (url or texto == SEM_LEGENDA):
+            titulo = (artes or {}).get(url)
+            descricao = f"[mandou a arte: {titulo}]" if titulo else IMAGEM_NO_HISTORICO
+            # Legenda junto da arte (a pergunta do cardápio completo) fica
+            # depois da descrição: a IA vê que a arte foi e o que foi dito.
+            texto = descricao if texto == SEM_LEGENDA else f"{descricao} {texto}"
         texto = TAGS_DE_PROMPT.sub(" ", texto).strip()
         quem = "Pessoa" if item.get("direction") == "in" else "Tuca"
         linhas.append(f"{quem}: {texto[:400]}")

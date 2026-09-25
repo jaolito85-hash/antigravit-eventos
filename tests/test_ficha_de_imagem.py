@@ -159,20 +159,24 @@ class FormatoDaRespostaTests(unittest.TestCase):
         self.assertNotIn("Cardápio", store.textos[0])
         self.assertIn("destacamos", store.textos[0])
 
-    def test_arte_de_bebida_vem_com_convite_para_o_cardapio_completo(self):
-        """Cervejas, Red Bull ou drinks: vai a arte e, depois, "quer o cardápio completo?"."""
+    def test_arte_de_bebida_vem_com_convite_para_o_cardapio_completo_na_legenda(self):
+        """Cervejas, Red Bull ou drinks: a arte sai com "quer o cardápio completo?" de legenda.
+
+        Numa mensagem só a ordem é garantida. Em duas (foto e depois texto),
+        a Meta entregou o texto antes da foto em 25/09.
+        """
 
         cervejas = {"id": "f5", "question": "Cervejas: preços", "answer": "Budweiser R$ 15",
                     "image_url": "https://bucket/cervejas.jpg", "kind": "bar", "scope": None}
         with mock.patch.object(worker, "ficha_cardapio_geral", return_value=FICHA_GERAL):
             store = self._rodar(cervejas, "quanto custa a budweiser?")
-        self.assertEqual([i["url"] for i in store.imagens], ["https://bucket/cervejas.jpg"])
-        self.assertEqual(store.textos, [worker.PERGUNTA_CARDAPIO_COMPLETO])
+        self.assertEqual(store.imagens, [{"url": "https://bucket/cervejas.jpg", "caption": worker.PERGUNTA_CARDAPIO_COMPLETO}])
+        self.assertEqual(store.textos, [])
 
     def test_cardapio_geral_nao_se_oferece(self):
         with mock.patch.object(worker, "ficha_cardapio_geral", return_value=FICHA_GERAL):
             store = self._rodar(FICHA_GERAL, "qual o cardápio de bebidas?")
-        self.assertEqual([i["url"] for i in store.imagens], [FICHA_GERAL["image_url"]])
+        self.assertEqual(store.imagens, [{"url": FICHA_GERAL["image_url"], "caption": ""}])
         self.assertEqual(store.textos, [])
 
     def test_sem_cardapio_geral_publicado_nao_ha_convite(self):
@@ -180,6 +184,7 @@ class FormatoDaRespostaTests(unittest.TestCase):
                     "image_url": "https://bucket/cervejas.jpg", "kind": "bar", "scope": None}
         with mock.patch.object(worker, "ficha_cardapio_geral", return_value=None):
             store = self._rodar(cervejas, "quanto custa a budweiser?")
+        self.assertEqual(store.imagens, [{"url": "https://bucket/cervejas.jpg", "caption": ""}])
         self.assertEqual(store.textos, [])
 
     def test_ficha_sem_foto_segue_como_sempre(self):
@@ -229,6 +234,33 @@ class CardapioCompletoTests(unittest.TestCase):
                 self.assertEqual([i["url"] for i in store.imagens], [FICHA_GERAL["image_url"]], resposta)
         triagem.assert_not_called()
         self.assertEqual(store.textos, [])
+
+    def test_quero_vale_mesmo_com_a_foto_chegando_depois_da_pergunta(self):
+        """A foto e o texto saem separados e a hora de envio pode inverter a ordem (25/09)."""
+
+        store = FakeStore()
+        store.conversation_thread = lambda _h, limit=6: {"messages": [
+            {"direction": "in", "content": "tem agua de coco pra vender?"},
+            {"direction": "out", "content": worker.PERGUNTA_CARDAPIO_COMPLETO},
+            {"direction": "out", "content": "[imagem]", "media_url": "https://bucket/coco.jpg"},
+            {"direction": "in", "content": "quero"},
+        ]}
+        with mock.patch.object(server, "triar_mensagem_ia") as triagem:
+            process_inbox(store, _mensagem("quero"))
+        self.assertEqual([i["url"] for i in store.imagens], [FICHA_GERAL["image_url"]])
+        triagem.assert_not_called()
+
+    def test_quero_depois_da_arte_com_a_pergunta_de_legenda(self):
+        store = FakeStore()
+        store.conversation_thread = lambda _h, limit=6: {"messages": [
+            {"direction": "in", "content": "tem agua de coco pra vender?"},
+            {"direction": "out", "content": worker.PERGUNTA_CARDAPIO_COMPLETO, "media_url": "https://bucket/coco.jpg"},
+            {"direction": "in", "content": "quero"},
+        ]}
+        with mock.patch.object(server, "triar_mensagem_ia") as triagem:
+            process_inbox(store, _mensagem("quero"))
+        self.assertEqual([i["url"] for i in store.imagens], [FICHA_GERAL["image_url"]])
+        triagem.assert_not_called()
 
     def test_quero_sem_a_pergunta_antes_segue_o_fluxo_normal(self):
         store = self._store("Tô por aqui, pode contar o que quiser sobre o evento")
