@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from event_store import EventStore
+from event_store import SEM_LEGENDA, EventStore
 from meta_whatsapp import MetaWhatsAppClient, fetch_media, graph_api_version
 from protecao import (
     AUDIO_JANELA_MINUTOS,
@@ -760,10 +760,11 @@ def process_outbox(
         return
     try:
         if message.get("message_type") == "image" and message.get("media_url"):
+            legenda = str(message.get("content") or "").strip()
             provider_message_id = client.send_image(
                 str(message["recipient"]),
                 str(message["media_url"]),
-                caption=str(message.get("content") or ""),
+                caption="" if legenda == SEM_LEGENDA else legenda,
             )
         else:
             provider_message_id = client.send_text(

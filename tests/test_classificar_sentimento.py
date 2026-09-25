@@ -145,6 +145,23 @@ class ClassificarKeywordsTests(unittest.TestCase):
         self.assertEqual(classificar_sentimento("o show tá pegando fogo!!"), "Positivo")
         self.assertEqual(classificar_sentimento("a pista tava pegando fogo, brabo demais"), "Positivo")
 
+    def test_emergencia_em_ingles_e_espanhol_sem_ia(self):
+        """Com a OpenAI fora (24/09, sem créditos), a reserva não pode dar Neutro a isto."""
+
+        for frase in (
+            "estou sendo assediada por um senhor, estou com medo",
+            "a girl just fainted here, she needs a doctor now",
+            "there is a fight, someone is hurt",
+            "hay una pelea aqui, necesito ayuda",
+        ):
+            with self.subTest(frase=frase):
+                self.assertEqual(classificar_sentimento(frase), "Critico")
+
+    def test_pedido_de_ajuda_sem_ia_e_urgente(self):
+        for frase in ("ajuda", "help", "preciso de ajuda aqui"):
+            with self.subTest(frase=frase):
+                self.assertEqual(classificar_sentimento(frase), "Urgente")
+
     def test_fogo_de_verdade_continua_critico(self):
         self.assertEqual(classificar_sentimento("a barraca tá pegando fogo"), "Critico")
         self.assertEqual(classificar_sentimento("tem fumaça e fogo perto do palco"), "Critico")

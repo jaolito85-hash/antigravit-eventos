@@ -591,6 +591,22 @@ class WorkerTests(unittest.TestCase):
         client.send_text.assert_not_called()
         self.assertEqual(store.sent, ("o1", "wamid.1"))
 
+    def test_banner_sem_legenda_sai_sem_legenda_para_a_meta(self):
+        """O marcador que satisfaz a coluna content nunca vira legenda no WhatsApp."""
+
+        from event_store import SEM_LEGENDA
+
+        store = FakeStore()
+        store.claim_outbox = lambda _m: True
+        store.mark_outbox_sent = lambda *_a: None
+        client = mock.Mock()
+        client.send_image.return_value = "wamid.2"
+        worker.process_outbox(store, client, {
+            "id": "o2", "recipient": "5543", "message_type": "image",
+            "media_url": "https://x/b.jpg", "content": SEM_LEGENDA, "attempts": 0,
+        })
+        client.send_image.assert_called_once_with("5543", "https://x/b.jpg", caption="")
+
     @mock.patch("server.triar_mensagem_ia",
                 return_value={"tipo": "conversa", "urgencia": "Neutro"})
     def test_pergunta_chega_no_modelo_com_o_que_ja_foi_dito(self, _mock_ia):

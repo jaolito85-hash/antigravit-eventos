@@ -32,6 +32,11 @@ def _linha_de_erro(error: Exception) -> str:
     return f"{type(error).__name__}: envio falhou"
 
 
+# Imagem sem legenda: a coluna content não aceita vazio, e este marcador é o
+# que o worker reconhece para não mandar legenda nenhuma à Meta.
+SEM_LEGENDA = "[imagem]"
+
+
 class StoreConfigurationError(RuntimeError):
     """Configuração obrigatória do banco ausente ou inválida."""
 
@@ -667,7 +672,11 @@ class EventStore:
             "channel_account_id": message["channel_account_id"],
             "recipient": message["sender"],
             "message_type": "image",
-            "content": (caption or "")[:1024],
+            # A tabela exige pelo menos um caractere em content. Desde 23/09
+            # o banner vai sem legenda, e o vazio violava a regra: o worker
+            # falhava oito vezes seguidas e a imagem do line-up nunca saía.
+            # O marcador não vira legenda: o envio o descarta.
+            "content": (caption or "").strip()[:1024] or SEM_LEGENDA,
             "media_url": media_url[:500],
             "idempotency_key": f"inbox:{message['id']}:banner",
             "delivery_status": "queued",

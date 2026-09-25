@@ -351,7 +351,14 @@ def classificar_sentimento(texto):
         'droga', 'assalto', 'roubo', 'roubaram', 'briga', 'brigando', 'arma',
         'agressao', 'agressão', 'perigo', 'violencia', 'violência', 'ferido',
         'sangue', 'sangrando', 'emergencia', 'emergência', 'socorro', 'sos',
-        'assédio', 'assedio', 'assediando', 'criança perdida', 'crianca perdida',
+        'assédio', 'assedio', 'assediando', 'assediada', 'assediado', 'assediou',
+        'estupro', 'estuprada', 'estuprou', 'criança perdida', 'crianca perdida',
+        # Inglês e espanhol: sem IA (medido em 24/09 com a conta da OpenAI sem
+        # créditos) "a girl just fainted" e "hay una pelea" caíam em Neutro.
+        'fight', 'fighting', 'fainted', 'passed out', 'unconscious', 'bleeding',
+        'ambulance', 'emergency', 'doctor', 'help me', 'harass', 'harassing',
+        'pelea', 'peleando', 'desmayo', 'desmayó', 'desmayada', 'desmayado',
+        'sangrando', 'ambulancia', 'emergencia', 'acoso', 'acosando', 'ayuda',
         'criança desaparecida', 'crianca desaparecida', 'pisoteio', 'esmagado',
         'esmagada', 'esmagados', 'esmagadas', 'fumaça', 'fumaca',
         # Gírias BR violência
@@ -418,6 +425,9 @@ def classificar_sentimento(texto):
         'ta osso', 'tá osso', 'ta foda', 'tá foda', 'paia', 'zoado',
         'zuado', 'uma bosta', 'uma merda', 'lixo', 'um lixo', 'demora',
         'demorando', 'atrasado', 'sem condição', 'sem condições',
+        # Pedido de ajuda sem dizer o quê: sem IA precisa ao menos abrir
+        # chamado e perguntar onde a pessoa está, em vez de "recebi sua mensagem".
+        'ajuda', 'me ajuda', 'help', 'preciso de ajuda', 'need help',
         # Mal-estar sem a palavra emergência. "tô ansioso pro show" não entra:
         # "ansioso" sozinho é empolgação e a lista positiva pega o resto.
         'não tô bem', 'nao to bem', 'não to bem', 'nao tô bem',
