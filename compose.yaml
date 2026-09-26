@@ -36,6 +36,8 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       ADMIN_USER: ${ADMIN_USER}
       ADMIN_PASS: ${ADMIN_PASS}
+      # Contas extras do painel, uma por pessoa ("nome:senha,outro:senha").
+      ADMIN_USERS: ${ADMIN_USERS:-}
       WORKER_POLL_INTERVAL: ${WORKER_POLL_INTERVAL:-1}
       WORKER_MAX_ATTEMPTS: ${WORKER_MAX_ATTEMPTS:-8}
     volumes:
