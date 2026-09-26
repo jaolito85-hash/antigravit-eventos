@@ -52,8 +52,10 @@ class StoreDoLineup(FakeStore):
     def conversation_thread(self, _h, limit=8):
         return self.thread
 
-    def enqueue_image(self, message, media_url, caption, feedback_id=None, chave="banner"):
+    def enqueue_image(self, message, media_url, caption, feedback_id=None, chave="banner",
+                      atraso_segundos=0):
         self.imagens.append((media_url, caption, chave))
+        self.atrasos = getattr(self, "atrasos", []) + [atraso_segundos]
 
 
 class ArtesDoLineupTests(unittest.TestCase):
@@ -92,6 +94,9 @@ class RespostaDoLineupTests(unittest.TestCase):
         self.assertEqual([i[1] for i in store.imagens[1:]], ["", ""])
         # Uma chave por imagem, senão a fila descarta a segunda como repetição.
         self.assertEqual(len({i[2] for i in store.imagens}), 3)
+        # Espaçadas, para a Meta entregar na ordem (26/09 chegou Hype primeiro).
+        passo = worker.SEGUNDOS_ENTRE_ARTES
+        self.assertEqual(store.atrasos, [0, passo, 2 * passo])
         self.assertEqual(store.responses, [])
         compor.assert_not_called()
 
@@ -123,6 +128,7 @@ class RespostaDoLineupTests(unittest.TestCase):
             worker.process_inbox(store, _message(content="quero"))
         self.assertEqual([i[0] for i in store.imagens], [TROPICAL, LAB])
         self.assertEqual(len({i[2] for i in store.imagens}), 2)
+        self.assertEqual(store.atrasos, [0, worker.SEGUNDOS_ENTRE_ARTES])
         self.assertEqual(store.responses, [])
         self.assertFalse(getattr(store, "feedback", None))  # sem chamado
         triar.assert_not_called()
@@ -150,6 +156,35 @@ class RespostaDoLineupTests(unittest.TestCase):
                 mock.patch.object(worker, "_compose_reply", return_value="Registrei."):
             worker.process_inbox(store, _message(content="briga perto do palco hype"))
         self.assertEqual(store.imagens, [])
+
+
+class FilaEspacadaTests(unittest.TestCase):
+    def _gravar(self, **kw):
+        from event_store import EventStore
+
+        store = EventStore.__new__(EventStore)
+        linhas = []
+        tabela = mock.MagicMock()
+        tabela.upsert.side_effect = lambda row, **_: linhas.append(row) or tabela
+        cliente = mock.MagicMock()
+        cliente.table.return_value = tabela
+        with mock.patch.object(EventStore, "event_id", return_value="ev"), \
+                mock.patch.object(EventStore, "_get_client", return_value=cliente):
+            store.enqueue_image(
+                {"id": "m1", "channel_account_id": "c", "sender": "5543"},
+                TROPICAL, "", **kw,
+            )
+        return linhas[0]
+
+    def test_imagem_com_atraso_so_sai_depois(self):
+        antes = datetime.now(timezone.utc)
+        linha = self._gravar(chave="lineup1", atraso_segundos=3)
+        quando = datetime.fromisoformat(linha["next_attempt_at"])
+        self.assertGreaterEqual((quando - antes).total_seconds(), 2.9)
+        self.assertEqual(linha["idempotency_key"], "inbox:m1:lineup1")
+
+    def test_sem_atraso_fica_com_o_padrao_do_banco(self):
+        self.assertNotIn("next_attempt_at", self._gravar())
 
 
 if __name__ == "__main__":

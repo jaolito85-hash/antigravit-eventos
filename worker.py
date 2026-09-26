@@ -170,6 +170,27 @@ PERGUNTA_LINEUP_COMPLETO = (
 )
 # Ordem das artes na resposta geral: o palco principal primeiro.
 _ORDEM_DOS_PALCOS = ("tropical", "hype", "lab")
+# Espaço entre uma arte e a seguinte, para a Meta entregar na ordem.
+SEGUNDOS_ENTRE_ARTES = 3
+
+
+def _enfileirar_artes(store: EventStore, message: dict[str, Any], artes: list[str],
+                      legenda: str = "", feedback_id: int | None = None) -> None:
+    """Várias artes para a mesma mensagem, na ordem e espaçadas.
+
+    A legenda vai só na primeira. Cada arte tem a própria chave de
+    idempotência e sai SEGUNDOS_ENTRE_ARTES depois da anterior.
+    """
+
+    for ordem, arte in enumerate(artes):
+        extra = (
+            {"chave": f"lineup{ordem}", "atraso_segundos": ordem * SEGUNDOS_ENTRE_ARTES}
+            if ordem else {}
+        )
+        store.enqueue_image(
+            message, arte, caption=legenda if ordem == 0 else "",
+            feedback_id=feedback_id, **extra,
+        )
 
 
 def artes_do_lineup() -> list[str]:
@@ -732,11 +753,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             faltam = [a for a in artes if a not in ja_tem] or artes
             if faltam:
                 if pode_responder:
-                    for ordem, arte in enumerate(faltam):
-                        store.enqueue_image(
-                            message, arte, caption="", feedback_id=None,
-                            chave=f"lineup{ordem}",
-                        )
+                    _enfileirar_artes(store, message, faltam)
                 store.finish_inbox(message_id, "ignored")
                 logger.info("Line-up completo enviado a pedido | artes=%s", len(faltam))
                 return
@@ -955,13 +972,10 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                     # A chamada vai na legenda da primeira arte pelo mesmo
                     # motivo do convite do cardápio: texto solto chegava
                     # depois da foto.
-                    for ordem, arte in enumerate(artes_lineup):
-                        extra = {"chave": f"lineup{ordem}"} if ordem else {}
-                        store.enqueue_image(
-                            message, arte,
-                            caption=CHAMADA_LINEUP if ordem == 0 else "",
-                            feedback_id=feedback_id, **extra,
-                        )
+                    _enfileirar_artes(
+                        store, message, artes_lineup,
+                        legenda=CHAMADA_LINEUP, feedback_id=feedback_id,
+                    )
                 elif ficha.get("kind") == "lineup":
                     outros = [a for a in artes_do_lineup() if a != banner]
                     legenda = CHAMADA_PALCO

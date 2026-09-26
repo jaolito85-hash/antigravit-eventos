@@ -659,6 +659,7 @@ class EventStore:
         caption: str,
         feedback_id: int | None = None,
         chave: str = "banner",
+        atraso_segundos: float = 0,
     ) -> None:
         """Enfileira um banner (imagem pública) para ir depois da resposta em texto.
 
@@ -666,6 +667,12 @@ class EventStore:
         banner não pode derrubá-la nem ser derrubado por ela. Mais de uma
         imagem para a mesma mensagem (o line-up dos três palcos) precisa de
         uma chave por imagem, senão a segunda é descartada como repetição.
+
+        `atraso_segundos` segura a imagem na fila. A Meta baixa cada imagem
+        pelo link antes de entregar, e a que baixa primeiro chega primeiro:
+        em 26/09 o line-up enviado em sequência chegou Hype, Tropical, Lab, e
+        a chamada da legenda do Tropical ficou no meio. A fila espaçada não
+        prende o worker, que segue atendendo os outros enquanto espera.
         """
 
         row = {
@@ -684,6 +691,10 @@ class EventStore:
             "idempotency_key": f"inbox:{message['id']}:{chave}",
             "delivery_status": "queued",
         }
+        if atraso_segundos > 0:
+            row["next_attempt_at"] = (
+                datetime.now(timezone.utc) + timedelta(seconds=atraso_segundos)
+            ).isoformat()
         (
             self._get_client()
             .table("outbound_messages")
