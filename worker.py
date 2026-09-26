@@ -146,6 +146,9 @@ _NOME_DO_LUGAR = {
 PERGUNTA_CARDAPIO_COMPLETO = (
     "Quer o cardápio completo de bebidas? Responde *QUERO* que eu te mando 🍹"
 )
+# Pergunta de disponibilidade ("tem cerveja?") recebe texto e este convite,
+# quando a ficha tem arte (26/09). O "quero" seguinte manda a arte.
+PERGUNTA_ARTE_VALORES = "Quer que eu te mande a arte com os valores? Responde *QUERO* 😉"
 # A ficha do cardápio geral é marcada pelo escopo, cadastrado no painel.
 ESCOPO_CARDAPIO_GERAL = "cardapio-geral"
 _QUER_SIM = re.compile(
@@ -219,7 +222,7 @@ def artes_do_lineup() -> list[str]:
 
 
 def _oferta_aceita(store: EventStore, sender_hash: str, content: str) -> str | None:
-    """Qual convite a pessoa aceitou: "cardapio", "lineup" ou nenhum.
+    """Qual convite a pessoa aceitou: "arte", "cardapio", "lineup" ou nenhum.
 
     Só vale com o convite entre as três últimas falas do Tuca, e vence o mais
     recente: quem pediu o cardápio e depois o line-up quer o line-up.
@@ -234,11 +237,74 @@ def _oferta_aceita(store: EventStore, sender_hash: str, content: str) -> str | N
     do_tuca = [m for m in (thread or {}).get("messages") or [] if m.get("direction") == "out"]
     for fala in reversed(do_tuca[-3:]):
         texto = _normalize(str(fala.get("content") or ""))
+        if "arte com os valores" in texto:
+            return "arte"
         if re.search(r"line ?-?up completo", texto):
             return "lineup"
         if "cardapio completo" in texto:
             return "cardapio"
     return None
+
+
+# A ficha de cada "quer a arte com os valores?", por pessoa. O worker é um
+# processo só, então a memória basta; se ele reiniciar no meio, o "quero"
+# cai na releitura pela triagem, abaixo. Guardar é o que garante a mesma
+# arte: relida, "tem seda?" escolhia às vezes a ficha da tenda de tattoo,
+# que também cita seda (26/09).
+OFERTA_ARTE_MINUTOS = 30
+_ARTES_OFERECIDAS: dict[str, tuple[float, dict[str, Any]]] = {}
+
+
+def _lembrar_oferta(sender_hash: str, ficha: dict[str, Any]) -> None:
+    agora = time.monotonic()
+    for chave, (quando, _f) in list(_ARTES_OFERECIDAS.items()):
+        if agora - quando > OFERTA_ARTE_MINUTOS * 60:
+            _ARTES_OFERECIDAS.pop(chave, None)
+    _ARTES_OFERECIDAS[str(sender_hash)] = (agora, dict(ficha))
+
+
+def _oferta_lembrada(sender_hash: str) -> dict[str, Any] | None:
+    registro = _ARTES_OFERECIDAS.get(str(sender_hash))
+    if not registro or time.monotonic() - registro[0] > OFERTA_ARTE_MINUTOS * 60:
+        return None
+    return registro[1]
+
+
+def _ficha_da_oferta(store: EventStore, sender_hash: str) -> dict[str, Any] | None:
+    """A ficha da arte oferecida em "quer a arte com os valores?".
+
+    A oferta não guarda a ficha: ela é a resposta à pergunta que veio logo
+    antes ("tem cerveja?"). Essa pergunta passa de novo pela triagem junto
+    com a resposta que o Tuca deu, que nomeia o lugar: sem ela, "tem seda?"
+    escolhia a ficha da tenda de tattoo em vez da Loja Oficial (26/09).
+    """
+
+    lembrada = _oferta_lembrada(sender_hash)
+    if lembrada and str(lembrada.get("image_url") or "").strip():
+        return lembrada
+    mensagens = _conversa(store, sender_hash)
+    oferta = next(
+        (i for i in range(len(mensagens) - 1, -1, -1)
+         if mensagens[i].get("direction") == "out"
+         and "arte com os valores" in _normalize(str(mensagens[i].get("content") or ""))),
+        None,
+    )
+    if oferta is None:
+        return None
+    pergunta = next(
+        (str(m.get("content") or "") for m in reversed(mensagens[:oferta])
+         if m.get("direction") == "in" and str(m.get("content") or "").strip()),
+        "",
+    )
+    if not pergunta:
+        return None
+    _codigo, pergunta = _extract_sector(pergunta)
+    historico = historico_em_texto(mensagens[: oferta + 1], artes=_artes_cadastradas())
+    try:
+        ficha = (triar_mensagem(pergunta, historico=historico) or {}).get("ficha") or {}
+    except Exception:  # noqa: BLE001 - sem triagem, sem arte
+        return None
+    return ficha if str(ficha.get("image_url") or "").strip() else None
 
 
 def ficha_cardapio_geral() -> dict[str, Any] | None:
@@ -854,6 +920,22 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # sem chamado. No cardápio, a arte geral; no line-up, os palcos que a
         # pessoa ainda não recebeu.
         oferta = _oferta_aceita(store, sender_hash, content)
+        if oferta == "arte":
+            ofertada = _ficha_da_oferta(store, sender_hash)
+            if ofertada:
+                if pode_responder:
+                    # A arte específica de bebida segue com o convite para o
+                    # cardápio completo, como no pedido direto de preço.
+                    geral = ficha_cardapio_geral() if ofertada.get("kind") == "bar" else None
+                    oferece = bool(geral) and str(ofertada.get("scope") or "").strip().lower() != ESCOPO_CARDAPIO_GERAL
+                    store.enqueue_image(
+                        message, str(ofertada["image_url"]).strip(),
+                        caption=PERGUNTA_CARDAPIO_COMPLETO if oferece else "",
+                        feedback_id=None,
+                    )
+                store.finish_inbox(message_id, "ignored")
+                logger.info("Arte com os valores enviada a pedido")
+                return
         if oferta == "cardapio":
             geral = ficha_cardapio_geral()
             if geral:
@@ -930,6 +1012,15 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         conversa = _conversa(store, sender_hash)
         historico = _contexto(store, sender_hash, content, raw_content, mensagens=conversa)
         artes_recentes = _artes_ja_enviadas(conversa)
+
+        from tuca_intencao import agua_gratis
+        agua = agua_gratis(content, conversa)
+        if agua:
+            if pode_responder:
+                store.enqueue_text(message, agua)
+            store.finish_inbox(message_id, "ignored")
+            return
+
 
         # A IA decide se isso e conversa ou relato; a lista de palavras do
         # server so entra se ela estiver fora do ar ou desligada.
@@ -1054,8 +1145,10 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # tempo negou a arte a quem perguntou de novo 20 minutos depois.
         arte_repetida = bool(banner) and banner in artes_recentes and bool(triagem.get("continuacao"))
         continua_preco = bool(artes_recentes) and bool(re.fullmatch(r"(?:quanto custa|qto custa|qual (?:o )?preco)[?!. ]*", _normalize(content)))
+        from tuca_intencao import permite_arte
         manda_banner = (
             bool(banner)
+            and permite_arte(content, ficha)
             and not continua_preco
             and urgency == "Neutro"
             and not pergunta_de_lugar(content)
@@ -1063,6 +1156,19 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         )
         if arte_repetida and urgency == "Neutro":
             logger.info("Continuação com a arte já enviada: resposta em texto a partir da ficha")
+        # "Tem cerveja?" recebe texto e a pergunta se quer a arte com os
+        # valores (pedido de 26/09). Só quando a pessoa ainda não tem essa
+        # arte na tela; pergunta de lugar, pagamento e água ficam só no texto.
+        from tuca_intencao import intencao
+        oferece_arte = (
+            bool(banner)
+            and not manda_banner
+            and urgency == "Neutro"
+            and ficha.get("kind") != "lineup"
+            and intencao(content) in ("disponibilidade", "informacao")
+            and not pergunta_de_lugar(content)
+            and banner not in artes_recentes
+        )
 
         if pode_responder:
             # Ficha com imagem responde SÓ pela imagem: a arte já é a resposta
@@ -1097,6 +1203,9 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                     and urgency not in ("Critico", "Crítico")
                 ):
                     resposta += f"\n\n{pergunta_onde(triagem.get('lugar'))}"
+                elif oferece_arte:
+                    resposta += f"\n\n{PERGUNTA_ARTE_VALORES}"
+                    _lembrar_oferta(sender_hash, ficha)
                 store.enqueue_text(message, resposta, feedback_id)
             if manda_banner:
                 # A arte específica de bebida vem com o convite para o

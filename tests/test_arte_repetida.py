@@ -107,16 +107,15 @@ class WorkerNaoRepeteArteTests(unittest.TestCase):
             self.addCleanup(p.stop)
         self.triagem = {"tipo": "relato", "urgencia": "Neutro", "ficha": SEDA, "setor": None, "lugar": None, "continuacao": True}
 
-    def test_pergunta_completa_recebe_a_arte_mesmo_recente(self):
-        """"Sabe se tem água de coco?" 20 min depois da arte recebeu texto (25/09): a arte vai."""
-
+    def test_disponibilidade_recebe_texto_mesmo_com_arte_cadastrada(self):
+        """Em 26/09 a organizacao pediu disponibilidade em texto, sem cardapio."""
         store = StoreComArte(minutos_atras=20, count=2)
         with mock.patch.object(worker, "triar_mensagem", return_value={**self.triagem, "continuacao": False}), \
-                mock.patch.object(worker, "_compose_reply", return_value="nunca usado") as compor:
+                mock.patch.object(worker, "_compose_reply", return_value="Seda consta na loja oficial.") as compor:
             worker.process_inbox(store, _message(content="sabe se tem seda?"))
-        self.assertEqual(store.imagens, [ARTE])
-        self.assertEqual(store.responses, [])
-        compor.assert_not_called()
+        self.assertEqual(store.imagens, [])
+        self.assertEqual(store.responses, ["Seda consta na loja oficial."])
+        compor.assert_called_once()
 
     def test_arte_recente_vira_resposta_em_texto_a_partir_da_ficha(self):
         store = StoreComArte(minutos_atras=1, count=2)

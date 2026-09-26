@@ -959,6 +959,10 @@ def triar_mensagem_ia(texto, fichas=None, setores=None, historico: str = ""):
                 "casa com a ficha do guia correspondente, mesmo sem a pessoa dizer o nome "
                 "do palco ou do setor: aí escolha a ficha mais geral desse assunto. "
                 "Na dúvida, 0.\n"
+                "Pagamento (pix, cartão, dinheiro) usa a ficha das formas de pagamento, "
+                "mesmo mencionando cerveja. Nunca escolha cardápio apenas por citar um produto. "
+                "Onde é/onde fica pede localização do assunto mais recente, não preço. "
+                "Água grátis e hidratação não são água à venda nem água de coco.\n"
                 "Pergunta sobre bebida, drink ou preço de bebida que nenhuma ficha "
                 "específica responde vai para a ficha do cardápio geral de bebidas, se "
                 "ela estiver na lista. O mesmo vale para comida da pista e o cardápio da "
@@ -1211,9 +1215,9 @@ def triar_mensagem_sem_ia(texto, fichas=None, setores=None, historico=""):
             "ficha_por": "gatilho", "setor": None, "setor_por": None, "lugar": None,
         }
     consulta = texto
-    if re.fullmatch(r"(?:quanto custa|qto custa|onde (?:eu )?compro|qual (?:o )?preco)[?!. ]*", _normalize(texto)):
+    if re.fullmatch(r"(?:quanto custa|qto custa|onde (?:eu )?compro|onde(?: e| fica| tem)?|fica onde|qual (?:o )?preco)[?!. ]*", _normalize(texto)):
         pessoas = re.findall(r"^Pessoa: (.+)$", historico, flags=re.M)
-        assunto = next((p for p in reversed(pessoas) if re.search(r"\b(?:agua|cerveja|seda|camiseta|moletom|copo|tirante)\b", _normalize(p))), "")
+        assunto = next((p for p in reversed(pessoas) if re.search(r"\b(?:agua|cerveja|seda|camiseta|moletom|copo|tirante|banheiro|caixa|palco|loja)\b", _normalize(p))), "")
         consulta = texto + " " + assunto if assunto else ""
     conversa_simples = _normalize(texto).strip(" ?!.") in ("quem e voce", "cade voce", "voce gosta de festa")
     setores = setores or []
@@ -1692,6 +1696,17 @@ Spanish input → Spanish reply:
             )
             if len(official_answer) > 400:
                 max_tokens = 300
+
+        system_msg += (
+            "\nAnswer the intent of the current question, not the format of the selected guide. "
+            "Payment questions need the official payment procedure, never menu prices. "
+            "Availability questions need a short factual answer that says where it is sold, "
+            "with the documented place (e.g. 'na Loja Oficial, na pista, perto da feirinha'); "
+            "a menu confirms an item is listed, not live stock. Do not add prices unless asked. Location questions, including short "
+            "follow-ups such as 'onde e?' or 'onde fica?', refer to the most recent subject. "
+            "Answer only its documented location, never a price list. If the subject is ambiguous, "
+            "ask which place or product; if its location is unknown, ask staff on site."
+        )
 
         # Tom de voz extra configurado no painel.
         persona = (_bot_config().get('settings') or {}).get('persona')
@@ -2543,6 +2558,16 @@ def _compose_reply(
 
     if known is _FICHA_NAO_INFORMADA:
         known = match_knowledge(content)
+    from tuca_intencao import ficha_pagamento, reserva_informativa, PAGAMENTO, PROBLEMA, sem_precos_nao_pedidos, com_local
+    if urgency == "Neutro" and PAGAMENTO.search(_normalize(content)) and not PROBLEMA.search(_normalize(content)):
+        payment = ficha_pagamento(_fichas_ativas())
+        if payment:
+            known = payment
+        elif known and known.get("kind") in GUIDE_KINDS:
+            known = None
+
+    if urgency == "Neutro" and not historico and re.fullmatch(r"(?:e )?(?:onde(?: e| fica)?|fica onde)[?!. ]*", _normalize(content)):
+        return prefix + "De qual lugar ou produto você quer saber a localização?"
     # Elogio não é pergunta: a base de perguntas não entra aí, senão um
     # "show incrível" voltaria com o horário do line-up.
     if urgency == "Positivo":
@@ -2564,6 +2589,8 @@ def _compose_reply(
                 historico=historico,
                 chamado_registrado=chamado_registrado,
             )
+            if reply and urgency == "Neutro":
+                reply = com_local(sem_precos_nao_pedidos(reply, content), content, known)
             if reply:
                 # Sem sufixo automático de "seu chamado já foi enviado": a IA
                 # já diz isso quando não tem a resposta, e colado a uma
@@ -2576,6 +2603,10 @@ def _compose_reply(
         return prefix + _texto_conversa_sem_ia(content, bool(historico))
     if urgency == "Urgente" and known and _PROMESSA_OPERACIONAL.search(str(known.get("answer") or "")):
         return prefix + _reply(urgency)
+    if urgency == "Neutro":
+        informative = reserva_informativa(content, known, historico)
+        if informative:
+            return prefix + informative
     if known and str(known.get("answer") or "").strip():
         # Sem IA, o texto oficial vai como está: é melhor soar formal do que
         # deixar a pergunta sem a informação correta.
