@@ -151,13 +151,6 @@ PERGUNTA_CARDAPIO_COMPLETO = (
 PERGUNTA_ARTE_VALORES = "Quer que eu te mande a arte com os valores? Responde *QUERO* 😉"
 # A ficha do cardápio geral é marcada pelo escopo, cadastrado no painel.
 ESCOPO_CARDAPIO_GERAL = "cardapio-geral"
-_QUER_SIM = re.compile(
-    r"^(?:sim|s|ss|quero|quero sim|sim quero|sim por favor|pode|pode mandar|pode ser|"
-    r"manda|manda ai|manda sim|me manda|claro|bora|isso|vai|ok|okay|por favor|pfv|pf|"
-    r"cardapio|o cardapio|cardapio completo|quero o cardapio|manda o cardapio|"
-    r"line ?-?up|o line ?-?up|line ?-?up completo|quero o line ?-?up|manda o line ?-?up|"
-    r"quero o completo|o completo)[\s!.]*$"
-)
 
 # Line-up, pedido do Joao Marcos em 26/09: pergunta geral recebe as três
 # artes de uma vez, com a chamada fixa na legenda da primeira; pergunta de um
@@ -221,28 +214,43 @@ def artes_do_lineup() -> list[str]:
     return [str(f["image_url"]).strip() for f in sorted(palcos, key=ordem)]
 
 
-def _oferta_aceita(store: EventStore, sender_hash: str, content: str) -> str | None:
+def _oferta_aceita(
+    store: EventStore, sender_hash: str, content: str,
+    mensagens: list[dict[str, Any]] | None = None,
+) -> str | None:
     """Qual convite a pessoa aceitou: "arte", "cardapio", "lineup" ou nenhum.
 
     Só vale com o convite entre as três últimas falas do Tuca, e vence o mais
     recente: quem pediu o cardápio e depois o line-up quer o line-up.
+    `mensagens` é a conversa já lida pelo worker, para não ler duas vezes.
     """
 
-    if not _QUER_SIM.match(_normalize(content).strip()):
+    from tuca_aceite import PALAVRAS_MAXIMAS, aceitou
+
+    # Mensagem longa nunca é só um "sim": nem lê a conversa.
+    if not content.strip() or len(content.split()) > PALAVRAS_MAXIMAS:
         return None
-    try:
-        thread = store.conversation_thread(sender_hash, limit=6)
-    except Exception:  # noqa: BLE001 - sem histórico, sem contexto
-        return None
-    do_tuca = [m for m in (thread or {}).get("messages") or [] if m.get("direction") == "out"]
+    if mensagens is None:
+        try:
+            thread = store.conversation_thread(sender_hash, limit=6)
+        except Exception:  # noqa: BLE001 - sem histórico, sem contexto
+            return None
+        mensagens = list((thread or {}).get("messages") or [])
+    do_tuca = [m for m in mensagens if m.get("direction") == "out"]
     for fala in reversed(do_tuca[-3:]):
-        texto = _normalize(str(fala.get("content") or ""))
+        convite = str(fala.get("content") or "")
+        texto = _normalize(convite)
         if "arte com os valores" in texto:
-            return "arte"
-        if re.search(r"line ?-?up completo", texto):
-            return "lineup"
-        if "cardapio completo" in texto:
-            return "cardapio"
+            oferta = "arte"
+        elif re.search(r"line ?-?up completo", texto):
+            oferta = "lineup"
+        elif "cardapio completo" in texto:
+            oferta = "cardapio"
+        else:
+            continue
+        # "quer", "s", "aham", "mand", "pode mandar aí", áudio transcrito:
+        # regra tolerante primeiro, IA só na dúvida (26/09).
+        return oferta if aceitou(content, convite) else None
     return None
 
 
@@ -270,7 +278,9 @@ def _oferta_lembrada(sender_hash: str) -> dict[str, Any] | None:
     return registro[1]
 
 
-def _ficha_da_oferta(store: EventStore, sender_hash: str) -> dict[str, Any] | None:
+def _ficha_da_oferta(
+    store: EventStore, sender_hash: str, mensagens: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
     """A ficha da arte oferecida em "quer a arte com os valores?".
 
     A oferta não guarda a ficha: ela é a resposta à pergunta que veio logo
@@ -282,7 +292,8 @@ def _ficha_da_oferta(store: EventStore, sender_hash: str) -> dict[str, Any] | No
     lembrada = _oferta_lembrada(sender_hash)
     if lembrada and str(lembrada.get("image_url") or "").strip():
         return lembrada
-    mensagens = _conversa(store, sender_hash)
+    if mensagens is None:
+        mensagens = _conversa(store, sender_hash)
     oferta = next(
         (i for i in range(len(mensagens) - 1, -1, -1)
          if mensagens[i].get("direction") == "out"
@@ -919,9 +930,17 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # "Quero" logo depois de um convite: vai a arte pedida, sem triagem e
         # sem chamado. No cardápio, a arte geral; no line-up, os palcos que a
         # pessoa ainda não recebeu.
-        oferta = _oferta_aceita(store, sender_hash, content)
+        # A conversa é lida aqui só se a mensagem é curta (pode ser um "sim"),
+        # e a mesma leitura serve à triagem e à resposta mais abaixo.
+        from tuca_aceite import PALAVRAS_MAXIMAS
+        conversa = (
+            _conversa(store, sender_hash)
+            if content.strip() and len(content.split()) <= PALAVRAS_MAXIMAS
+            else None
+        )
+        oferta = _oferta_aceita(store, sender_hash, content, mensagens=conversa)
         if oferta == "arte":
-            ofertada = _ficha_da_oferta(store, sender_hash)
+            ofertada = _ficha_da_oferta(store, sender_hash, mensagens=conversa)
             if ofertada:
                 if pode_responder:
                     # A arte específica de bebida segue com o convite para o
@@ -948,7 +967,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 return
         if oferta == "lineup":
             artes = artes_do_lineup()
-            ja_tem = _artes_ja_enviadas(_conversa(store, sender_hash))
+            ja_tem = _artes_ja_enviadas(conversa if conversa is not None else _conversa(store, sender_hash))
             faltam = [a for a in artes if a not in ja_tem] or artes
             if faltam:
                 if pode_responder:
@@ -1009,7 +1028,8 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # e a triagem decidia no escuro: "onde eu compro?" depois de "tem
         # seda?" abria chamado genérico com o link do app (25/09). A mesma
         # leitura diz que artes já foram mandadas, para não repetir.
-        conversa = _conversa(store, sender_hash)
+        if conversa is None:
+            conversa = _conversa(store, sender_hash)
         historico = _contexto(store, sender_hash, content, raw_content, mensagens=conversa)
         artes_recentes = _artes_ja_enviadas(conversa)
 
