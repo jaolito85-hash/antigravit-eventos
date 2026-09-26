@@ -40,6 +40,10 @@ services:
       ADMIN_USERS: ${ADMIN_USERS:-}
       WORKER_POLL_INTERVAL: ${WORKER_POLL_INTERVAL:-1}
       WORKER_MAX_ATTEMPTS: ${WORKER_MAX_ATTEMPTS:-8}
+      # Acima disso por minuto a IA desliga e o Tuca responde pelas fichas e
+      # textos de reserva, quase na hora. Três workers com IA dão conta de
+      # uns 40 por minuto (medido em 26/09: 4,4 s por mensagem cada).
+      FLOOD_GLOBAL_POR_MINUTO: ${FLOOD_GLOBAL_POR_MINUTO:-35}
     volumes:
       - tuca_lab_private:/app/instance
     expose:
@@ -55,7 +59,7 @@ services:
       retries: 3
       start_period: 20s
 
-  worker:
+  worker: &worker-service
     build: .
     command: ["python", "worker.py"]
     restart: unless-stopped
@@ -66,6 +70,17 @@ services:
     depends_on:
       web:
         condition: service_healthy
+
+  # Cópias do worker para o volume do festival (26/09). Um worker processa
+  # uma mensagem por vez, cerca de 13 por minuto. É seguro rodar vários:
+  # claim_inbox e claim_outbox reservam cada mensagem de forma atômica, então
+  # duas cópias nunca pegam a mesma. Serviços separados em vez de
+  # deploy.replicas porque o Coolify fixa o nome de cada container.
+  worker2:
+    <<: *worker-service
+
+  worker3:
+    <<: *worker-service
 
   agente:
     build: .
