@@ -152,8 +152,72 @@ _QUER_SIM = re.compile(
     r"^(?:sim|s|ss|quero|quero sim|sim quero|sim por favor|pode|pode mandar|pode ser|"
     r"manda|manda ai|manda sim|me manda|claro|bora|isso|vai|ok|okay|por favor|pfv|pf|"
     r"cardapio|o cardapio|cardapio completo|quero o cardapio|manda o cardapio|"
+    r"line ?-?up|o line ?-?up|line ?-?up completo|quero o line ?-?up|manda o line ?-?up|"
     r"quero o completo|o completo)[\s!.]*$"
 )
+
+# Line-up, pedido do Joao Marcos em 26/09: pergunta geral recebe as três
+# artes de uma vez, com a chamada fixa na legenda da primeira; pergunta de um
+# palco recebe só aquele palco e o convite para os outros. A ficha geral é
+# marcada pelo escopo no painel e não tem arte própria: as artes são as das
+# fichas de cada palco, então trocar um banner no painel vale para os dois
+# caminhos.
+ESCOPO_LINEUP_GERAL = "lineup-geral"
+CHAMADA_LINEUP = "*Segura essas pedradas de line-up!* 🎶🤘"
+CHAMADA_PALCO = "*Segura essa pedrada!* 🎶🤘"
+PERGUNTA_LINEUP_COMPLETO = (
+    "Quer o line-up completo, com os outros palcos? Responde *QUERO* que eu te mando 🤘"
+)
+# Ordem das artes na resposta geral: o palco principal primeiro.
+_ORDEM_DOS_PALCOS = ("tropical", "hype", "lab")
+
+
+def artes_do_lineup() -> list[str]:
+    """As artes publicadas de cada palco, na ordem Tropical, Hype, Lab."""
+
+    try:
+        fichas = _fichas_ativas()
+    except Exception:  # noqa: BLE001 - sem base, sem artes
+        return []
+    palcos = [
+        f for f in fichas
+        if f.get("kind") == "lineup"
+        and str(f.get("image_url") or "").strip()
+        and str(f.get("scope") or "").strip().lower() != ESCOPO_LINEUP_GERAL
+    ]
+
+    def ordem(ficha: dict[str, Any]) -> tuple[int, str]:
+        titulo = _normalize(str(ficha.get("question") or ""))
+        posicao = next(
+            (i for i, nome in enumerate(_ORDEM_DOS_PALCOS) if nome in titulo),
+            len(_ORDEM_DOS_PALCOS),
+        )
+        return posicao, titulo
+
+    return [str(f["image_url"]).strip() for f in sorted(palcos, key=ordem)]
+
+
+def _oferta_aceita(store: EventStore, sender_hash: str, content: str) -> str | None:
+    """Qual convite a pessoa aceitou: "cardapio", "lineup" ou nenhum.
+
+    Só vale com o convite entre as três últimas falas do Tuca, e vence o mais
+    recente: quem pediu o cardápio e depois o line-up quer o line-up.
+    """
+
+    if not _QUER_SIM.match(_normalize(content).strip()):
+        return None
+    try:
+        thread = store.conversation_thread(sender_hash, limit=6)
+    except Exception:  # noqa: BLE001 - sem histórico, sem contexto
+        return None
+    do_tuca = [m for m in (thread or {}).get("messages") or [] if m.get("direction") == "out"]
+    for fala in reversed(do_tuca[-3:]):
+        texto = _normalize(str(fala.get("content") or ""))
+        if re.search(r"line ?-?up completo", texto):
+            return "lineup"
+        if "cardapio completo" in texto:
+            return "cardapio"
+    return None
 
 
 def ficha_cardapio_geral() -> dict[str, Any] | None:
@@ -181,16 +245,7 @@ def _quer_cardapio_completo(store: EventStore, sender_hash: str, content: str) -
     mensagens separadas e a hora de envio pode inverter a ordem (25/09).
     """
 
-    if not _QUER_SIM.match(_normalize(content).strip()):
-        return False
-    try:
-        thread = store.conversation_thread(sender_hash, limit=6)
-    except Exception:  # noqa: BLE001 - sem histórico, sem contexto
-        return False
-    do_tuca = [m for m in (thread or {}).get("messages") or [] if m.get("direction") == "out"]
-    return any(
-        "cardapio completo" in _normalize(str(m.get("content") or "")) for m in do_tuca[-3:]
-    )
+    return _oferta_aceita(store, sender_hash, content) == "cardapio"
 
 
 def pergunta_onde(lugar: str | None) -> str:
@@ -657,9 +712,11 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             logger.info("Pergunta sobre o app respondida com o link cadastrado")
             return
 
-        # "Quero" logo depois de "quer o cardápio completo?": vai a arte do
-        # cardápio geral, sem triagem e sem chamado.
-        if _quer_cardapio_completo(store, sender_hash, content):
+        # "Quero" logo depois de um convite: vai a arte pedida, sem triagem e
+        # sem chamado. No cardápio, a arte geral; no line-up, os palcos que a
+        # pessoa ainda não recebeu.
+        oferta = _oferta_aceita(store, sender_hash, content)
+        if oferta == "cardapio":
             geral = ficha_cardapio_geral()
             if geral:
                 if pode_responder:
@@ -668,6 +725,20 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                     )
                 store.finish_inbox(message_id, "ignored")
                 logger.info("Cardápio completo enviado a pedido")
+                return
+        if oferta == "lineup":
+            artes = artes_do_lineup()
+            ja_tem = _artes_ja_enviadas(_conversa(store, sender_hash))
+            faltam = [a for a in artes if a not in ja_tem] or artes
+            if faltam:
+                if pode_responder:
+                    for ordem, arte in enumerate(faltam):
+                        store.enqueue_image(
+                            message, arte, caption="", feedback_id=None,
+                            chave=f"lineup{ordem}",
+                        )
+                store.finish_inbox(message_id, "ignored")
+                logger.info("Line-up completo enviado a pedido | artes=%s", len(faltam))
                 return
 
         def _bloquear_conteudo(motivo: str, aviso: str) -> None:
@@ -810,6 +881,15 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         )
         ficha = triagem.get("ficha") or {}
         banner = str(ficha.get("image_url") or "").strip()
+        # A ficha geral do line-up não tem arte própria: responde com as artes
+        # dos três palcos, e a primeira decide se a resposta é repetida.
+        lineup_geral = (
+            ficha.get("kind") == "lineup"
+            and str(ficha.get("scope") or "").strip().lower() == ESCOPO_LINEUP_GERAL
+        )
+        artes_lineup = artes_do_lineup() if lineup_geral else []
+        if artes_lineup:
+            banner = artes_lineup[0]
         # Só dúvida (Neutro) recebe a arte. Elogio não pergunta nada, crítico
         # tem protocolo fixo, e relato de problema ("falta cerveja no bar")
         # não pode voltar com o cardápio de cervejas: visto em 25/09, quando
@@ -871,13 +951,33 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 # o texto antes da foto (25/09, água de coco), e o "quero"
                 # seguinte não achava a pergunta como última fala. O próprio
                 # geral não se oferece.
-                geral = ficha_cardapio_geral() if ficha.get("kind") == "bar" else None
-                oferece = bool(geral) and str(ficha.get("scope") or "").strip().lower() != ESCOPO_CARDAPIO_GERAL
-                store.enqueue_image(
-                    message, banner,
-                    caption=PERGUNTA_CARDAPIO_COMPLETO if oferece else "",
-                    feedback_id=feedback_id,
-                )
+                if artes_lineup:
+                    # A chamada vai na legenda da primeira arte pelo mesmo
+                    # motivo do convite do cardápio: texto solto chegava
+                    # depois da foto.
+                    for ordem, arte in enumerate(artes_lineup):
+                        extra = {"chave": f"lineup{ordem}"} if ordem else {}
+                        store.enqueue_image(
+                            message, arte,
+                            caption=CHAMADA_LINEUP if ordem == 0 else "",
+                            feedback_id=feedback_id, **extra,
+                        )
+                elif ficha.get("kind") == "lineup":
+                    outros = [a for a in artes_do_lineup() if a != banner]
+                    legenda = CHAMADA_PALCO
+                    if outros:
+                        legenda += f"\n\n{PERGUNTA_LINEUP_COMPLETO}"
+                    store.enqueue_image(
+                        message, banner, caption=legenda, feedback_id=feedback_id,
+                    )
+                else:
+                    geral = ficha_cardapio_geral() if ficha.get("kind") == "bar" else None
+                    oferece = bool(geral) and str(ficha.get("scope") or "").strip().lower() != ESCOPO_CARDAPIO_GERAL
+                    store.enqueue_image(
+                        message, banner,
+                        caption=PERGUNTA_CARDAPIO_COMPLETO if oferece else "",
+                        feedback_id=feedback_id,
+                    )
         store.finish_inbox(message_id)
         if not pode_responder:
             logger.info(

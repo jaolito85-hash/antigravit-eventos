@@ -3508,6 +3508,12 @@ def save_knowledge_route():
     # há imagem, senão a ficha não responderia nada.
     if not answer and not imagem:
         return jsonify({"error": "escreva a resposta ou envie uma imagem"}), 400
+    # O banco exige ao menos um caractere na resposta, e a ficha só com
+    # imagem voltava "não foi possível salvar" (26/09, banners do line-up).
+    # A pergunta ocupa o lugar: é o que a triagem lê para saber o que a arte
+    # responde, e ela não vai para o WhatsApp, que recebe só a imagem.
+    if not answer:
+        answer = question
 
     keywords = payload.get("keywords")
     if isinstance(keywords, str):

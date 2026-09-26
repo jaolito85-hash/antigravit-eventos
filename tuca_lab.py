@@ -131,10 +131,12 @@ class MemoryStore:
         self.responses.append({"type": "text", "content": content[:4096]})
         self.state["history"].append({"direction": "out", "content": content[:4096]})
 
-    def enqueue_image(self, message, media_url, caption="", feedback_id=None):
+    def enqueue_image(self, message, media_url, caption="", feedback_id=None, chave="banner"):
         self.responses.append({"type": "image", "url": media_url, "content": caption})
+        # A arte entra no histórico com o endereço, como na conversa real:
+        # é por ele que o "quero" do line-up sabe que palco já foi.
         self.state["history"].append(
-            {"direction": "out", "content": caption or "[Imagem oficial]"}
+            {"direction": "out", "content": caption or "[Imagem oficial]", "media_url": media_url}
         )
 
     def finish_inbox(self, mid, status="processed"):

@@ -541,10 +541,13 @@ class WorkerTests(unittest.TestCase):
         mock_ia.return_value = {"tipo": "relato", "urgencia": "Neutro", "ficha": ficha}
         store = FakeStore()
 
-        process_inbox(store, _message(content="qual o line up do palco hype?"))
+        # Desde 26/09 a arte de palco leva a chamada fixa na legenda; com um
+        # palco só cadastrado não há convite para os outros.
+        with mock.patch("worker.artes_do_lineup", return_value=[ficha["image_url"]]):
+            process_inbox(store, _message(content="qual o line up do palco hype?"))
 
         self.assertEqual(store.finished, "processed")
-        self.assertEqual(store.responses, [("imagem", ficha["image_url"], "", 42)])
+        self.assertEqual(store.responses, [("imagem", ficha["image_url"], worker.CHAMADA_PALCO, 42)])
 
     @mock.patch("server.triar_mensagem_ia")
     def test_ficha_so_com_foto_nao_manda_texto_nenhum(self, mock_ia):
@@ -555,10 +558,11 @@ class WorkerTests(unittest.TestCase):
         mock_ia.return_value = {"tipo": "relato", "urgencia": "Neutro", "ficha": ficha}
         store = FakeStore()
 
-        process_inbox(store, _message(content="qual o line up do palco hype?"))
+        with mock.patch("worker.artes_do_lineup", return_value=[ficha["image_url"]]):
+            process_inbox(store, _message(content="qual o line up do palco hype?"))
 
         self.assertEqual(len(store.responses), 1)
-        self.assertEqual(store.responses[0], ("imagem", ficha["image_url"], "", 42))
+        self.assertEqual(store.responses[0], ("imagem", ficha["image_url"], worker.CHAMADA_PALCO, 42))
 
     @mock.patch("server.triar_mensagem_ia")
     def test_elogio_nao_manda_banner(self, mock_ia):

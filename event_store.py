@@ -658,11 +658,14 @@ class EventStore:
         media_url: str,
         caption: str,
         feedback_id: int | None = None,
+        chave: str = "banner",
     ) -> None:
         """Enfileira um banner (imagem pública) para ir depois da resposta em texto.
 
         Chave própria de idempotência: a resposta em texto usa `:reply`, e o
-        banner não pode derrubá-la nem ser derrubado por ela.
+        banner não pode derrubá-la nem ser derrubado por ela. Mais de uma
+        imagem para a mesma mensagem (o line-up dos três palcos) precisa de
+        uma chave por imagem, senão a segunda é descartada como repetição.
         """
 
         row = {
@@ -678,7 +681,7 @@ class EventStore:
             # O marcador não vira legenda: o envio o descarta.
             "content": (caption or "").strip()[:1024] or SEM_LEGENDA,
             "media_url": media_url[:500],
-            "idempotency_key": f"inbox:{message['id']}:banner",
+            "idempotency_key": f"inbox:{message['id']}:{chave}",
             "delivery_status": "queued",
         }
         (
