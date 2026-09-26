@@ -41,6 +41,9 @@ COMPLAINT = re.compile(
 
 def is_candidate(text):
     value = normal(text)
+    from tuca_risco import risco_explicito
+    if not risco_explicito(text) and re.search(r"onde fica o banheiro(?: mais proximo)?$", value):
+        value = "onde fica o banheiro"
     return bool(
         FOOD.fullmatch(value)
         or BATH.fullmatch(value)
@@ -65,6 +68,9 @@ def area(location):
 
 def resolve(text, history=None, location=None):
     value = normal(text)
+    from tuca_risco import risco_explicito
+    if not risco_explicito(text) and re.search(r"onde fica o banheiro(?: mais proximo)?$", value):
+        value = "onde fica o banheiro"
     history = history or []
     # O worker fornece só mensagens anteriores; os motores locais retiram a atual.
     recent = history[-8:]

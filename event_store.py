@@ -48,7 +48,10 @@ except ImportError:
     pass
 
 
-class EventStore:
+from tuca_incidentes import IncidentConversation
+
+
+class EventStore(IncidentConversation):
     """Acesso centralizado às tabelas operacionais do evento."""
 
     def __init__(self) -> None:
@@ -573,14 +576,49 @@ class EventStore:
             raise RuntimeError("Supabase não retornou o feedback criado")
         return int(existing.data[0]["id"])
 
+    def incident_rows(self, sender_hash, minutes=60):
+        if not sender_hash:
+            return []
+        since = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+        response = (self._get_client().table("feedbacks")
+                    .select("id,message,urgency,status,metadata,inbox_message_id,created_at")
+                    .eq("event_id", self.event_id()).eq("sender_hash", sender_hash)
+                    .neq("status", "resolvido").gte("created_at", since)
+                    .order("created_at", desc=True).limit(30).execute())
+        return list(response.data or [])
+
+    def save_incident(self, sender_hash, feedback_id, changes):
+        response = (self._get_client().table("feedbacks").update(changes)
+                    .eq("event_id", self.event_id()).eq("sender_hash", sender_hash)
+                    .eq("id", feedback_id).neq("status", "resolvido").execute())
+        if not response.data:
+            raise RuntimeError("O chamado não foi atualizado")
+
+    def preceding_location(self, sender_hash, message_id, before=None):
+        if not before:
+            current = (self._get_client().table("message_inbox").select("created_at")
+                       .eq("event_id", self.event_id()).eq("sender_hash", sender_hash)
+                       .eq("id", message_id).limit(1).execute())
+            if not current.data:
+                return None
+            before = current.data[0]["created_at"]
+        since = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        response = (self._get_client().table("message_inbox")
+                    .select("message_type,content").eq("event_id", self.event_id())
+                    .eq("sender_hash", sender_hash).neq("id", message_id)
+                    .gte("created_at", since).lt("created_at", before).order("created_at", desc=True).limit(1).execute())
+        rows = list(response.data or [])
+        return rows[0].get("content") if rows and rows[0].get("message_type") == "location" else None
+
     def attach_location(
         self,
         sender_hash: str,
         lat: float,
         lon: float,
         janela_minutos: int = 60,
+        feedback_id: int | None = None,
     ) -> dict[str, Any] | None:
-        """Prende a coordenada ao chamado em aberto mais recente da pessoa.
+        """Prende a coordenada ao incidente operacional, sem deixá-la numa FAQ.
 
         A localização chega depois de o Tuca pedir, e sozinha não diz nada:
         quem dá sentido a ela é o relato que veio antes. Por isso ela não abre
@@ -590,36 +628,15 @@ class EventStore:
 
         if not sender_hash:
             return None
-        desde = (
-            datetime.now(timezone.utc) - timedelta(minutes=janela_minutos)
-        ).isoformat()
-        client = self._get_client()
-        response = (
-            client.table("feedbacks")
-            .select("id,message,urgency,status,metadata")
-            .eq("event_id", self.event_id())
-            .eq("sender_hash", sender_hash)
-            .neq("status", "resolvido")
-            .gte("created_at", desde)
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-        linhas = list(response.data or [])
-        if not linhas:
+        alvo = (next((r for r in self.incident_rows(sender_hash, janela_minutos) if str(r["id"]) == str(feedback_id)), None)
+                if feedback_id is not None else self.location_target(sender_hash, janela_minutos))
+        if not alvo:
             return None
-
-        alvo = linhas[0]
         agora = datetime.now(timezone.utc).isoformat()
         metadata = dict(alvo.get("metadata") or {})
         metadata["coords"] = {"lat": lat, "lon": lon}
         metadata["coords_at"] = agora
-        (
-            client.table("feedbacks")
-            .update({"metadata": metadata, "updated_at": agora})
-            .eq("id", alvo["id"])
-            .execute()
-        )
+        self.save_incident(sender_hash, alvo["id"], {"metadata": metadata, "updated_at": agora})
         return {
             "id": int(alvo["id"]),
             "urgency": alvo.get("urgency"),

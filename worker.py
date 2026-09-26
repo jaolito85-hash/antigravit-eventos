@@ -597,6 +597,90 @@ def _atendimento_aprovado(store, message, content, sector, pode_responder, trans
     return True
 
 
+def _localizacao_anterior(store, message, feedback_id):
+    reader = getattr(store, "preceding_location", None)
+    if not callable(reader):
+        return False
+    coords = _coordenadas(reader(message.get("sender_hash"), str(message["id"]), before=message.get("created_at")) or "")
+    if not coords:
+        return False
+    return bool(store.attach_location(message.get("sender_hash"), *coords, feedback_id=feedback_id))
+
+
+def _prioridade_imediata(store, message, content, pode_responder):
+    """Risco explícito antecede limites, atalhos, moderação e motores de IA."""
+    from tuca_risco import risco_explicito, problema_acesso, normal
+    critical = risco_explicito(content)
+    access = problema_acesso(content)
+    if not critical and not access:
+        return False
+    sender = str(message.get("sender_hash") or "")
+    # Uma repetição idêntica recente não produz tempestade de chamados.
+    reader = getattr(store, "recent_incident", None)
+    previous = reader(sender, minutes=2) if callable(reader) else None
+    if previous and normal(previous.get("message") or previous.get("content")) == normal(content):
+        if str(previous.get("inbox_message_id")) != str(message["id"]):
+            store.finish_inbox(str(message["id"]), "ignored")
+            return True
+    code, content = _extract_sector(content)
+    sector = store.sector_by_code(code) if code else None
+    from_qr = bool(sector)
+    if sector:
+        store.marcar_setor_do_inbox(str(message["id"]), str(sector["id"]))
+    sector = sector or store.ultimo_setor_escaneado(sender, QR_RECENTE_MINUTOS)
+    urgency = "Critico" if critical else "Urgente"
+    category = "Segurança & Organização" if critical else "Estrutura & Espaço"
+    fid = store.create_feedback(
+        message=message, content=content, category=category,
+        region=sector["name"] if sector else "N/A", urgency=urgency,
+        topic=_topic(content, category, urgency), sector_id=str(sector["id"]) if sector else None,
+        sector_source=("qr" if from_qr else "qr_recente") if sector else None,
+    )
+    if not fid:
+        raise RuntimeError("Alerta não foi registrado")
+    located = _localizacao_anterior(store, message, fid)
+    if pode_responder:
+        if located:
+            reply = "Recebi seu alerta. O chamado está com a equipe e a localização que você enviou foi anexada."
+        elif critical:
+            reply = _compose_reply(content, category, urgency, sector, False, known=None, usar_ia=False)
+        else:
+            reply = "Registrei o bloqueio de acesso com prioridade para a equipe. Em qual rampa você está? Manda uma referência ou sua localização pelo clipe do WhatsApp."
+        store.enqueue_text(message, reply, fid)
+    store.finish_inbox(str(message["id"]))
+    return True
+
+
+def _complementar_incidente(store, message, content, pode_responder):
+    from tuca_risco import complemento_incidente, risco_explicito
+    if not complemento_incidente(content):
+        return False
+    from tuca_risco import normal
+    pronoun = bool(re.match(r"^(?:ele|ela|a pessoa)\b", normal(content)))
+    if risco_explicito(content) and not pronoun:
+        return False
+    reader = getattr(store, "recent_incident", None)
+    if not callable(reader):
+        return False
+    sender = str(message.get("sender_hash") or "")
+    previous = reader(sender)
+    if not previous:
+        return False
+    history = _conversa(store, sender)
+    last_out = next((str(m.get("content") or "").lower() for m in reversed(history) if m.get("direction") == "out"), "")
+    if not any(word in last_out for word in ("localização", "referência", "qual banheiro", "qual bar", "qual rampa")):
+        return False
+    from tuca_risco import normal
+    reference = not bool(re.match(r"^(?:ele|ela|a pessoa)\b", normal(content)))
+    if not reference and previous.get("urgency") not in ("Critico", "Crítico"):
+        return False
+    fid = store.update_incident(sender, previous, message, reference=reference)
+    if pode_responder and store.recent_sender_count(sender, JANELA_MINUTOS) <= 10:
+        store.enqueue_text(message, ("Referência recebida e adicionada ao seu chamado para a equipe." if reference else "Atualizei seu chamado, que continua com prioridade máxima.") + " Se puder, envie também a localização pelo clipe do WhatsApp.", fid)
+    store.finish_inbox(str(message["id"]))
+    return True
+
+
 def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
     """Transforma uma mensagem persistida em feedback e resposta enfileirada.
 
@@ -631,6 +715,13 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                     and store.recent_blocked_count(sender_hash, JANELA_MINUTOS) < STRIKES_PARA_SILENCIAR
                 )
             _tratar_localizacao(store, message, responder_localizacao, sender_hash)
+            return
+
+        # O texto da legenda já é fornecido pela Meta; não exige baixar mídia.
+        initial_content = str(message.get("content") or "")
+        if message_type == "text" and _complementar_incidente(store, message, initial_content, pode_responder):
+            return
+        if message_type != "audio" and _prioridade_imediata(store, message, initial_content, pode_responder):
             return
 
         # 2. Degraus por número. Quem está falando com a equipe escreve à
@@ -683,6 +774,9 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             raw_content = str(resultado["texto"])
             transcribed = True
 
+        if transcribed and _prioridade_imediata(store, message, raw_content, pode_responder):
+            return
+
         sector_code, content = _extract_sector(raw_content)
         sector = store.sector_by_code(sector_code)
         if sector:
@@ -723,6 +817,29 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             logger.info("Mensagem sem texto: convite enviado sem triagem")
             return
 
+        if re.search(r"(?:telefones|dados pessoais|contatos).*(?:pessoas|participantes|usuarios)", _normalize(content)):
+            if pode_responder:
+                store.enqueue_text(message, "Não compartilho telefones nem dados pessoais de outros participantes. Se você precisa de ajuda no evento, me conta o que aconteceu.")
+            store.finish_inbox(message_id, "ignored")
+            return
+
+        if re.search(r"celiac|alergi|contaminacao cruzada|sem gluten", _normalize(content)) and not re.search(r"passando mal|reacao|inchad|respir", _normalize(content)):
+            if pode_responder:
+                store.enqueue_text(message, "Não tenho confirmação sobre ingredientes e contaminação cruzada para garantir que essa comida atende à sua restrição. Confirme diretamente com a equipe do ponto de alimentação antes de pedir.")
+            store.finish_inbox(message_id, "ignored")
+            return
+
+        if re.search(r"(?:falar|conversar) com (?:uma pessoa|um humano|um atendente|a equipe)", _normalize(content)):
+            fid = store.create_feedback(message=message, content=content, category="Experiência Geral",
+                region=sector["name"] if sector else "N/A", urgency="Neutro",
+                topic="Pedido de atendimento humano", sector_id=str(sector["id"]) if sector else None)
+            if not fid:
+                raise RuntimeError("Pedido de atendimento não registrado")
+            if pode_responder:
+                store.enqueue_text(message, "Registrei seu pedido de atendimento humano. Para falar com alguém agora, procure a equipe do festival no local ou o SAC. Não consigo garantir um retorno por este WhatsApp.", fid)
+            store.finish_inbox(message_id)
+            return
+
         # "Qual o app de vocês?": o link está cadastrado no painel e a resposta
         # é fixa. A IA respondia "não tenho essa informação" e colava o link
         # em seguida (25/09).
@@ -758,6 +875,12 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 logger.info("Line-up completo enviado a pedido | artes=%s", len(faltam))
                 return
 
+        if _normalize(content).strip(" ?!.") in ("quero", "manda", "sim quero"):
+            if pode_responder:
+                store.enqueue_text(message, "O que você quer saber ou receber? Me diz o assunto para eu te ajudar.")
+            store.finish_inbox(message_id, "ignored")
+            return
+
         def _bloquear_conteudo(motivo: str, aviso: str) -> None:
             """Registra o strike, avisa uma vez e encerra a mensagem."""
 
@@ -784,6 +907,16 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         if _atendimento_aprovado(store, message, content, sector, pode_responder, transcribed):
             return
 
+        # O relógio e a grade são dados: não delegar comparação de horários à IA.
+        from tuca_programacao import answer as resposta_programacao
+        if re.search(r"quem.*toca|tocando|depois|proximo", _normalize(content)):
+            schedule = resposta_programacao(content, _conversa(store, sender_hash), _fichas_ativas())
+            if schedule:
+                if pode_responder:
+                    store.enqueue_text(message, schedule)
+                store.finish_inbox(message_id, "ignored")
+                return
+
         # 7. Inundação geral: a IA é desligada, o chamado continua entrando.
         ia_ligada = store.recent_event_count(1) <= FLOOD_GLOBAL_POR_MINUTO
         if not ia_ligada:
@@ -807,7 +940,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         triagem = (
             triar_mensagem(content, localizar=not sector, historico=historico)
             if ia_ligada
-            else triar_mensagem_sem_ia(content, setores=None if sector else _setores_ativos())
+            else triar_mensagem_sem_ia(content, setores=None if sector else _setores_ativos(), historico=historico)
         )
 
         # 8. Xingamento sem conteúdo: a moderação não pega (a pontuação de
@@ -896,6 +1029,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
             # que se sabe e precisa ficar guardado.
             place_group=None if localizado else triagem.get("lugar"),
         )
+        gps_anterior = _localizacao_anterior(store, message, feedback_id) if urgency in URGENCIAS_QUE_PEDEM_EQUIPE else False
         ficha = triagem.get("ficha") or {}
         banner = str(ficha.get("image_url") or "").strip()
         # A ficha geral do line-up não tem arte própria: responde com as artes
@@ -919,8 +1053,10 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
         # novo, mesmo que ela tenha ido há pouco: em 25/09 a regra só por
         # tempo negou a arte a quem perguntou de novo 20 minutos depois.
         arte_repetida = bool(banner) and banner in artes_recentes and bool(triagem.get("continuacao"))
+        continua_preco = bool(artes_recentes) and bool(re.fullmatch(r"(?:quanto custa|qto custa|qual (?:o )?preco)[?!. ]*", _normalize(content)))
         manda_banner = (
             bool(banner)
+            and not continua_preco
             and urgency == "Neutro"
             and not pergunta_de_lugar(content)
             and not arte_repetida
@@ -955,6 +1091,7 @@ def process_inbox(store: EventStore, message: dict[str, Any]) -> None:
                 lugar_de_operacao = triagem.get("lugar") in _NOME_DO_LUGAR
                 if (
                     not localizado
+                    and not gps_anterior
                     and (lugar_de_operacao or not triagem.get("ficha"))
                     and urgency in URGENCIAS_QUE_PEDEM_EQUIPE
                     and urgency not in ("Critico", "Crítico")

@@ -34,7 +34,10 @@ def frozen(snapshot):
         SNAPSHOT.reset(a)
 
 
-class MemoryStore:
+from tuca_incidentes import IncidentConversation
+
+
+class MemoryStore(IncidentConversation):
     """Implementa o contrato do worker sem herdar EventStore ou cliente de rede."""
 
     def __init__(self, state, snapshot):
@@ -56,6 +59,8 @@ class MemoryStore:
                 "at": time.time(),
                 "blocked": False,
                 "sector_id": None,
+                "message_type": message.get("message_type"),
+                "content": message.get("content"),
             }
         )
         self.state["history"].append({"direction": "in", "content": message["content"]})
@@ -104,23 +109,39 @@ class MemoryStore:
         return {"messages": self.state["history"][-limit:]}
 
     def create_feedback(self, **kw):
+        existing = next((c for c in self.state["cards"] if c.get("inbox_message_id") == kw["message"]["id"]), None)
+        if existing:
+            self.card_id = existing["id"]
+            return self.card_id
         self.card_id = len(self.state["cards"]) + 1
         card = {k: v for k, v in kw.items() if k != "message"}
-        card.update(id=self.card_id, at=time.time(), status="aberto")
+        card.update(id=self.card_id, at=time.time(), status="aberto", inbox_message_id=kw["message"]["id"], metadata={})
         self.state["cards"].append(card)
         return self.card_id
 
-    def attach_location(self, sender, lat, lon, janela_minutos=60):
-        cards = [
-            c
-            for c in self.state["cards"]
-            if c["at"] >= time.time() - janela_minutos * 60
-            and c["status"] != "resolvido"
-        ]
-        if not cards:
+    def incident_rows(self, sender_hash, minutes=60):
+        return [c for c in reversed(self.state["cards"])
+                if c["at"] >= time.time() - minutes*60 and c["status"] != "resolvido"]
+
+    def save_incident(self, sender_hash, feedback_id, changes):
+        card = next(c for c in self.state["cards"] if c["id"] == feedback_id and c["status"] != "resolvido")
+        card.update(changes)
+        if "message" in changes:
+            card["content"] = changes["message"]
+        self.card_id = feedback_id
+
+    def preceding_location(self, sender_hash, message_id, before=None):
+        index = next((i for i,r in enumerate(self.state["inbox"]) if r["id"] == message_id), len(self.state["inbox"]))
+        rows = [r for r in self.state["inbox"][:index] if r["at"] >= time.time()-300]
+        return rows[-1].get("content") if rows and rows[-1].get("message_type") == "location" else None
+
+    def attach_location(self, sender, lat, lon, janela_minutos=60, feedback_id=None):
+        card = (next((c for c in self.incident_rows(sender, janela_minutos) if c["id"] == feedback_id), None)
+                if feedback_id is not None else self.location_target(sender, janela_minutos))
+        if not card:
             return None
-        card = cards[-1]
         card["coords"] = [lat, lon]
+        card.setdefault("metadata", {})["coords"] = {"lat": lat, "lon": lon}
         self.card_id = card["id"]
         return card
 
@@ -137,7 +158,7 @@ class MemoryStore:
         # A arte entra no histórico com o endereço, como na conversa real:
         # é por ele que o "quero" do line-up sabe que palco já foi.
         self.state["history"].append(
-            {"direction": "out", "content": caption or "[Imagem oficial]", "media_url": media_url}
+            {"direction": "out", "content": caption or "[imagem]", "media_url": media_url}
         )
 
     def finish_inbox(self, mid, status="processed"):

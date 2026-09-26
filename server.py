@@ -330,7 +330,12 @@ _FOGO_DE_VERDADE = re.compile(
 
 def classificar_sentimento(texto):
     """Classifica sentimento com gírias brasileiras"""
-    texto_lower = texto.lower()
+    from tuca_risco import sem_risco_negado, risco_explicito, problema_acesso
+    if risco_explicito(texto):
+        return "Critico"
+    if problema_acesso(texto):
+        return "Urgente"
+    texto_lower = sem_risco_negado(texto)
     # "o show tá pegando fogo" é elogio, não incêndio. Só a reserva sem IA
     # passa por aqui, e um Crítico falso toma a tela inteira do telão. A
     # gíria só é descontada quando a frase fala do show e não de fumaça,
@@ -1166,7 +1171,7 @@ def triar_mensagem(texto, localizar=False, historico: str = ""):
         resultado["ficha_por"] = "ia"
         resultado["setor_por"] = "ia" if resultado.get("setor") else None
         return resultado
-    return triar_mensagem_sem_ia(texto, fichas, setores)
+    return triar_mensagem_sem_ia(texto, fichas, setores, historico=historico)
 
 
 def recuperar_ficha_por_resposta(texto, fichas):
@@ -1190,7 +1195,7 @@ def recuperar_ficha_por_resposta(texto, fichas):
     return candidatos[0] if len(candidatos) == 1 else None
 
 
-def triar_mensagem_sem_ia(texto, fichas=None, setores=None):
+def triar_mensagem_sem_ia(texto, fichas=None, setores=None, historico=""):
     """Triagem só por vocabulário, palavras-chave e gatilhos cadastrados.
 
     É a reserva para a IA fora do ar e o caminho escolhido de propósito
@@ -1205,12 +1210,19 @@ def triar_mensagem_sem_ia(texto, fichas=None, setores=None):
             "tipo": "ofensa", "urgencia": "Neutro", "ficha": None,
             "ficha_por": "gatilho", "setor": None, "setor_por": None, "lugar": None,
         }
+    consulta = texto
+    if re.fullmatch(r"(?:quanto custa|qto custa|onde (?:eu )?compro|qual (?:o )?preco)[?!. ]*", _normalize(texto)):
+        pessoas = re.findall(r"^Pessoa: (.+)$", historico, flags=re.M)
+        assunto = next((p for p in reversed(pessoas) if re.search(r"\b(?:agua|cerveja|seda|camiseta|moletom|copo|tirante)\b", _normalize(p))), "")
+        consulta = texto + " " + assunto if assunto else ""
+    conversa_simples = _normalize(texto).strip(" ?!.") in ("quem e voce", "cade voce", "voce gosta de festa")
     setores = setores or []
     setor = identificar_setor_por_texto(texto, setores)
     return {
-        "tipo": "conversa" if _is_greeting(texto) else "relato",
+        "tipo": "conversa" if (_is_greeting(texto) or conversa_simples) else "relato",
+        "continuacao": bool(consulta) and consulta != texto,
         "urgencia": classificar_sentimento(texto),
-        "ficha": match_knowledge(texto, fichas) or recuperar_ficha_por_resposta(texto, fichas),
+        "ficha": match_knowledge(consulta, fichas) or recuperar_ficha_por_resposta(consulta, fichas),
         "ficha_por": "gatilho",
         "setor": setor,
         "setor_por": "texto" if setor else None,
@@ -1500,7 +1512,8 @@ def _limpar_resposta(reply: str) -> str:
     aqui pegava isso.
     """
 
-    reply = (reply or "").strip()
+    from tuca_risco import limpar_texto_publico
+    reply = limpar_texto_publico(reply)
     if reply.startswith('"') and reply.endswith('"'):
         reply = reply[1:-1]
     # O WhatsApp usa *negrito* com um asterisco; **assim** apareceria cru.
@@ -1545,6 +1558,9 @@ def _linha_do_relogio(agora: datetime | None = None) -> str:
     show de sábado. Antes do festival a grade inteira é futuro.
     """
 
+    snapshot = _LAB_SNAPSHOT.get()
+    if agora is None and snapshot is not None:
+        agora = _para_hora_local(snapshot.get("clock"))
     agora = agora or datetime.now(_FUSO_SAO_PAULO)
     linha = (
         f"Current local time at the festival: {_DIAS_SEMANA[agora.weekday()]}, "
@@ -2029,12 +2045,21 @@ def match_knowledge(content, entries=None):
     if not alvo:
         return None
 
+    produtos = {"agua", "cerveja", "seda", "camiseta", "moletom", "copo", "tirante", "hamburguer"}
+    mencionados = produtos.intersection(re.findall(r"[a-z]+", alvo))
+    consulta_produto = bool(re.search(r"custa|preco|compr|vende|tem |onde", alvo)) and not re.search(r"pag|pix|cartao", alvo)
+    if re.fullmatch(r"(?:quanto custa|qto custa|onde (?:eu )?compro|qual (?:o )?preco)[?!. ]*", alvo):
+        return None
     melhor = None
     melhor_peso = 0
     for entry in entries or []:
         if not entry.get("active", True):
             continue
+        assunto = _normalize(str(entry.get("question") or "") + " " + str(entry.get("answer") or ""))
+        if consulta_produto and mencionados and not mencionados.intersection(re.findall(r"[a-z]+", assunto)):
+            continue
         gatilhos = [g for g in (entry.get("keywords") or []) if g]
+        gatilhos = [g for g in gatilhos if _normalize(g) not in {"quanto custa", "quanto e", "preco", "onde eu compro", "onde compro"}]
         # A própria pergunta cadastrada também serve de gatilho, pelas
         # palavras com mais de três letras que ela contém.
         termos = [t for t in _normalize(entry.get("question")).split() if len(t) > 3]
@@ -2494,6 +2519,9 @@ def _compose_reply(
     criativa é pulada e vai o texto fixo ou a ficha como está.
     """
 
+    from tuca_risco import limpar_texto_publico
+    if isinstance(known, dict):
+        known = dict(known, answer=limpar_texto_publico(known.get("answer")))
     prefix = "🎤 *Ouvi seu áudio!*\n\n" if transcribed else ""
 
     # Emergência não depende da criatividade, disponibilidade ou latência da IA.
