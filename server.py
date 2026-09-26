@@ -7,6 +7,8 @@ import csv
 import logging
 import re
 import secrets
+import threading
+import time
 import unicodedata
 from io import StringIO
 from contextlib import contextmanager
@@ -48,10 +50,14 @@ load_dotenv()
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+# Só o ambiente de desenvolvimento roda sem HTTPS: o cookie da sessão nasce
+# seguro por padrão, em vez de depender de alguém lembrar de FLASK_ENV no
+# Coolify (auditoria de 26/09).
+AMBIENTE_LOCAL = os.getenv("FLASK_ENV", "production").lower() == "development"
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Strict",
-    SESSION_COOKIE_SECURE=os.getenv("FLASK_ENV") == "production",
+    SESSION_COOKIE_SECURE=not AMBIENTE_LOCAL,
     # Teto global de 6 MB por causa do upload de banner no painel. O webhook
     # da Meta tem poucos KB e recebe um teto próprio de 1 MB na rota, antes de
     # ler o corpo: sem isso um POST anônimo gigante era carregado inteiro na
@@ -2639,6 +2645,10 @@ def add_security_headers(response):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if not AMBIENTE_LOCAL:
+        # O navegador passa a recusar http para este domínio por um ano: o
+        # proxy não mandava esse cabeçalho (auditoria de 26/09).
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     if request.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
     return response
@@ -2753,29 +2763,101 @@ def meta_webhook():
         logger.error("Falha ao persistir webhook Meta: %s", type(exc).__name__)
         return jsonify({"error": "temporarily_unavailable"}), 503
 
+# Tentativas de login por endereço. Vinte erros em dez minutos bloqueiam o
+# endereço, não a conta: a equipe no evento nunca fica trancada por causa de
+# um estranho, e um estranho não consegue testar senha em série. Fica na
+# memória do processo, o que basta com dois workers.
+LOGIN_MAX_FALHAS = 20
+LOGIN_JANELA_SEGUNDOS = 600
+_falhas_de_login: dict[str, list[float]] = {}
+_falhas_de_login_lock = threading.Lock()
+LOGIN_BLOQUEADO = "Muitas tentativas. Espere dez minutos e tente de novo."
+
+
+def _endereco_do_cliente() -> str:
+    """O endereço de quem está tentando entrar, atrás do Cloudflare e do proxy."""
+
+    for cabecalho in ("CF-Connecting-IP", "X-Forwarded-For"):
+        valor = request.headers.get(cabecalho, "")
+        if valor.strip():
+            return valor.split(",")[0].strip()[:64]
+    return request.remote_addr or "desconhecido"
+
+
+def login_bloqueado(endereco: str, agora: float | None = None) -> bool:
+    agora = agora if agora is not None else time.time()
+    with _falhas_de_login_lock:
+        recentes = [t for t in _falhas_de_login.get(endereco, []) if agora - t < LOGIN_JANELA_SEGUNDOS]
+        if recentes:
+            _falhas_de_login[endereco] = recentes
+        else:
+            _falhas_de_login.pop(endereco, None)
+        return len(recentes) >= LOGIN_MAX_FALHAS
+
+
+def registrar_falha_de_login(endereco: str, agora: float | None = None) -> None:
+    agora = agora if agora is not None else time.time()
+    with _falhas_de_login_lock:
+        _falhas_de_login.setdefault(endereco, []).append(agora)
+        if len(_falhas_de_login) > 5000:
+            # Alguém varrendo endereços não pode fazer o dicionário crescer sem fim.
+            for chave in [k for k, v in _falhas_de_login.items() if agora - v[-1] >= LOGIN_JANELA_SEGUNDOS]:
+                _falhas_de_login.pop(chave, None)
+
+
+def contas_do_painel() -> list[tuple[str, str]]:
+    """Quem pode entrar: ADMIN_USER/ADMIN_PASS e, opcionalmente, ADMIN_USERS.
+
+    ADMIN_USERS é "usuario:senha,outro:senha" no Coolify. Uma conta por pessoa
+    deixa o histórico de publicação com o nome de quem publicou e permite
+    tirar o acesso de uma pessoa sem trocar a senha das outras.
+    """
+
+    contas = []
+    usuario, senha = os.getenv("ADMIN_USER"), os.getenv("ADMIN_PASS")
+    if usuario and senha:
+        contas.append((usuario, senha))
+    for par in os.getenv("ADMIN_USERS", "").split(","):
+        nome, separador, chave = par.strip().partition(":")
+        if separador and nome.strip() and chave.strip():
+            contas.append((nome.strip(), chave.strip()))
+    return contas
+
+
+def credenciais_conferem(username: str, password: str) -> str | None:
+    """Devolve o nome da conta que casou, ou None. Compara todas, em tempo constante."""
+
+    achada = None
+    for nome, chave in contas_do_painel():
+        usuario_ok = hmac.compare_digest(username.encode(), nome.encode())
+        senha_ok = hmac.compare_digest(password.encode(), chave.encode())
+        if usuario_ok and senha_ok and achada is None:
+            achada = nome
+    return achada
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        
-        admin_user = os.getenv("ADMIN_USER")
-        admin_pass = os.getenv("ADMIN_PASS")
-        
-        if (
-            admin_user
-            and admin_pass
-            and username
-            and password
-            and hmac.compare_digest(username, admin_user)
-            and hmac.compare_digest(password, admin_pass)
-        ):
+        endereco = _endereco_do_cliente()
+        if login_bloqueado(endereco):
+            logger.warning("Login bloqueado por excesso de tentativas")
+            return render_template("login.html", error=LOGIN_BLOQUEADO), 429
+
+        username = str(request.form.get("username") or "")[:200]
+        password = str(request.form.get("password") or "")[:200]
+        conta = credenciais_conferem(username, password) if username and password else None
+        if conta:
+            session.clear()
             session["logged_in"] = True
+            session["user"] = conta
+            logger.info("Login no painel | usuario=%s", conta)
             return redirect("/")
-        else:
-            error = "Usuário ou senha incorretos."
-            
+        registrar_falha_de_login(endereco)
+        logger.warning("Tentativa de login recusada")
+        error = "Usuário ou senha incorretos."
+
     return render_template("login.html", error=error)
 
 @app.route("/logout")

@@ -102,7 +102,10 @@ Siga as 3 camadas do `AGENTE.md`:
 - Atendimento humano: pelo botão de conversar dentro do chamado, o operador assume,
   fala direto com o participante e devolve ao bot quando terminar
 - Relatório pós-evento com resumo executivo e desempenho por setor
-- Autenticação por sessão (ADMIN_USER / ADMIN_PASS)
+- Autenticação por sessão: ADMIN_USER / ADMIN_PASS e contas extras em
+  ADMIN_USERS ("nome:senha,outro:senha"), uma por pessoa, com o nome no
+  histórico de publicação. Vinte erros de senha em dez minutos bloqueiam o
+  endereço de origem, nunca a conta
 - Agente no Telegram para a equipe: responde sobre chamados, erros e respostas do
   Tuca, varre o sistema de meia em meia hora, avisa o grupo e corrige o que está no
   catálogo quando alguém confirma no botão (veja `directives/agente_telegram.md`)
