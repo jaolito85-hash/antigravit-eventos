@@ -7,6 +7,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -35,6 +36,37 @@ def _linha_de_erro(error: Exception) -> str:
 # Imagem sem legenda: a coluna content não aceita vazio, e este marcador é o
 # que o worker reconhece para não mandar legenda nenhuma à Meta.
 SEM_LEGENDA = "[imagem]"
+
+# Escritas que o Tuca nunca usa: chinês, japonês, coreano, cirílico, grego,
+# hebraico, árabe, indianas e tailandês. Em 26/09 a IA soltou "海南天天中彩票
+# üpj" (propaganda de loteria) no meio da resposta de "tem cerveja?", e isso
+# foi ao WhatsApp. Emoji fica de fora da lista, e o inglês e o espanhol que o
+# Tuca fala com estrangeiros são escrita latina.
+_ESCRITA_ESTRANGEIRA = re.compile(
+    "[Ͱ-ϿЀ-ԯ֐-׿؀-ۿݐ-ݿ"
+    "ऀ-෿฀-๿ᄀ-ᇿ　-ヿ㄀-㆏"
+    "㐀-䶿一-鿿가-힯豈-﫿＀-￯]"
+)
+SEM_TEXTO_APROVEITAVEL = "Recebi sua mensagem! Me conta de novo o que você precisa?"
+
+
+def sem_escrita_estrangeira(texto: str) -> str:
+    """Tira da resposta toda frase que tenha escrita estrangeira.
+
+    A frase sai inteira, não só os caracteres: o lixo vem acompanhado de
+    restos latinos ("üpj"). Se não sobrar nada, vai uma frase neutra.
+    """
+
+    texto = str(texto or "")
+    if not _ESCRITA_ESTRANGEIRA.search(texto):
+        return texto
+    linhas = []
+    for linha in texto.split("\n"):
+        frases = re.split(r"(?<=[.!?])\s+", linha)
+        linhas.append(" ".join(f for f in frases if not _ESCRITA_ESTRANGEIRA.search(f)).rstrip())
+    limpo = re.sub(r"\n{3,}", "\n\n", "\n".join(linhas)).strip()
+    logging.getLogger(__name__).warning("Escrita estrangeira removida da resposta")
+    return limpo or SEM_TEXTO_APROVEITAVEL
 
 
 class StoreConfigurationError(RuntimeError):
@@ -651,6 +683,7 @@ class EventStore(IncidentConversation):
     ) -> None:
         """Enfileira resposta idempotente para envio fora do processamento."""
 
+        content = sem_escrita_estrangeira(content)
         row = {
             "event_id": self.event_id(),
             "feedback_id": feedback_id,

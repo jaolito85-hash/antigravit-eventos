@@ -149,6 +149,9 @@ class MemoryStore(IncidentConversation):
         # A outbox real tem uma chave por mensagem. Preserve essa semântica.
         if any(x["type"] == "text" for x in self.responses):
             return
+        from event_store import sem_escrita_estrangeira
+
+        content = sem_escrita_estrangeira(content)
         self.responses.append({"type": "text", "content": content[:4096]})
         self.state["history"].append({"direction": "out", "content": content[:4096]})
 
