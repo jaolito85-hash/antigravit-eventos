@@ -1462,6 +1462,73 @@ class EventStore(IncidentConversation):
         self._get_client().table("outbound_messages").insert(row).execute()
         return True
 
+    def operator_message_sent_recently(
+        self, sender_hash: str, content: str, minutes: int = 60,
+    ) -> bool:
+        """Diz se este texto do operador já foi para esta pessoa há pouco."""
+
+        recipient = self._recipient_for(sender_hash)
+        if not recipient:
+            return False
+        desde = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+        response = (
+            self._get_client()
+            .table("outbound_messages")
+            .select("id")
+            .eq("event_id", self.event_id())
+            .eq("recipient", recipient)
+            .eq("origin", "operator")
+            .eq("content", content[:4096])
+            .gte("created_at", desde)
+            .limit(1)
+            .execute()
+        )
+        return bool(response.data)
+
+    def conversation_location(self, sender_hash: str) -> dict[str, Any] | None:
+        """Último lugar conhecido da pessoa, para o operador não perguntar.
+
+        Vem do chamado mais recente que tem setor ou GPS. No festival o
+        operador abriu a conversa de uma emergência e perguntou "qual
+        localização?" com o setor já gravado no chamado (26/09).
+        """
+
+        response = (
+            self._get_client()
+            .table("feedbacks")
+            .select("sector_id,metadata,created_at")
+            .eq("event_id", self.event_id())
+            .eq("sender_hash", sender_hash)
+            .order("created_at", desc=True)
+            .limit(20)
+            .execute()
+        )
+        for row in response.data or []:
+            metadata = row.get("metadata") or {}
+            coords = metadata.get("coords") if isinstance(metadata, dict) else None
+            if not row.get("sector_id") and not coords:
+                continue
+            nome = None
+            if row.get("sector_id"):
+                setor = (
+                    self._get_client()
+                    .table("event_sectors")
+                    .select("name")
+                    .eq("event_id", self.event_id())
+                    .eq("id", row["sector_id"])
+                    .limit(1)
+                    .execute()
+                )
+                if setor.data:
+                    nome = setor.data[0].get("name")
+            return {
+                "name": nome,
+                "source": metadata.get("sector_source"),
+                "coords": coords,
+                "at": row.get("created_at"),
+            }
+        return None
+
     def pending_outbox(self, limit: int = 20) -> list[dict[str, Any]]:
         """Busca respostas prontas para envio."""
 

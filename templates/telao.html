@@ -1875,6 +1875,29 @@
             }
         }
 
+        // O lugar fica no topo da conversa: no festival o operador perguntou
+        // "qual localização?" com o setor já gravado no chamado (26/09).
+        function talkPlace(loc) {
+            const temGps = !!(loc && loc.coords && loc.coords.lat != null);
+            if (!loc || (!loc.name && !temGps)) {
+                return '<div class="panel-note" style="margin-top:6px"><i class="ri-map-pin-line"></i> ' +
+                    'Local ainda não informado</div>';
+            }
+            const origem = loc.name
+                ? ({ qr: 'lido da placa', qr_recente: 'placa escaneada há pouco' }[loc.source] ||
+                   'deduzido do que a pessoa escreveu')
+                : 'localização enviada pela pessoa';
+            return '<div style="margin-top:8px; font-weight:700; display:flex; flex-wrap:wrap; gap:8px; align-items:center">' +
+                '<i class="ri-map-pin-line" style="color:#ef4444"></i>' +
+                (loc.name ? esc(loc.name) : '') +
+                '<span class="panel-note">' + esc(origem) + ' · ' + esc(relTime(loc.at)) + '</span>' +
+                (temGps
+                    ? '<a style="color:#2979ff" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps?q=' +
+                      encodeURIComponent(loc.coords.lat + ',' + loc.coords.lon) + '"><i class="ri-navigation-line"></i> Abrir no mapa</a>'
+                    : '') +
+                '</div>';
+        }
+
         function renderTalk(data) {
             const humano = data.mode === 'human';
             const semContato = data.hasContact === false;
@@ -1910,6 +1933,7 @@
                 '<div><div class="sheet-title" style="font-size:1.25rem">' +
                 '<i class="ri-whatsapp-line" style="color:#25D366"></i> Participante ' +
                 esc(data.participant || '') + '</div>' +
+                talkPlace(data.location) +
                 '<div class="panel-note" style="margin-top:6px">' +
                 (humano ? 'Você assumiu esta conversa. O bot está calado.' : 'Respondida pelo Tuca.') +
                 '</div></div>' +
@@ -1941,8 +1965,14 @@
             if (stream) stream.scrollTop = stream.scrollHeight;
         }
 
+        let _switchingTalk = false;
+
         async function switchTalkMode(mode) {
-            if (!_talkId) return;
+            // "Devolver" nasce no mesmo lugar do "Assumir": sem trava e sem
+            // confirmação, um clique duplo assumia e devolvia a conversa.
+            if (!_talkId || _switchingTalk) return;
+            if (mode === 'bot' && !confirm('Devolver esta conversa para o Tuca responder automaticamente?')) return;
+            _switchingTalk = true;
             try {
                 const res = await fetch('/api/conversations/' + encodeURIComponent(_talkId) + '/mode', {
                     method: 'PUT',
@@ -1954,11 +1984,12 @@
                     alert(erro.error || 'Não foi possível trocar o atendimento.');
                     return;
                 }
+                await refreshTalk();
             } catch (err) {
                 console.error('Erro ao trocar atendimento:', err);
-                return;
+            } finally {
+                _switchingTalk = false;
             }
-            await refreshTalk();
         }
 
         async function sendTalk() {

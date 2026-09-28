@@ -1081,6 +1081,26 @@
             margin-top: 4px;
         }
 
+        .chat-place {
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-top: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chat-place small {
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .chat-place a {
+            color: var(--accent, #2979ff);
+            font-weight: 600;
+        }
+
         .chat-actions {
             display: flex;
             align-items: center;
@@ -2973,6 +2993,31 @@
             }
         }
 
+        // O lugar fica no topo da conversa: no festival o operador perguntou
+        // "qual localização?" com o setor já gravado no chamado, que some da
+        // tela quando a conversa abre (26/09).
+        const ORIGEM_DO_LUGAR = {
+            qr: 'lido da placa',
+            qr_recente: 'placa escaneada há pouco',
+        };
+
+        function lugarDaConversa(loc) {
+            if (!loc || (!loc.name && !(loc.coords && loc.coords.lat != null))) {
+                return `<div class="chat-place"><i class="ri-map-pin-line"></i>
+                    <small>Local ainda não informado</small></div>`;
+            }
+            const origem = loc.name
+                ? (ORIGEM_DO_LUGAR[loc.source] || 'deduzido do que a pessoa escreveu')
+                : 'localização enviada pela pessoa';
+            const mapa = loc.coords && loc.coords.lat != null
+                ? `<a href="https://www.google.com/maps?q=${encodeURIComponent(loc.coords.lat + ',' + loc.coords.lon)}"
+                      target="_blank" rel="noopener noreferrer"><i class="ri-navigation-line"></i> Abrir no mapa</a>`
+                : '';
+            return `<div class="chat-place"><i class="ri-map-pin-line" style="color:#ef4444"></i>
+                ${loc.name ? escHtml(loc.name) : ''} <small>${escHtml(origem)} · ${escHtml(formatarTempo(loc.at))}</small>
+                ${mapa}</div>`;
+        }
+
         function renderChat(data) {
             const humano = data.mode === 'human';
             const podeEscrever = humano && data.hasContact !== false;
@@ -3019,6 +3064,7 @@
                     <div>
                         <div class="chat-title"><i class="ri-whatsapp-line" style="color:#25D366"></i>
                             Participante ${escHtml(data.participant || '')}</div>
+                        ${lugarDaConversa(data.location)}
                         <div class="chat-sub">${humano
                             ? 'Você assumiu esta conversa. O bot está calado.'
                             : 'Respondida automaticamente pelo Tuca.'}</div>
@@ -3052,9 +3098,15 @@
             if (stream) stream.scrollTop = stream.scrollHeight;
         }
 
+        let _trocandoAtendimento = false;
+
         async function trocarAtendimento(mode) {
-            if (!_chatId) return;
+            // Clique duplo assumia e devolvia na mesma hora, porque o botão
+            // troca de função no mesmo lugar.
+            if (!_chatId || _trocandoAtendimento) return;
             if (mode === 'bot' && !confirm('Devolver esta conversa para o Tuca responder automaticamente?')) return;
+            _trocandoAtendimento = true;
+            document.querySelectorAll('.btn-handoff').forEach(b => { b.disabled = true; });
             try {
                 const res = await fetch('/api/conversations/' + encodeURIComponent(_chatId) + '/mode', {
                     method: 'PUT',
@@ -3066,11 +3118,13 @@
                     alert(erro.error || 'Não foi possível trocar o atendimento.');
                     return;
                 }
+                await refreshChat();
             } catch (err) {
                 console.error('Erro ao trocar atendimento:', err);
-                return;
+            } finally {
+                _trocandoAtendimento = false;
+                document.querySelectorAll('.btn-handoff').forEach(b => { b.disabled = false; });
             }
-            await refreshChat();
         }
 
         async function enviarMensagem() {

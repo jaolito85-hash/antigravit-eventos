@@ -1668,7 +1668,17 @@ Spanish input → Spanish reply:
         if not chamado_registrado:
             system_msg += "\nNo report was created for this conversation. Never claim anything was registered or sent to the team. Answer friendly small talk and invite event questions."
 
-        sector_line = f'\nThe participant location was identified as this festival sector: "{sector_name}". Mention the place naturally in your reply (translated to their language if needed).' if sector_name else ''
+        # O setor é onde está a placa que a pessoa escaneou, não o assunto.
+        # Citar sempre fez o Tuca responder "conheci minha namorada aqui" com
+        # "aproveita aí nos Sanitários Femininos" e registrar a crítica a um
+        # show "com referência aos Sanitários" (Tropicadelia, 26/09).
+        sector_line = (
+            f'\nThe participant is near this festival sector: "{sector_name}" (it is where they scanned '
+            'the QR code, not necessarily what they are talking about). Mention it only when they report '
+            'a problem at that place or describe where they are, so they know the team has the right '
+            'location. In compliments, questions, small talk or feedback about a show or artist, do not '
+            'mention it.'
+        ) if sector_name else ''
 
         # Informacao oficial cadastrada pela producao: o conteudo e obrigatorio,
         # o jeito de dizer fica com a IA.
@@ -2578,7 +2588,8 @@ def _compose_reply(
     # "show incrível" voltaria com o horário do line-up.
     if urgency == "Positivo":
         known = None
-    sector_name = str(sector["name"]) if sector else None
+    # Elogio nunca precisa do lugar: ninguém vai até lá por causa dele.
+    sector_name = str(sector["name"]) if sector and urgency != "Positivo" else None
     if urgency == "Urgente" and known and _PROMESSA_OPERACIONAL.search(str(known.get("answer") or "")):
         known = None
     # Relato de problema nunca é respondido com ficha do guia: "falta cerveja
@@ -3919,6 +3930,9 @@ def restore_config_route(version_id):
 # servidor: e usado para enfileirar o envio e nunca sai nas respostas da API.
 
 MAX_OPERATOR_MESSAGE = 900
+SAUDACAO_OPERADOR = "👋 Aqui é a equipe da Tropicadelia assumindo a conversa."
+# Quem já foi saudado há menos que isso não é saudado de novo ao ser reassumido.
+SAUDACAO_OPERADOR_MINUTOS = 60
 
 
 def _conversation_payload(sender_hash):
@@ -3927,6 +3941,12 @@ def _conversation_payload(sender_hash):
     thread = EVENT_STORE.conversation_thread(sender_hash)
     thread["conversationId"] = sender_hash
     thread["participant"] = sender_hash[:12]
+    # O lugar é extra: sem ele a conversa ainda abre.
+    try:
+        thread["location"] = EVENT_STORE.conversation_location(sender_hash)
+    except Exception as e:
+        logger.error("Falha ao ler local da conversa: %s", type(e).__name__)
+        thread["location"] = None
     return thread
 
 
@@ -3968,19 +3988,23 @@ def conversation_mode_route(conversation_id):
 
     operator = os.getenv("ADMIN_USER") or "operador"
     try:
+        anterior = EVENT_STORE.conversation_mode(conversation_id)
         EVENT_STORE.set_conversation_mode(conversation_id, mode, operator)
     except Exception as e:
         logger.error("Falha ao trocar modo da conversa: %s", type(e).__name__)
         return jsonify({"error": "unavailable"}), 503
 
     logger.info("Atendimento alterado | modo=%s", mode)
-    if mode == "human":
-        # Avisa o participante para ele não achar que falou com o vazio.
+    if mode == "human" and anterior != "human":
+        # Avisa o participante para ele não achar que falou com o vazio. Uma
+        # vez só: no festival a mesma conversa foi assumida, devolvida e
+        # assumida de novo em minutos, e a pessoa recebeu a saudação três
+        # vezes no meio de uma emergência (26/09).
         try:
-            EVENT_STORE.enqueue_operator_message(
-                conversation_id,
-                "👋 Aqui é a equipe da Tropicadelia assumindo a conversa.",
-            )
+            if not EVENT_STORE.operator_message_sent_recently(
+                conversation_id, SAUDACAO_OPERADOR, minutes=SAUDACAO_OPERADOR_MINUTOS,
+            ):
+                EVENT_STORE.enqueue_operator_message(conversation_id, SAUDACAO_OPERADOR)
         except Exception as e:
             logger.error("Falha ao avisar troca de atendimento: %s", type(e).__name__)
 
